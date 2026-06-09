@@ -82,7 +82,7 @@ export default function NewProjectPage() {
         <div className="flex items-center gap-3">
           <Link href="/projects" className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Annuler</Link>
           <button onClick={handleSave} disabled={!isValid || saving}
-            className="px-4 py-2 text-sm bg-[#003087] text-white rounded-lg hover:bg-blue-800 disabled:opacity-50 font-medium">
+            className="px-4 py-2 text-sm bg-[#1B7A4B] text-white rounded-lg hover:bg-[#145c38] disabled:opacity-50 font-medium">
             {saving ? 'Enregistrement…' : 'Créer le projet'}
           </button>
         </div>
@@ -222,7 +222,7 @@ export default function NewProjectPage() {
             </div>
             <div className="flex flex-wrap gap-2">
               {(form.tags ?? []).map((tag, i) => (
-                <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">
+                <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#e8ecf5] text-[#1B2E5E] rounded-full text-sm font-medium">
                   {tag}
                   <button onClick={() => set('tags', (form.tags ?? []).filter((_, j) => j !== i))}><X size={13} /></button>
                 </span>
@@ -234,7 +234,7 @@ export default function NewProjectPage() {
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Link href="/projects" className="px-5 py-2.5 text-sm border rounded-lg hover:bg-gray-50">Annuler</Link>
             <button onClick={handleSave} disabled={!isValid || saving}
-              className="px-5 py-2.5 text-sm bg-[#003087] text-white rounded-lg hover:bg-blue-800 disabled:opacity-50 font-medium">
+              className="px-5 py-2.5 text-sm bg-[#1B7A4B] text-white rounded-lg hover:bg-[#145c38] disabled:opacity-50 font-medium">
               {saving ? 'Enregistrement…' : 'Créer le projet'}
             </button>
           </div>
@@ -245,7 +245,7 @@ export default function NewProjectPage() {
 }
 
 function input() {
-  return 'w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white';
+  return 'w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B] bg-white';
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {

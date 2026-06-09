@@ -3,15 +3,28 @@
 @tailwind utilities;
 
 :root {
-  --boa-blue: #003087;
-  --boa-gold: #C8A951;
+  --boa-green:        #1B7A4B;
+  --boa-green-dark:   #145c38;
+  --boa-green-light:  #e8f5ee;
+  --boa-navy:         #1B2E5E;
+  --boa-navy-dark:    #111e3f;
+  --boa-navy-light:   #e8ecf5;
+  --boa-gray-bg:      #f7f7f5;
+  --boa-gray-surf:    #efefec;
+  --boa-gray-border:  #dcdcd8;
+  --boa-gray-text:    #6b6b65;
+  --boa-red:          #c0392b;
+  --boa-red-light:    #fdf0ef;
+  --boa-orange:       #d4830a;
+  --boa-orange-light: #fdf6e8;
 }
 
 body {
-  @apply bg-gray-50 text-gray-900;
+  background-color: var(--boa-gray-bg);
+  color: #0e0e0e;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 .scrollbar-thin::-webkit-scrollbar { width: 4px; }
 .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
-.scrollbar-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: var(--boa-gray-border); border-radius: 2px; }

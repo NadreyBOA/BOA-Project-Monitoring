@@ -45,7 +45,7 @@ export default function ProjectsPage() {
           <p className="text-sm text-gray-500 mt-0.5">{filtered.length} projet(s)</p>
         </div>
         <Link href="/projects/new"
-          className="flex items-center gap-2 px-4 py-2 bg-[#003087] text-white rounded-lg text-sm font-medium hover:bg-blue-800 transition-colors">
+          className="flex items-center gap-2 px-4 py-2 bg-[#1B7A4B] text-white rounded-lg text-sm font-medium hover:bg-[#145c38] transition-colors">
           <Plus size={16} /> Nouveau projet
         </Link>
       </div>
@@ -57,7 +57,7 @@ export default function ProjectsPage() {
           <input
             value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Rechercher un projet..."
-            className="w-full pl-9 pr-4 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full pl-9 pr-4 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B7A4B]"
           />
         </div>
         <Select value={filterStatus} onChange={v => setFilterStatus(v as ProjectStatus | '')} placeholder="Statut">
@@ -85,7 +85,7 @@ export default function ProjectsPage() {
         {filtered.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-gray-400 text-sm">Aucun projet trouvé.</p>
-            <Link href="/projects/new" className="mt-3 inline-flex items-center gap-2 text-sm text-blue-600 hover:underline">
+            <Link href="/projects/new" className="mt-3 inline-flex items-center gap-2 text-sm text-[#1B7A4B] hover:underline">
               <Plus size={14} /> Créer votre premier projet
             </Link>
           </div>
@@ -143,11 +143,11 @@ export default function ProjectsPage() {
                       <td className="px-4 py-3.5">
                         <div className="flex items-center justify-end gap-1">
                           <Link href={`/projects/${p.id}`}
-                            className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-blue-600 transition-colors" title="Voir">
+                            className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-[#1B7A4B] transition-colors" title="Voir">
                             <Eye size={15} />
                           </Link>
                           <Link href={`/projects/${p.id}/edit`}
-                            className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-blue-600 transition-colors" title="Modifier">
+                            className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-[#1B7A4B] transition-colors" title="Modifier">
                             <Pencil size={15} />
                           </Link>
                           <button onClick={() => setConfirmDelete(p.id)}
@@ -189,7 +189,7 @@ function Select({ value, onChange, placeholder, children }: {
   return (
     <div className="relative">
       <select value={value} onChange={e => onChange(e.target.value)}
-        className="appearance-none pl-3 pr-8 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700">
+        className="appearance-none pl-3 pr-8 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B7A4B] bg-white text-gray-700">
         <option value="">{placeholder}</option>
         {children}
       </select>

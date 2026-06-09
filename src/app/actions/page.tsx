@@ -40,7 +40,7 @@ export default function ActionsPage() {
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-gray-900">{a.description}</p>
           <div className="flex items-center gap-3 mt-0.5">
-            <Link href={`/projects/${a.projectId}`} className="text-xs text-blue-600 hover:underline">{a.projectCode}</Link>
+            <Link href={`/projects/${a.projectId}`} className="text-xs text-[#1B7A4B] hover:underline">{a.projectCode}</Link>
             <span className="text-xs text-gray-400">·</span>
             <span className="text-xs text-gray-600">{a.assignedTo}</span>
             <span className="text-xs text-gray-400">·</span>

@@ -39,11 +39,11 @@ export default function Dashboard() {
     .slice(0, 5);
 
   const statusPie = [
-    { name: 'En cours', value: stats.enCours, color: '#22c55e' },
-    { name: 'Planifié', value: projects.filter(p => p.status === 'PLANIFIE').length, color: '#3b82f6' },
-    { name: 'Terminé', value: stats.termine, color: '#10b981' },
-    { name: 'En pause', value: projects.filter(p => p.status === 'EN_PAUSE').length, color: '#f59e0b' },
-    { name: 'Annulé', value: projects.filter(p => p.status === 'ANNULE').length, color: '#ef4444' },
+    { name: 'En cours', value: stats.enCours, color: '#1B7A4B' },
+    { name: 'Planifié', value: projects.filter(p => p.status === 'PLANIFIE').length, color: '#1B2E5E' },
+    { name: 'Terminé', value: stats.termine, color: '#145c38' },
+    { name: 'En pause', value: projects.filter(p => p.status === 'EN_PAUSE').length, color: '#d4830a' },
+    { name: 'Annulé', value: projects.filter(p => p.status === 'ANNULE').length, color: '#c0392b' },
   ].filter(d => d.value > 0);
 
   const categoryBar = Object.entries(
@@ -65,7 +65,7 @@ export default function Dashboard() {
           <p className="text-sm text-gray-500 mt-0.5">Vue d'ensemble de l'activité projet</p>
         </div>
         <Link href="/projects/new"
-          className="flex items-center gap-2 px-4 py-2 bg-[#003087] text-white rounded-lg text-sm font-medium hover:bg-blue-800 transition-colors">
+          className="flex items-center gap-2 px-4 py-2 bg-[#1B7A4B] text-white rounded-lg text-sm font-medium hover:bg-[#145c38] transition-colors">
           <Plus size={16} /> Nouveau projet
         </Link>
       </div>
@@ -73,7 +73,7 @@ export default function Dashboard() {
       <div className="p-8 space-y-8">
         {/* KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <KPICard icon={<FolderOpen size={20} className="text-blue-600" />} label="Total projets" value={stats.total} bg="bg-blue-50" />
+          <KPICard icon={<FolderOpen size={20} className="text-[#1B2E5E]" />} label="Total projets" value={stats.total} bg="bg-[#e8ecf5]" />
           <KPICard icon={<Activity size={20} className="text-green-600" />} label="En cours" value={stats.enCours} bg="bg-green-50" />
           <KPICard icon={<Clock size={20} className="text-red-600" />} label="En retard" value={stats.enRetard} bg="bg-red-50" alert={stats.enRetard > 0} />
           <KPICard icon={<CheckCircle2 size={20} className="text-emerald-600" />} label="Terminés" value={stats.termine} bg="bg-emerald-50" />
@@ -82,15 +82,15 @@ export default function Dashboard() {
         {/* Health + Actions row */}
         <div className="grid grid-cols-3 gap-4">
           <div className="bg-white rounded-xl border p-4 flex items-center gap-4">
-            <div className="w-3 h-3 rounded-full bg-green-500 ring-4 ring-green-100" />
+            <div className="w-3 h-3 rounded-full bg-[#1B7A4B] ring-4 ring-[#e8f5ee]" />
             <div><p className="text-2xl font-bold text-gray-900">{stats.vert}</p><p className="text-sm text-gray-500">Projets sains</p></div>
           </div>
           <div className="bg-white rounded-xl border p-4 flex items-center gap-4">
-            <div className="w-3 h-3 rounded-full bg-orange-500 ring-4 ring-orange-100" />
+            <div className="w-3 h-3 rounded-full bg-[#d4830a] ring-4 ring-[#fdf6e8]" />
             <div><p className="text-2xl font-bold text-gray-900">{stats.orange}</p><p className="text-sm text-gray-500">À surveiller</p></div>
           </div>
           <div className="bg-white rounded-xl border p-4 flex items-center gap-4">
-            <div className="w-3 h-3 rounded-full bg-red-500 ring-4 ring-red-100" />
+            <div className="w-3 h-3 rounded-full bg-[#c0392b] ring-4 ring-[#fdf0ef]" />
             <div><p className="text-2xl font-bold text-gray-900">{stats.rouge}</p><p className="text-sm text-gray-500">En danger</p></div>
           </div>
         </div>
@@ -112,11 +112,11 @@ export default function Dashboard() {
             <h2 className="text-sm font-semibold text-gray-700 mb-4">Projets par catégorie</h2>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={categoryBar} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#efefec" />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                 <Tooltip />
-                <Bar dataKey="count" fill="#003087" radius={[4, 4, 0, 0]} name="Projets" />
+                <Bar dataKey="count" fill="#1B7A4B" radius={[4, 4, 0, 0]} name="Projets" />
               </BarChart>
             </ResponsiveContainer>
           </div>

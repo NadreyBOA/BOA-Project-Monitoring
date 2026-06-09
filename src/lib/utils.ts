@@ -72,12 +72,12 @@ export const STATUS_LABELS: Record<ProjectStatus, string> = {
 };
 
 export const STATUS_COLORS: Record<ProjectStatus, string> = {
-  BROUILLON: 'bg-gray-100 text-gray-700',
-  PLANIFIE: 'bg-blue-100 text-blue-700',
-  EN_COURS: 'bg-green-100 text-green-700',
-  EN_PAUSE: 'bg-yellow-100 text-yellow-700',
-  TERMINE: 'bg-emerald-100 text-emerald-700',
-  ANNULE: 'bg-red-100 text-red-700',
+  BROUILLON: 'bg-[#efefec] text-[#6b6b65]',
+  PLANIFIE:  'bg-[#e8ecf5] text-[#1B2E5E]',
+  EN_COURS:  'bg-[#e8f5ee] text-[#1B7A4B]',
+  EN_PAUSE:  'bg-[#fdf6e8] text-[#d4830a]',
+  TERMINE:   'bg-[#e8f5ee] text-[#145c38] font-semibold',
+  ANNULE:    'bg-[#fdf0ef] text-[#c0392b]',
 };
 
 export const PRIORITY_LABELS: Record<ProjectPriority, string> = {
@@ -88,16 +88,16 @@ export const PRIORITY_LABELS: Record<ProjectPriority, string> = {
 };
 
 export const PRIORITY_COLORS: Record<ProjectPriority, string> = {
-  CRITIQUE: 'bg-red-100 text-red-700 border border-red-200',
-  HAUTE: 'bg-orange-100 text-orange-700 border border-orange-200',
-  MOYENNE: 'bg-yellow-100 text-yellow-700 border border-yellow-200',
-  BASSE: 'bg-gray-100 text-gray-600 border border-gray-200',
+  CRITIQUE: 'bg-[#fdf0ef] text-[#c0392b] border border-[#f5c4bf]',
+  HAUTE:    'bg-[#fdf6e8] text-[#d4830a] border border-[#f5dfa8]',
+  MOYENNE:  'bg-[#e8ecf5] text-[#1B2E5E] border border-[#c5cde8]',
+  BASSE:    'bg-[#efefec] text-[#6b6b65] border border-[#dcdcd8]',
 };
 
 export const HEALTH_COLORS: Record<HealthStatus, string> = {
-  VERT: 'bg-green-500',
-  ORANGE: 'bg-orange-500',
-  ROUGE: 'bg-red-500',
+  VERT:   'bg-[#1B7A4B]',
+  ORANGE: 'bg-[#d4830a]',
+  ROUGE:  'bg-[#c0392b]',
 };
 
 export const HEALTH_LABELS: Record<HealthStatus, string> = {
@@ -115,11 +115,11 @@ export const MILESTONE_STATUS_LABELS: Record<MilestoneStatus, string> = {
 };
 
 export const MILESTONE_STATUS_COLORS: Record<MilestoneStatus, string> = {
-  NON_COMMENCE: 'bg-gray-100 text-gray-600',
-  EN_COURS: 'bg-blue-100 text-blue-700',
-  TERMINE: 'bg-green-100 text-green-700',
-  EN_RETARD: 'bg-red-100 text-red-700',
-  ANNULE: 'bg-gray-100 text-gray-400',
+  NON_COMMENCE: 'bg-[#efefec] text-[#6b6b65]',
+  EN_COURS:     'bg-[#e8ecf5] text-[#1B2E5E]',
+  TERMINE:      'bg-[#e8f5ee] text-[#1B7A4B]',
+  EN_RETARD:    'bg-[#fdf0ef] text-[#c0392b]',
+  ANNULE:       'bg-[#efefec] text-[#6b6b65] opacity-60',
 };
 
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
@@ -131,11 +131,11 @@ export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
 };
 
 export const TASK_STATUS_COLORS: Record<TaskStatus, string> = {
-  A_FAIRE: 'bg-gray-100 text-gray-600',
-  EN_COURS: 'bg-blue-100 text-blue-700',
-  TERMINE: 'bg-green-100 text-green-700',
-  BLOQUE: 'bg-red-100 text-red-700',
-  ANNULE: 'bg-gray-100 text-gray-400',
+  A_FAIRE:  'bg-[#efefec] text-[#6b6b65]',
+  EN_COURS: 'bg-[#e8ecf5] text-[#1B2E5E]',
+  TERMINE:  'bg-[#e8f5ee] text-[#1B7A4B]',
+  BLOQUE:   'bg-[#fdf0ef] text-[#c0392b]',
+  ANNULE:   'bg-[#efefec] text-[#6b6b65] opacity-60',
 };
 
 export const JOURNAL_TYPE_LABELS: Record<string, string> = {
@@ -151,15 +151,15 @@ export const JOURNAL_TYPE_LABELS: Record<string, string> = {
 };
 
 export const JOURNAL_TYPE_COLORS: Record<string, string> = {
-  REUNION: 'bg-blue-100 text-blue-700',
-  RELANCE: 'bg-yellow-100 text-yellow-700',
-  DECISION: 'bg-purple-100 text-purple-700',
-  INCIDENT: 'bg-red-100 text-red-700',
-  LIVRAISON: 'bg-green-100 text-green-700',
-  VALIDATION: 'bg-emerald-100 text-emerald-700',
-  ESCALADE: 'bg-orange-100 text-orange-700',
-  COMITE: 'bg-indigo-100 text-indigo-700',
-  AUTRE: 'bg-gray-100 text-gray-600',
+  REUNION:    'bg-[#e8ecf5] text-[#1B2E5E]',
+  RELANCE:    'bg-[#fdf6e8] text-[#d4830a]',
+  DECISION:   'bg-[#f0ecf7] text-[#5b3d8a]',
+  INCIDENT:   'bg-[#fdf0ef] text-[#c0392b]',
+  LIVRAISON:  'bg-[#e8f5ee] text-[#1B7A4B]',
+  VALIDATION: 'bg-[#e8f5ee] text-[#145c38]',
+  ESCALADE:   'bg-[#fdf6e8] text-[#d4830a]',
+  COMITE:     'bg-[#e8ecf5] text-[#1B2E5E]',
+  AUTRE:      'bg-[#efefec] text-[#6b6b65]',
 };
 
 export const CATEGORY_LABELS: Record<string, string> = {

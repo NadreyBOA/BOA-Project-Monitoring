@@ -73,7 +73,7 @@ export default function RisksPage() {
                         <p className="text-xs text-gray-400 mt-0.5 max-w-xs truncate">{r.description}</p>
                       </td>
                       <td className="px-4 py-3">
-                        <Link href={`/projects/${r.projectId}#risks`} className="text-sm text-blue-600 hover:underline font-medium">{r.projectCode}</Link>
+                        <Link href={`/projects/${r.projectId}#risks`} className="text-sm text-[#1B7A4B] hover:underline font-medium">{r.projectCode}</Link>
                         <p className="text-xs text-gray-400">{r.projectName}</p>
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-600">{r.category}</td>

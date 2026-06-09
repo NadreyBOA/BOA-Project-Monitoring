@@ -50,7 +50,7 @@ export default function EditProjectPage() {
         </div>
         <div className="flex items-center gap-3">
           <Link href={`/projects/${id}`} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Annuler</Link>
-          <button onClick={handleSave} className="px-4 py-2 text-sm bg-[#003087] text-white rounded-lg hover:bg-blue-800 font-medium">Enregistrer</button>
+          <button onClick={handleSave} className="px-4 py-2 text-sm bg-[#1B7A4B] text-white rounded-lg hover:bg-[#145c38] font-medium">Enregistrer</button>
         </div>
       </div>
 
@@ -141,7 +141,7 @@ export default function EditProjectPage() {
             </div>
             <div className="flex flex-wrap gap-2">
               {form.tags.map((tag, i) => (
-                <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">
+                <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#e8ecf5] text-[#1B2E5E] rounded-full text-sm font-medium">
                   {tag} <button onClick={() => set('tags', form.tags.filter((_, j) => j !== i))}><X size={13} /></button>
                 </span>
               ))}
@@ -150,7 +150,7 @@ export default function EditProjectPage() {
 
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Link href={`/projects/${id}`} className="px-5 py-2.5 text-sm border rounded-lg hover:bg-gray-50">Annuler</Link>
-            <button onClick={handleSave} className="px-5 py-2.5 text-sm bg-[#003087] text-white rounded-lg hover:bg-blue-800 font-medium">Enregistrer les modifications</button>
+            <button onClick={handleSave} className="px-5 py-2.5 text-sm bg-[#1B7A4B] text-white rounded-lg hover:bg-[#145c38] font-medium">Enregistrer les modifications</button>
           </div>
         </div>
       </div>
@@ -158,7 +158,7 @@ export default function EditProjectPage() {
   );
 }
 
-function inp() { return 'w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white'; }
+function inp() { return 'w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B] bg-white'; }
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return <div className="bg-white rounded-xl border p-6 space-y-4"><h2 className="text-sm font-semibold text-gray-700 border-b pb-2">{title}</h2>{children}</div>;
 }

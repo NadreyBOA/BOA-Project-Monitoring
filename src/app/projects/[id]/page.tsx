@@ -89,7 +89,7 @@ export default function ProjectDetailPage() {
           <Badge className={STATUS_COLORS[project.status]}>{STATUS_LABELS[project.status]}</Badge>
           <Badge className={PRIORITY_COLORS[project.priority]}>{PRIORITY_LABELS[project.priority]}</Badge>
           <Link href={`/projects/${id}/edit`}
-            className="flex items-center gap-2 px-4 py-2 bg-[#003087] text-white rounded-lg text-sm font-medium hover:bg-blue-800 transition-colors">
+            className="flex items-center gap-2 px-4 py-2 bg-[#1B7A4B] text-white rounded-lg text-sm font-medium hover:bg-[#145c38] transition-colors">
             <Pencil size={14} /> Modifier
           </Link>
         </div>
@@ -111,11 +111,11 @@ export default function ProjectDetailPage() {
           {tabs.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
               className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                tab === t.id ? 'border-[#003087] text-[#003087]' : 'border-transparent text-gray-500 hover:text-gray-700'
+                tab === t.id ? 'border-[#1B7A4B] text-[#1B2E5E]' : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}>
               {t.icon} {t.label}
               {t.count !== undefined && t.count > 0 && (
-                <span className={`ml-1 text-xs rounded-full w-5 h-5 flex items-center justify-center ${tab === t.id ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
+                <span className={`ml-1 text-xs rounded-full w-5 h-5 flex items-center justify-center ${tab === t.id ? 'bg-[#e8ecf5] text-[#1B2E5E]' : 'bg-gray-100 text-gray-600'}`}>
                   {t.count}
                 </span>
               )}
@@ -197,7 +197,7 @@ export default function ProjectDetailPage() {
                   <h3 className="text-sm font-semibold text-gray-700 mb-3">Tags</h3>
                   <div className="flex flex-wrap gap-2">
                     {project.tags.map(tag => (
-                      <span key={tag} className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">{tag}</span>
+                      <span key={tag} className="px-2.5 py-1 bg-[#e8ecf5] text-[#1B2E5E] rounded-full text-xs font-medium">{tag}</span>
                     ))}
                   </div>
                 </div>
@@ -208,7 +208,7 @@ export default function ProjectDetailPage() {
                 <h3 className="text-sm font-semibold text-gray-700 mb-3">Actions rapides</h3>
                 <button onClick={() => { setTab('journal'); setJournalModal(true); }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 border rounded-lg hover:bg-gray-50 transition-colors">
-                  <Plus size={14} className="text-blue-600" /> Ajouter une entrée journal
+                  <Plus size={14} className="text-[#1B7A4B]" /> Ajouter une entrée journal
                 </button>
                 <button onClick={() => { setTab('risques'); setRiskModal(true); }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 border rounded-lg hover:bg-gray-50 transition-colors">
@@ -229,7 +229,7 @@ export default function ProjectDetailPage() {
             <div className="flex justify-between items-center">
               <h2 className="text-base font-semibold text-gray-800">Jalons & Tâches</h2>
               <button onClick={() => setMilestoneModal(true)}
-                className="flex items-center gap-2 px-3 py-2 bg-[#003087] text-white rounded-lg text-sm hover:bg-blue-800 transition-colors">
+                className="flex items-center gap-2 px-3 py-2 bg-[#1B7A4B] text-white rounded-lg text-sm hover:bg-[#145c38] transition-colors">
                 <Plus size={14} /> Ajouter un jalon
               </button>
             </div>
@@ -253,7 +253,7 @@ export default function ProjectDetailPage() {
                       n.has(ms.id) ? n.delete(ms.id) : n.add(ms.id);
                       return n;
                     })}>
-                    <span className="flex items-center justify-center w-7 h-7 rounded-full bg-[#003087] text-white text-xs font-bold flex-shrink-0">
+                    <span className="flex items-center justify-center w-7 h-7 rounded-full bg-[#1B7A4B] text-white text-xs font-bold flex-shrink-0">
                       {ms.order}
                     </span>
                     <div className="flex-1 min-w-0">
@@ -312,7 +312,7 @@ export default function ProjectDetailPage() {
 
                       <div className="px-5 py-3 border-t bg-gray-50">
                         <button onClick={() => setTaskModal({ milestoneId: ms.id })}
-                          className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-medium">
+                          className="flex items-center gap-1.5 text-xs text-[#1B7A4B] hover:text-blue-800 font-medium">
                           <Plus size={12} /> Ajouter une tâche
                         </button>
                       </div>
@@ -330,7 +330,7 @@ export default function ProjectDetailPage() {
             <div className="flex justify-between items-center">
               <h2 className="text-base font-semibold text-gray-800">Journal des événements</h2>
               <button onClick={() => setJournalModal(true)}
-                className="flex items-center gap-2 px-3 py-2 bg-[#003087] text-white rounded-lg text-sm hover:bg-blue-800">
+                className="flex items-center gap-2 px-3 py-2 bg-[#1B7A4B] text-white rounded-lg text-sm hover:bg-[#145c38]">
                 <Plus size={14} /> Nouvelle entrée
               </button>
             </div>
@@ -366,7 +366,7 @@ export default function ProjectDetailPage() {
                       <div className="mt-3 space-y-2">
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</p>
                         {entry.actionItems.map(action => (
-                          <div key={action.id} className={`flex items-start gap-3 p-2.5 rounded-lg border text-sm ${action.status === 'FERME' ? 'bg-gray-50 opacity-70' : isOverdue(action.dueDate) ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-100'}`}>
+                          <div key={action.id} className={`flex items-start gap-3 p-2.5 rounded-lg border text-sm ${action.status === 'FERME' ? 'bg-gray-50 opacity-70' : isOverdue(action.dueDate) ? 'bg-red-50 border-red-200' : 'bg-[#e8ecf5] border-[#c5cde8]'}`}>
                             <button onClick={() => {
                               const updated = { ...project };
                               const j = updated.journal.find(j => j.id === entry.id)!;
@@ -417,7 +417,7 @@ export default function ProjectDetailPage() {
             <div className="flex justify-between items-center">
               <h2 className="text-base font-semibold text-gray-800">Registre des risques</h2>
               <button onClick={() => setRiskModal(true)}
-                className="flex items-center gap-2 px-3 py-2 bg-[#003087] text-white rounded-lg text-sm hover:bg-blue-800">
+                className="flex items-center gap-2 px-3 py-2 bg-[#1B7A4B] text-white rounded-lg text-sm hover:bg-[#145c38]">
                 <Plus size={14} /> Nouveau risque
               </button>
             </div>
@@ -588,7 +588,7 @@ export default function ProjectDetailPage() {
                   {project.team.length === 0 && <p className="px-5 py-8 text-sm text-gray-400 text-center">Aucun membre d'équipe</p>}
                   {project.team.map(member => (
                     <div key={member.id} className="px-5 py-3.5 flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-[#003087] flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
+                      <div className="w-9 h-9 rounded-full bg-[#1B7A4B] flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
                         {member.name.split(' ').map(n => n[0]).slice(0, 2).join('')}
                       </div>
                       <div>
@@ -619,7 +619,7 @@ export default function ProjectDetailPage() {
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.influence === 'FORT' ? 'bg-red-100 text-red-700' : s.influence === 'MOYEN' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'}`}>
                             Influence {s.influence}
                           </span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.interest === 'FORT' ? 'bg-blue-100 text-blue-700' : s.interest === 'MOYEN' ? 'bg-cyan-100 text-cyan-700' : 'bg-gray-100 text-gray-600'}`}>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.interest === 'FORT' ? 'bg-[#e8ecf5] text-[#1B2E5E]' : s.interest === 'MOYEN' ? 'bg-cyan-100 text-cyan-700' : 'bg-gray-100 text-gray-600'}`}>
                             Intérêt {s.interest}
                           </span>
                         </div>
@@ -639,7 +639,7 @@ export default function ProjectDetailPage() {
             <div className="flex justify-between items-center">
               <h2 className="text-base font-semibold text-gray-800">Commentaires & Notes</h2>
               <button onClick={() => setCommentModal(true)}
-                className="flex items-center gap-2 px-3 py-2 bg-[#003087] text-white rounded-lg text-sm hover:bg-blue-800">
+                className="flex items-center gap-2 px-3 py-2 bg-[#1B7A4B] text-white rounded-lg text-sm hover:bg-[#145c38]">
                 <Plus size={14} /> Nouveau commentaire
               </button>
             </div>
@@ -653,7 +653,7 @@ export default function ProjectDetailPage() {
                 <div key={c.id} className={`bg-white rounded-xl border p-5 ${c.type === 'IMPORTANT' ? 'border-l-4 border-l-orange-400' : c.type === 'DECISION' ? 'border-l-4 border-l-purple-400' : ''}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-[#003087] flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-[#1B7A4B] flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
                         {c.author.split(' ').map(n => n[0]).slice(0, 2).join('')}
                       </div>
                       <div>
@@ -662,7 +662,7 @@ export default function ProjectDetailPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${c.type === 'IMPORTANT' ? 'bg-orange-100 text-orange-700' : c.type === 'DECISION' ? 'bg-purple-100 text-purple-700' : c.type === 'QUESTION' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${c.type === 'IMPORTANT' ? 'bg-orange-100 text-orange-700' : c.type === 'DECISION' ? 'bg-purple-100 text-purple-700' : c.type === 'QUESTION' ? 'bg-[#e8ecf5] text-[#1B2E5E]' : 'bg-gray-100 text-gray-600'}`}>
                         {c.type === 'IMPORTANT' ? 'Important' : c.type === 'DECISION' ? 'Décision' : c.type === 'QUESTION' ? 'Question' : 'Général'}
                       </span>
                       <button onClick={() => save({ ...project, comments: project.comments.filter(cm => cm.id !== c.id) })}
@@ -756,7 +756,7 @@ function TaskRow({ task, onStatusChange }: { task: Task; onStatusChange: (s: Tas
   return (
     <div className="px-5 py-3 flex items-center gap-4 text-sm hover:bg-gray-50">
       <select value={task.status} onChange={e => onStatusChange(e.target.value as Task['status'])}
-        className="text-xs border rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500">
+        className="text-xs border rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#1B7A4B]">
         {(Object.keys(TASK_STATUS_LABELS) as Task['status'][]).map(s => (
           <option key={s} value={s}>{TASK_STATUS_LABELS[s]}</option>
         ))}
@@ -808,31 +808,31 @@ function JournalModal({ open, onClose, onSave, initial }: { open: boolean; onClo
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Date</label>
-            <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B]" />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Type</label>
-            <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as JournalEntry['type'] }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as JournalEntry['type'] }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B]">
               {Object.entries(JOURNAL_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
           </div>
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Titre *</label>
-          <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Titre de l'événement" />
+          <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B]" placeholder="Titre de l'événement" />
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
-          <textarea rows={4} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" placeholder="Compte-rendu, décisions prises, points discutés..." />
+          <textarea rows={4} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B] resize-none" placeholder="Compte-rendu, décisions prises, points discutés..." />
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Lieu</label>
-            <input value={form.location ?? ''} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Salle de réunion, visio..." />
+            <input value={form.location ?? ''} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B]" placeholder="Salle de réunion, visio..." />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Prochaine réunion</label>
-            <input type="date" value={form.nextMeetingDate ?? ''} onChange={e => setForm(f => ({ ...f, nextMeetingDate: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input type="date" value={form.nextMeetingDate ?? ''} onChange={e => setForm(f => ({ ...f, nextMeetingDate: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B]" />
           </div>
         </div>
 
@@ -840,12 +840,12 @@ function JournalModal({ open, onClose, onSave, initial }: { open: boolean; onClo
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Participants</label>
           <div className="flex gap-2 mb-2">
-            <input value={participantInput} onChange={e => setParticipantInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addParticipant())} className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Nom du participant" />
+            <input value={participantInput} onChange={e => setParticipantInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addParticipant())} className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B]" placeholder="Nom du participant" />
             <button onClick={addParticipant} className="px-3 py-2 bg-gray-100 rounded-lg text-sm hover:bg-gray-200"><Plus size={14} /></button>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {form.participants.map((p, i) => (
-              <span key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">
+              <span key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#e8ecf5] text-[#1B2E5E] rounded-full text-xs font-medium">
                 {p} <button onClick={() => setForm(f => ({ ...f, participants: f.participants.filter((_, j) => j !== i) }))}><X size={11} /></button>
               </span>
             ))}
@@ -856,16 +856,16 @@ function JournalModal({ open, onClose, onSave, initial }: { open: boolean; onClo
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-2">Actions / Points de suivi</label>
           <div className="grid grid-cols-3 gap-2 mb-2">
-            <input value={newAction.description} onChange={e => setNewAction(a => ({ ...a, description: e.target.value }))} className="col-span-1 border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Description de l'action" />
-            <input value={newAction.assignedTo} onChange={e => setNewAction(a => ({ ...a, assignedTo: e.target.value }))} className="border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Responsable" />
+            <input value={newAction.description} onChange={e => setNewAction(a => ({ ...a, description: e.target.value }))} className="col-span-1 border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B7A4B]" placeholder="Description de l'action" />
+            <input value={newAction.assignedTo} onChange={e => setNewAction(a => ({ ...a, assignedTo: e.target.value }))} className="border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B7A4B]" placeholder="Responsable" />
             <div className="flex gap-1">
-              <input type="date" value={newAction.dueDate} onChange={e => setNewAction(a => ({ ...a, dueDate: e.target.value }))} className="flex-1 border rounded-lg px-2 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <input type="date" value={newAction.dueDate} onChange={e => setNewAction(a => ({ ...a, dueDate: e.target.value }))} className="flex-1 border rounded-lg px-2 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B7A4B]" />
               <button onClick={addAction} className="px-2 py-2 bg-gray-100 rounded-lg hover:bg-gray-200"><Plus size={13} /></button>
             </div>
           </div>
           <div className="space-y-1">
             {form.actionItems.map((a, i) => (
-              <div key={a.id} className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-lg text-xs">
+              <div key={a.id} className="flex items-center gap-2 px-3 py-2 bg-[#e8ecf5] rounded-lg text-xs">
                 <span className="flex-1 font-medium">{a.description}</span>
                 <span className="text-gray-500">{a.assignedTo}</span>
                 <span className="text-gray-400">{fmt(a.dueDate)}</span>
@@ -877,7 +877,7 @@ function JournalModal({ open, onClose, onSave, initial }: { open: boolean; onClo
 
         <div className="flex justify-end gap-3 pt-2">
           <button onClick={onClose} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Annuler</button>
-          <button onClick={() => form.title && onSave(form)} disabled={!form.title} className="px-4 py-2 text-sm bg-[#003087] text-white rounded-lg hover:bg-blue-800 disabled:opacity-50">
+          <button onClick={() => form.title && onSave(form)} disabled={!form.title} className="px-4 py-2 text-sm bg-[#1B7A4B] text-white rounded-lg hover:bg-[#145c38] disabled:opacity-50">
             {initial ? 'Enregistrer' : 'Ajouter'}
           </button>
         </div>
@@ -907,28 +907,28 @@ function RiskModal({ open, onClose, onSave, initial }: { open: boolean; onClose:
       <div className="space-y-4">
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Titre du risque *</label>
-          <input value={form.title} onChange={e => update('title', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ex: Retard homologation réglementaire" />
+          <input value={form.title} onChange={e => update('title', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B]" placeholder="Ex: Retard homologation réglementaire" />
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
-          <textarea rows={2} value={form.description} onChange={e => update('description', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+          <textarea rows={2} value={form.description} onChange={e => update('description', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B] resize-none" />
         </div>
         <div className="grid grid-cols-3 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Catégorie</label>
-            <select value={form.category} onChange={e => update('category', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select value={form.category} onChange={e => update('category', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B]">
               {['TECHNIQUE','ORGANISATIONNEL','FINANCIER','REGLEMENTAIRE','CALENDAIRE','SECURITE','AUTRE'].map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Probabilité</label>
-            <select value={form.probability} onChange={e => update('probability', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select value={form.probability} onChange={e => update('probability', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B]">
               <option value="FAIBLE">Faible</option><option value="MOYEN">Moyen</option><option value="ELEVE">Élevé</option>
             </select>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Impact</label>
-            <select value={form.impact} onChange={e => update('impact', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select value={form.impact} onChange={e => update('impact', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B]">
               <option value="FAIBLE">Faible</option><option value="MOYEN">Moyen</option><option value="ELEVE">Élevé</option><option value="CRITIQUE">Critique</option>
             </select>
           </div>
@@ -945,26 +945,26 @@ function RiskModal({ open, onClose, onSave, initial }: { open: boolean; onClose:
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Statut</label>
-            <select value={form.status} onChange={e => update('status', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select value={form.status} onChange={e => update('status', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B]">
               <option value="IDENTIFIE">Identifié</option><option value="EN_COURS">En cours</option><option value="MITIGE">Mitigé</option><option value="REALISE">Réalisé</option><option value="CLOS">Clos</option>
             </select>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Responsable</label>
-            <input value={form.owner} onChange={e => update('owner', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Nom du responsable" />
+            <input value={form.owner} onChange={e => update('owner', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B]" placeholder="Nom du responsable" />
           </div>
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Plan de mitigation</label>
-          <textarea rows={2} value={form.mitigation} onChange={e => update('mitigation', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" placeholder="Actions pour réduire la probabilité ou l'impact..." />
+          <textarea rows={2} value={form.mitigation} onChange={e => update('mitigation', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B] resize-none" placeholder="Actions pour réduire la probabilité ou l'impact..." />
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Plan de contingence</label>
-          <textarea rows={2} value={form.contingency} onChange={e => update('contingency', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" placeholder="Que faire si le risque se réalise..." />
+          <textarea rows={2} value={form.contingency} onChange={e => update('contingency', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B] resize-none" placeholder="Que faire si le risque se réalise..." />
         </div>
         <div className="flex justify-end gap-3 pt-2">
           <button onClick={onClose} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Annuler</button>
-          <button onClick={() => form.title && onSave(form)} disabled={!form.title} className="px-4 py-2 text-sm bg-[#003087] text-white rounded-lg hover:bg-blue-800 disabled:opacity-50">
+          <button onClick={() => form.title && onSave(form)} disabled={!form.title} className="px-4 py-2 text-sm bg-[#1B7A4B] text-white rounded-lg hover:bg-[#145c38] disabled:opacity-50">
             {initial ? 'Enregistrer' : 'Ajouter'}
           </button>
         </div>
@@ -982,22 +982,22 @@ function CommentModal({ open, onClose, onSave }: { open: boolean; onClose: () =>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Auteur</label>
-            <input value={form.author} onChange={e => setForm(f => ({ ...f, author: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input value={form.author} onChange={e => setForm(f => ({ ...f, author: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B]" />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Type</label>
-            <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as Comment['type'] }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as Comment['type'] }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B]">
               <option value="GENERAL">Général</option><option value="IMPORTANT">Important</option><option value="QUESTION">Question</option><option value="DECISION">Décision</option>
             </select>
           </div>
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Commentaire *</label>
-          <textarea rows={4} value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" placeholder="Votre commentaire..." />
+          <textarea rows={4} value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B] resize-none" placeholder="Votre commentaire..." />
         </div>
         <div className="flex justify-end gap-3 pt-2">
           <button onClick={onClose} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Annuler</button>
-          <button onClick={() => form.content && onSave({ id: newId(), date: new Date().toISOString(), ...form })} disabled={!form.content} className="px-4 py-2 text-sm bg-[#003087] text-white rounded-lg hover:bg-blue-800 disabled:opacity-50">Ajouter</button>
+          <button onClick={() => form.content && onSave({ id: newId(), date: new Date().toISOString(), ...form })} disabled={!form.content} className="px-4 py-2 text-sm bg-[#1B7A4B] text-white rounded-lg hover:bg-[#145c38] disabled:opacity-50">Ajouter</button>
         </div>
       </div>
     </Modal>
@@ -1015,20 +1015,20 @@ function MilestoneModal({ open, onClose, onSave, order }: { open: boolean; onClo
       <div className="space-y-4">
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Nom du jalon *</label>
-          <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ex: Phase 1 – Conception" />
+          <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B]" placeholder="Ex: Phase 1 – Conception" />
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
-          <textarea rows={2} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+          <textarea rows={2} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B] resize-none" />
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Date prévue *</label>
-            <input type="date" value={form.plannedDate} onChange={e => setForm(f => ({ ...f, plannedDate: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input type="date" value={form.plannedDate} onChange={e => setForm(f => ({ ...f, plannedDate: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B]" />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Responsable</label>
-            <input value={form.responsible} onChange={e => setForm(f => ({ ...f, responsible: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input value={form.responsible} onChange={e => setForm(f => ({ ...f, responsible: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B]" />
           </div>
         </div>
         <div>
@@ -1039,7 +1039,7 @@ function MilestoneModal({ open, onClose, onSave, order }: { open: boolean; onClo
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Livrables</label>
           <div className="flex gap-2 mb-2">
-            <input value={delivInput} onChange={e => setDelivInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (delivInput.trim()) { setForm(f => ({ ...f, deliverables: [...f.deliverables, delivInput.trim()] })); setDelivInput(''); } } }} className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Nom du livrable" />
+            <input value={delivInput} onChange={e => setDelivInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (delivInput.trim()) { setForm(f => ({ ...f, deliverables: [...f.deliverables, delivInput.trim()] })); setDelivInput(''); } } }} className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B]" placeholder="Nom du livrable" />
             <button onClick={() => { if (delivInput.trim()) { setForm(f => ({ ...f, deliverables: [...f.deliverables, delivInput.trim()] })); setDelivInput(''); } }} className="px-3 py-2 bg-gray-100 rounded-lg hover:bg-gray-200"><Plus size={14} /></button>
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -1052,7 +1052,7 @@ function MilestoneModal({ open, onClose, onSave, order }: { open: boolean; onClo
         </div>
         <div className="flex justify-end gap-3 pt-2">
           <button onClick={onClose} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Annuler</button>
-          <button onClick={() => form.name && form.plannedDate && onSave(form)} disabled={!form.name || !form.plannedDate} className="px-4 py-2 text-sm bg-[#003087] text-white rounded-lg hover:bg-blue-800 disabled:opacity-50">Créer le jalon</button>
+          <button onClick={() => form.name && form.plannedDate && onSave(form)} disabled={!form.name || !form.plannedDate} className="px-4 py-2 text-sm bg-[#1B7A4B] text-white rounded-lg hover:bg-[#145c38] disabled:opacity-50">Créer le jalon</button>
         </div>
       </div>
     </Modal>
@@ -1069,37 +1069,37 @@ function TaskModalComp({ open, onClose, onSave, milestoneId }: { open: boolean; 
       <div className="space-y-4">
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Nom de la tâche *</label>
-          <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ex: Rédiger le cahier des charges" />
+          <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B]" placeholder="Ex: Rédiger le cahier des charges" />
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
-          <textarea rows={2} value={form.description ?? ''} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+          <textarea rows={2} value={form.description ?? ''} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B] resize-none" />
         </div>
         <div className="grid grid-cols-3 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Date prévue *</label>
-            <input type="date" value={form.plannedDate} onChange={e => setForm(f => ({ ...f, plannedDate: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input type="date" value={form.plannedDate} onChange={e => setForm(f => ({ ...f, plannedDate: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B]" />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Priorité</label>
-            <select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value as Task['priority'] }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value as Task['priority'] }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B]">
               <option value="HAUTE">Haute</option><option value="MOYENNE">Moyenne</option><option value="BASSE">Basse</option>
             </select>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Jours estimés</label>
-            <input type="number" min={0.5} step={0.5} value={form.estimatedDays} onChange={e => setForm(f => ({ ...f, estimatedDays: +e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input type="number" min={0.5} step={0.5} value={form.estimatedDays} onChange={e => setForm(f => ({ ...f, estimatedDays: +e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B]" />
           </div>
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Personnes assignées</label>
           <div className="flex gap-2 mb-2">
-            <input value={assignee} onChange={e => setAssignee(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (assignee.trim()) { setForm(f => ({ ...f, assignedTo: [...f.assignedTo, assignee.trim()] })); setAssignee(''); } } }} className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Nom de la personne" />
+            <input value={assignee} onChange={e => setAssignee(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (assignee.trim()) { setForm(f => ({ ...f, assignedTo: [...f.assignedTo, assignee.trim()] })); setAssignee(''); } } }} className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B7A4B]" placeholder="Nom de la personne" />
             <button onClick={() => { if (assignee.trim()) { setForm(f => ({ ...f, assignedTo: [...f.assignedTo, assignee.trim()] })); setAssignee(''); } }} className="px-3 py-2 bg-gray-100 rounded-lg hover:bg-gray-200"><Plus size={14} /></button>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {form.assignedTo.map((a, i) => (
-              <span key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">
+              <span key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#e8ecf5] text-[#1B2E5E] rounded-full text-xs font-medium">
                 {a} <button onClick={() => setForm(f => ({ ...f, assignedTo: f.assignedTo.filter((_, j) => j !== i) }))}><X size={11} /></button>
               </span>
             ))}
@@ -1112,7 +1112,7 @@ function TaskModalComp({ open, onClose, onSave, milestoneId }: { open: boolean; 
         </div>
         <div className="flex justify-end gap-3 pt-2">
           <button onClick={onClose} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Annuler</button>
-          <button onClick={() => form.name && form.plannedDate && onSave(form)} disabled={!form.name || !form.plannedDate} className="px-4 py-2 text-sm bg-[#003087] text-white rounded-lg hover:bg-blue-800 disabled:opacity-50">Créer la tâche</button>
+          <button onClick={() => form.name && form.plannedDate && onSave(form)} disabled={!form.name || !form.plannedDate} className="px-4 py-2 text-sm bg-[#1B7A4B] text-white rounded-lg hover:bg-[#145c38] disabled:opacity-50">Créer la tâche</button>
         </div>
       </div>
     </Modal>
