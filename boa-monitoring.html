@@ -449,6 +449,40 @@ const ACTION_STATUS_COLORS = {
   FERME:'background:var(--boa-green-light);color:var(--boa-green);'
 };
 
+const RISK_STATUS_LABELS = {
+  IDENTIFIE:'Identifié', EN_COURS:'En cours', MITIGE:'Mitigé', REALISE:'Réalisé', CLOS:'Clos'
+};
+const RISK_CATEGORY_LABELS = {
+  TECHNIQUE:'Technique', ORGANISATIONNEL:'Organisationnel', FINANCIER:'Financier',
+  REGLEMENTAIRE:'Réglementaire', CALENDAIRE:'Calendaire', SECURITE:'Sécurité', AUTRE:'Autre'
+};
+const RISK_LEVEL_COLORS = {
+  CRITIQUE:'background:var(--boa-red-light);color:var(--boa-red);',
+  ELEVE:'background:var(--boa-orange-light);color:var(--boa-orange);',
+  MOYEN:'background:#fdf6e8;color:#a16207;',
+  FAIBLE:'background:var(--boa-green-light);color:var(--boa-green);'
+};
+function riskLevel(score){
+  if(score<=2) return 'FAIBLE';
+  if(score<=4) return 'MOYEN';
+  if(score<=6) return 'ELEVE';
+  return 'CRITIQUE';
+}
+const RISK_LEVEL_LABELS = { FAIBLE:'Faible', MOYEN:'Moyen', ELEVE:'Élevé', CRITIQUE:'Critique' };
+
+const COMMENT_TYPE_LABELS = { GENERAL:'Général', IMPORTANT:'Important', QUESTION:'Question', DECISION:'Décision' };
+const COMMENT_TYPE_COLORS = {
+  GENERAL:'background:var(--boa-gray-surf);color:var(--boa-gray-text);',
+  IMPORTANT:'background:var(--boa-red-light);color:var(--boa-red);',
+  QUESTION:'background:var(--boa-navy-light);color:var(--boa-navy);',
+  DECISION:'background:#f0ecf7;color:#5b3d8a;'
+};
+
+function formatMoney(amount, currency){
+  if(amount === undefined || amount === null) return '—';
+  return amount.toLocaleString('fr-FR') + ' ' + (currency || '');
+}
+
 /* ─── Date helpers ──────────────────────────────────────────── */
 function fmt(dateStr){
   if(!dateStr) return '—';
@@ -1042,12 +1076,18 @@ function renderProjectDetail(){
     { id:'apercu', label:'Aperçu' },
     { id:'jalons', label:'Jalons & Tâches' },
     { id:'journal', label:`Journal (${project.journal.length})` },
+    { id:'risques', label:`Risques (${project.risks.length})` },
+    { id:'budget', label:'Budget' },
+    { id:'commentaires', label:`Commentaires (${project.comments.length})` },
   ];
 
   let tabContent = '';
   if(detailState.tab === 'apercu') tabContent = renderApercuTab(project);
   else if(detailState.tab === 'jalons') tabContent = renderJalonsTab(project);
   else if(detailState.tab === 'journal') tabContent = renderJournalTab(project);
+  else if(detailState.tab === 'risques') tabContent = renderRisquesTab(project);
+  else if(detailState.tab === 'budget') tabContent = renderBudgetTab(project);
+  else if(detailState.tab === 'commentaires') tabContent = renderCommentairesTab(project);
 
   document.getElementById('content').innerHTML = `
     <button class="back-link" onclick="backToProjects()">${icon('ArrowLeft')} Retour aux projets</button>
@@ -1264,6 +1304,129 @@ function renderJournalTab(project){
     </div>`).join('');
 }
 
+function renderRisquesTab(project){
+  const open = project.risks.filter(r=>r.status!=='CLOS');
+  const closed = project.risks.filter(r=>r.status==='CLOS');
+  const sorted = [...open].sort((a,b)=>b.score-a.score).concat(closed);
+
+  return `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
+      <button class="btn-primary" onclick="alert('L\\'ajout de risques sera disponible à l\\'étape 5.')">
+        ${icon('Plus')} Nouveau risque
+      </button>
+    </div>
+    ${sorted.length===0 ? `<div class="empty" style="padding:48px;background:#fff;border:1px solid var(--boa-gray-border);border-radius:12px;">Aucun risque identifié pour ce projet.</div>` :
+      sorted.map(r=>{
+        const lvl = riskLevel(r.score);
+        return `
+        <div class="journal-card" style="${r.status==='CLOS' ? 'opacity:.6;' : ''}">
+          <div class="journal-card-head">
+            <div>
+              <div class="journal-card-title">${escapeHtml(r.title)}</div>
+              <div class="journal-card-meta">${RISK_CATEGORY_LABELS[r.category] ?? r.category} · Responsable : ${escapeHtml(r.owner)} · Identifié le ${fmt(r.identifiedDate)}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+              <span class="badge" style="${RISK_LEVEL_COLORS[lvl]}">Score ${r.score} · ${RISK_LEVEL_LABELS[lvl]}</span>
+              <span class="badge" style="background:var(--boa-gray-surf);color:var(--boa-gray-text);">${RISK_STATUS_LABELS[r.status]}</span>
+            </div>
+          </div>
+          <div class="journal-card-desc">${escapeHtml(r.description)}</div>
+          <div class="grid grid-2" style="margin-top:10px;gap:12px;">
+            <div class="info-section" style="margin-bottom:0;">
+              <h3>Mitigation</h3>
+              <p style="font-size:12.5px;">${escapeHtml(r.mitigation) || '—'}</p>
+            </div>
+            <div class="info-section" style="margin-bottom:0;">
+              <h3>Plan de contingence</h3>
+              <p style="font-size:12.5px;">${escapeHtml(r.contingency) || '—'}</p>
+            </div>
+          </div>
+          <div class="journal-participants">
+            Probabilité : ${r.probability} · Impact : ${r.impact}${r.reviewDate ? ' · Prochaine revue : ' + fmt(r.reviewDate) : ''}
+          </div>
+          ${r.notes ? `<div class="journal-participants">Notes : ${escapeHtml(r.notes)}</div>` : ''}
+        </div>`;
+      }).join('')
+    }
+  `;
+}
+
+function renderBudgetTab(project){
+  const b = project.budget;
+  const ecart = b.totalActual - b.totalEstimated;
+  const ecartColor = ecart > 0 ? 'var(--boa-red)' : 'var(--boa-green)';
+
+  return `
+    <div class="grid grid-3" style="margin-bottom:20px;">
+      <div class="card" style="padding:18px;">
+        <div class="kpi-label">Budget estimé</div>
+        <div class="kpi-value" style="margin-top:4px;">${formatMoney(b.totalEstimated, b.currency)}</div>
+      </div>
+      <div class="card" style="padding:18px;">
+        <div class="kpi-label">Dépensé à ce jour</div>
+        <div class="kpi-value" style="margin-top:4px;">${formatMoney(b.totalActual, b.currency)}</div>
+      </div>
+      <div class="card" style="padding:18px;">
+        <div class="kpi-label">Écart</div>
+        <div class="kpi-value" style="margin-top:4px;color:${ecartColor};">${ecart>0?'+':''}${formatMoney(ecart, b.currency)}</div>
+      </div>
+    </div>
+
+    ${b.lines.length===0 ? `<div class="empty" style="padding:48px;background:#fff;border:1px solid var(--boa-gray-border);border-radius:12px;">Aucune ligne budgétaire renseignée.</div>` : `
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th>Catégorie</th>
+            <th>Description</th>
+            <th class="right">Estimé</th>
+            <th class="right">Réel</th>
+            <th class="right">Écart</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${b.lines.map(l=>{
+            const actual = l.actual ?? 0;
+            const lineEcart = actual - l.estimated;
+            const lineEcartColor = lineEcart > 0 ? 'var(--boa-red)' : lineEcart < 0 ? 'var(--boa-green)' : '#9ca3af';
+            return `
+            <tr>
+              <td><span class="pname">${escapeHtml(l.category)}</span></td>
+              <td>${escapeHtml(l.description)}</td>
+              <td class="right">${formatMoney(l.estimated, b.currency)}</td>
+              <td class="right">${l.actual !== undefined ? formatMoney(l.actual, b.currency) : '—'}</td>
+              <td class="right" style="color:${lineEcartColor};font-weight:600;">${l.actual !== undefined ? (lineEcart>0?'+':'') + formatMoney(lineEcart, b.currency) : '—'}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`}
+  `;
+}
+
+function renderCommentairesTab(project){
+  return `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
+      <button class="btn-primary" onclick="alert('L\\'ajout de commentaires sera disponible à l\\'étape 5.')">
+        ${icon('Plus')} Nouveau commentaire
+      </button>
+    </div>
+    ${project.comments.length===0 ? `<div class="empty" style="padding:48px;background:#fff;border:1px solid var(--boa-gray-border);border-radius:12px;">Aucun commentaire pour ce projet.</div>` :
+      [...project.comments].sort((a,b)=>b.date.localeCompare(a.date)).map(c=>`
+        <div class="journal-card">
+          <div class="journal-card-head">
+            <div>
+              <div class="journal-card-title">${escapeHtml(c.author)}</div>
+              <div class="journal-card-meta">${fmt(c.date)}</div>
+            </div>
+            <span class="badge" style="${COMMENT_TYPE_COLORS[c.type]}">${COMMENT_TYPE_LABELS[c.type]}</span>
+          </div>
+          <div class="journal-card-desc">${escapeHtml(c.content)}</div>
+        </div>`).join('')
+    }
+  `;
+}
+
 function initials(name){
   return (name || '').split(' ').map(p=>p[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
 }
@@ -1311,6 +1474,7 @@ function icon(name, color){
     Pencil:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>`,
     Trash2:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>`,
     ArrowLeft:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>`,
+    Plus:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>`,
   };
   return icons[name] || '';
 }
