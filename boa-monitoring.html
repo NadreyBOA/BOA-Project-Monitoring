@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BOA Project Monitoring</title>
+<style>
+  :root{
+    --boa-green:#1B7A4B;
+    --boa-green-dark:#145c38;
+    --boa-green-light:#e8f5ee;
+    --boa-navy:#1B2E5E;
+    --boa-navy-dark:#111e3f;
+    --boa-navy-light:#e8ecf5;
+    --boa-black:#0e0e0e;
+    --boa-white:#ffffff;
+    --boa-gray-bg:#f7f7f5;
+    --boa-gray-surf:#efefec;
+    --boa-gray-border:#dcdcd8;
+    --boa-gray-text:#6b6b65;
+    --boa-red:#c0392b;
+    --boa-red-light:#fdf0ef;
+    --boa-orange:#d4830a;
+    --boa-orange-light:#fdf6e8;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--boa-gray-bg);
+    color:var(--boa-black);
+    font-size:14px;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ─── Layout ─────────────────────────────────────────────── */
+  .layout{display:flex;min-height:100vh;}
+
+  /* Sidebar */
+  .sidebar{
+    width:220px;flex-shrink:0;
+    background:var(--boa-navy);
+    color:#fff;
+    display:flex;flex-direction:column;
+    position:sticky;top:0;height:100vh;
+  }
+  .sidebar-header{
+    display:flex;align-items:center;gap:10px;
+    padding:20px 18px;
+    border-bottom:1px solid rgba(255,255,255,.08);
+  }
+  .sidebar-logo{
+    width:36px;height:36px;border-radius:10px;
+    background:var(--boa-green);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:15px;flex-shrink:0;
+  }
+  .sidebar-title{font-weight:700;font-size:15px;line-height:1.2;}
+  .sidebar-subtitle{font-size:11px;color:rgba(255,255,255,.55);}
+
+  .sidebar-nav{flex:1;padding:14px 10px;display:flex;flex-direction:column;gap:2px;}
+  .nav-item{
+    display:flex;align-items:center;gap:10px;
+    padding:10px 12px;border-radius:8px;
+    color:rgba(255,255,255,.75);
+    text-decoration:none;font-size:13.5px;font-weight:500;
+    cursor:pointer;border:none;background:none;width:100%;text-align:left;
+    transition:background .15s,color .15s;
+  }
+  .nav-item:hover{background:rgba(255,255,255,.06);color:#fff;}
+  .nav-item.active{background:var(--boa-green);color:#fff;}
+  .nav-item svg{flex-shrink:0;}
+
+  .sidebar-footer{
+    padding:14px 18px;border-top:1px solid rgba(255,255,255,.08);
+    font-size:11.5px;color:rgba(255,255,255,.5);
+  }
+  .sidebar-footer strong{display:block;color:rgba(255,255,255,.85);font-size:12.5px;margin-bottom:2px;}
+
+  /* Main */
+  .main{flex:1;min-width:0;}
+  .topbar{
+    background:#fff;border-bottom:1px solid var(--boa-gray-border);
+    padding:18px 32px;display:flex;align-items:center;justify-content:space-between;
+  }
+  .topbar h1{font-size:19px;font-weight:700;color:var(--boa-black);}
+  .topbar p{font-size:12.5px;color:var(--boa-gray-text);margin-top:2px;}
+
+  .content{padding:28px 32px;}
+
+  .btn-primary{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:9px 16px;border-radius:8px;border:none;
+    background:var(--boa-green);color:#fff;font-size:13px;font-weight:600;
+    cursor:pointer;text-decoration:none;transition:background .15s;
+  }
+  .btn-primary:hover{background:var(--boa-green-dark);}
+
+  /* ─── KPI cards ──────────────────────────────────────────── */
+  .grid{display:grid;gap:16px;}
+  .grid-4{grid-template-columns:repeat(4,1fr);}
+  .grid-3{grid-template-columns:repeat(3,1fr);}
+  .grid-2{grid-template-columns:repeat(2,1fr);}
+
+  .card{
+    background:#fff;border:1px solid var(--boa-gray-border);
+    border-radius:12px;
+  }
+  .kpi-card{
+    padding:18px;display:flex;align-items:center;gap:14px;
+  }
+  .kpi-card.alert{border-color:#f5c4bf;}
+  .kpi-icon{
+    width:44px;height:44px;border-radius:10px;
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .kpi-value{font-size:22px;font-weight:700;color:var(--boa-black);}
+  .kpi-card.alert .kpi-value.has-value{color:var(--boa-red);}
+  .kpi-label{font-size:12px;color:var(--boa-gray-text);margin-top:2px;}
+
+  .health-card{
+    padding:16px;display:flex;align-items:center;gap:14px;
+  }
+  .health-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;}
+  .health-dot.green{background:var(--boa-green);box-shadow:0 0 0 4px var(--boa-green-light);}
+  .health-dot.orange{background:var(--boa-orange);box-shadow:0 0 0 4px var(--boa-orange-light);}
+  .health-dot.red{background:var(--boa-red);box-shadow:0 0 0 4px var(--boa-red-light);}
+  .health-value{font-size:20px;font-weight:700;color:var(--boa-black);}
+  .health-label{font-size:12.5px;color:var(--boa-gray-text);}
+
+  /* ─── Section headers ────────────────────────────────────── */
+  .section{margin-top:28px;}
+  .section-card{background:#fff;border:1px solid var(--boa-gray-border);border-radius:12px;overflow:hidden;}
+  .section-head{
+    padding:14px 18px;border-bottom:1px solid var(--boa-gray-border);
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .section-head h2{font-size:13px;font-weight:600;color:#374151;display:flex;align-items:center;gap:8px;}
+  .section-head .count{font-size:11.5px;color:#9ca3af;}
+
+  .list-row{
+    display:flex;align-items:center;gap:12px;
+    padding:12px 18px;border-bottom:1px solid var(--boa-gray-surf);
+    text-decoration:none;color:inherit;transition:background .12s;
+  }
+  .list-row:last-child{border-bottom:none;}
+  .list-row:hover{background:var(--boa-gray-bg);}
+  .list-row .title{font-size:13.5px;font-weight:600;color:var(--boa-black);}
+  .list-row .meta{font-size:11.5px;color:#9ca3af;margin-top:1px;}
+  .list-row .flex1{flex:1;min-width:0;}
+  .list-row .title,.list-row .meta{
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .empty{padding:36px 18px;text-align:center;font-size:13px;color:#9ca3af;}
+
+  /* badges */
+  .badge{
+    display:inline-flex;align-items:center;padding:3px 8px;
+    border-radius:6px;font-size:11px;font-weight:600;white-space:nowrap;
+  }
+
+  /* ─── Charts (pure CSS) ─────────────────────────────────── */
+  .chart-card{padding:20px;}
+  .chart-card h2{font-size:13px;font-weight:600;color:#374151;margin-bottom:16px;}
+
+  .donut-wrap{display:flex;align-items:center;gap:24px;flex-wrap:wrap;}
+  .donut{
+    width:140px;height:140px;border-radius:50%;flex-shrink:0;
+    background:conic-gradient(var(--donut-stops, #efefec 0 100%));
+    position:relative;
+  }
+  .donut::after{
+    content:"";position:absolute;inset:18px;border-radius:50%;background:#fff;
+  }
+  .legend{display:flex;flex-direction:column;gap:8px;}
+  .legend-item{display:flex;align-items:center;gap:8px;font-size:12.5px;color:#374151;}
+  .legend-swatch{width:11px;height:11px;border-radius:3px;flex-shrink:0;}
+
+  .bars{display:flex;flex-direction:column;gap:12px;}
+  .bar-row{display:flex;align-items:center;gap:10px;}
+  .bar-label{width:100px;flex-shrink:0;font-size:12px;color:#374151;text-align:right;}
+  .bar-track{flex:1;background:var(--boa-gray-surf);border-radius:6px;height:18px;overflow:hidden;}
+  .bar-fill{height:100%;background:var(--boa-green);border-radius:6px;display:flex;align-items:center;justify-content:flex-end;}
+  .bar-value{width:28px;flex-shrink:0;font-size:12px;font-weight:600;color:#374151;}
+
+  /* ─── Placeholder views ─────────────────────────────────── */
+  .placeholder{
+    background:#fff;border:1px dashed var(--boa-gray-border);border-radius:12px;
+    padding:60px 24px;text-align:center;color:var(--boa-gray-text);font-size:13.5px;
+  }
+
+  @media (max-width:900px){
+    .grid-4{grid-template-columns:repeat(2,1fr);}
+    .grid-3{grid-template-columns:1fr;}
+    .grid-2{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">B</div>
+      <div>
+        <div class="sidebar-title">BOA Monitoring</div>
+        <div class="sidebar-subtitle">Suivi de projets</div>
+      </div>
+    </div>
+    <nav class="sidebar-nav" id="sidebar-nav">
+      <button class="nav-item" data-view="dashboard">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+        Tableau de bord
+      </button>
+      <button class="nav-item" data-view="projects">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>
+        Projets
+      </button>
+      <button class="nav-item" data-view="actions">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
+        Actions ouvertes
+      </button>
+      <button class="nav-item" data-view="risks">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        Risques
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <strong>Nadrey BOA</strong>
+      Chef de Projet Monétique
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <h1 id="page-title">Tableau de bord</h1>
+        <p id="page-subtitle">Vue d'ensemble de l'activité projet</p>
+      </div>
+      <a href="#" class="btn-primary" id="new-project-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+        Nouveau projet
+      </a>
+    </div>
+    <div class="content" id="content"></div>
+  </main>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════════════
+   BOA PROJECT MONITORING — Étape 1 : Fondations + Tableau de bord
+   ════════════════════════════════════════════════════════════ */
+
+const STORAGE_KEY = 'boa_projects_v1';
+
+/* ─── Label / couleur maps ─────────────────────────────────── */
+const STATUS_LABELS = {
+  BROUILLON:'Brouillon', PLANIFIE:'Planifié', EN_COURS:'En cours',
+  EN_PAUSE:'En pause', TERMINE:'Terminé', ANNULE:'Annulé'
+};
+const HEALTH_LABELS = { VERT:'Sain', ORANGE:'À surveiller', ROUGE:'En danger' };
+const HEALTH_DOT_CLASS = { VERT:'green', ORANGE:'orange', ROUGE:'red' };
+const JOURNAL_TYPE_LABELS = {
+  REUNION:'Réunion', RELANCE:'Relance', DECISION:'Décision', INCIDENT:'Incident',
+  LIVRAISON:'Livraison', VALIDATION:'Validation', ESCALADE:'Escalade', COMITE:'Comité', AUTRE:'Autre'
+};
+const JOURNAL_TYPE_COLORS = {
+  REUNION:'background:var(--boa-navy-light);color:var(--boa-navy);',
+  RELANCE:'background:var(--boa-orange-light);color:var(--boa-orange);',
+  DECISION:'background:#f0ecf7;color:#5b3d8a;',
+  INCIDENT:'background:var(--boa-red-light);color:var(--boa-red);',
+  LIVRAISON:'background:var(--boa-green-light);color:var(--boa-green);',
+  VALIDATION:'background:var(--boa-green-light);color:var(--boa-green-dark);',
+  ESCALADE:'background:var(--boa-orange-light);color:var(--boa-orange);',
+  COMITE:'background:var(--boa-navy-light);color:var(--boa-navy);',
+  AUTRE:'background:var(--boa-gray-surf);color:var(--boa-gray-text);'
+};
+const CATEGORY_LABELS = {
+  TPE:'TPE', DAB_GAB:'DAB/GAB', CARTE:'Carte', VIREMENT:'Virement',
+  'MONÉTIQUE':'Monétique', INFRASTRUCTURE:'Infrastructure', 'RÉGLEMENTAIRE':'Réglementaire', AUTRE:'Autre'
+};
+
+const STATUS_PIE_COLORS = {
+  EN_COURS:'#1B7A4B', PLANIFIE:'#1B2E5E', TERMINE:'#145c38', EN_PAUSE:'#d4830a', ANNULE:'#c0392b'
+};
+
+/* ─── Date helpers ──────────────────────────────────────────── */
+function fmt(dateStr){
+  if(!dateStr) return '—';
+  const d = new Date(dateStr);
+  if(isNaN(d)) return dateStr;
+  return d.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' });
+}
+function daysLeft(dateStr){
+  const d = new Date(dateStr);
+  const now = new Date();
+  d.setHours(0,0,0,0); now.setHours(0,0,0,0);
+  return Math.round((d-now)/86400000);
+}
+function isOverdue(dateStr){
+  if(!dateStr) return false;
+  const d = new Date(dateStr);
+  const now = new Date();
+  d.setHours(0,0,0,0); now.setHours(0,0,0,0);
+  return d < now;
+}
+
+/* ─── Stats ─────────────────────────────────────────────────── */
+function getProjectStats(projects){
+  return {
+    total: projects.length,
+    enCours: projects.filter(p=>p.status==='EN_COURS').length,
+    termine: projects.filter(p=>p.status==='TERMINE').length,
+    enRetard: projects.filter(p=>p.status==='EN_COURS' && isOverdue(p.plannedEndDate)).length,
+    rouge: projects.filter(p=>p.healthStatus==='ROUGE').length,
+    orange: projects.filter(p=>p.healthStatus==='ORANGE').length,
+    vert: projects.filter(p=>p.healthStatus==='VERT').length,
+  };
+}
+function getAllOpenActions(projects){
+  return projects.flatMap(p=>
+    p.journal.flatMap(j=>
+      j.actionItems.filter(a=>a.status!=='FERME')
+        .map(a=>({...a, projectId:p.id, projectName:p.name, projectCode:p.code}))
+    )
+  );
+}
+
+/* ─── Storage ───────────────────────────────────────────────── */
+function loadProjects(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw){ const sample = getSampleData(); saveProjects(sample); return sample; }
+    return JSON.parse(raw);
+  }catch(e){ return getSampleData(); }
+}
+function saveProjects(projects){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+}
+
+/* ─── Données de démonstration ─────────────────────────────── */
+function getSampleData(){
+  const now = new Date().toISOString();
+  return [
+    {
+      id:'prj-demo-001', name:'Déploiement TPE Nouvelle Génération', code:'PRJ-2024-001',
+      description:'Remplacement du parc TPE existant par des terminaux nouvelle génération compatibles NFC et sans contact.',
+      category:'TPE', status:'EN_COURS', priority:'HAUTE', healthStatus:'ORANGE', progress:45,
+      objectives:'Moderniser 500 TPE dans les agences et chez les commerçants partenaires d\'ici fin 2024.',
+      scope:'Agences BOA Maroc + 50 commerçants partenaires', outOfScope:'TPE des filiales étrangères',
+      successCriteria:'95% des TPE déployés, taux de disponibilité > 99%, formation 100% du personnel',
+      assumptions:'Budget validé, fournisseur retenu, homologation Bank Al-Maghrib en cours',
+      constraints:'Délais réglementaires, disponibilité des équipes terrain',
+      interProjectDependencies:'PRJ-2024-003 (Infrastructure réseau)',
+      startDate:'2024-01-15', plannedEndDate:'2026-08-31', plannedDurationDays:351,
+      projectManager:'Nadrey BOA', sponsor:'Direction Monétique',
+      team:[
+        {id:'t1', name:'Karim Alaoui', role:'Chef de projet technique', email:'k.alaoui@boa.ma', organization:'BOA Maroc'},
+        {id:'t2', name:'Fatima Zahra', role:'Responsable déploiement', email:'f.zahra@boa.ma', organization:'BOA Maroc'},
+        {id:'t3', name:'Mohamed Idrissi', role:'Technicien terrain', organization:'BOA Maroc'},
+      ],
+      stakeholders:[
+        {id:'s1', name:'Direction Générale', role:'Commanditaire', organization:'BOA Maroc', influence:'FORT', interest:'MOYEN'},
+        {id:'s2', name:'Bank Al-Maghrib', role:'Régulateur', organization:'BAM', influence:'FORT', interest:'FORT'},
+      ],
+      milestones:[
+        { id:'m1', order:1, name:'Phase 1 – Cadrage & Homologation', description:'Finalisation du cahier des charges et obtention des homologations réglementaires',
+          plannedDate:'2024-03-31', actualDate:'2024-04-10', status:'TERMINE',
+          responsible:'Nadrey BOA', deliverables:['CDC validé','Homologation BAM','Contrat fournisseur'], weight:8,
+          tasks:[
+            {id:'tk1', milestoneId:'m1', name:'Rédaction CDC', plannedDate:'2024-02-15', actualDate:'2024-02-18', status:'TERMINE', assignedTo:['Karim Alaoui'], priority:'HAUTE', estimatedDays:20, actualDays:22, dependencies:[], progress:100},
+            {id:'tk2', milestoneId:'m1', name:'Dossier homologation BAM', plannedDate:'2024-03-15', actualDate:'2024-03-28', status:'TERMINE', assignedTo:['Nadrey BOA'], priority:'HAUTE', estimatedDays:30, actualDays:35, dependencies:['tk1'], progress:100},
+          ]
+        },
+        { id:'m2', order:2, name:'Phase 2 – Pilote (50 TPE)', description:'Déploiement pilote sur 3 agences test',
+          plannedDate:'2024-06-30', status:'EN_COURS',
+          responsible:'Fatima Zahra', deliverables:['50 TPE installés','Rapport pilote','Formation personnel'], weight:7,
+          tasks:[
+            {id:'tk3', milestoneId:'m2', name:'Installation pilote agence Casablanca', plannedDate:'2024-05-31', actualDate:'2024-05-29', status:'TERMINE', assignedTo:['Mohamed Idrissi'], priority:'HAUTE', estimatedDays:10, actualDays:9, dependencies:['tk2'], progress:100},
+            {id:'tk4', milestoneId:'m2', name:'Installation pilote agence Rabat', plannedDate:'2024-06-15', status:'EN_COURS', assignedTo:['Mohamed Idrissi'], priority:'HAUTE', estimatedDays:10, dependencies:[], progress:60},
+            {id:'tk5', milestoneId:'m2', name:'Formation personnel pilote', plannedDate:'2024-06-30', status:'A_FAIRE', assignedTo:['Fatima Zahra'], priority:'MOYENNE', estimatedDays:5, dependencies:['tk4'], progress:0},
+          ]
+        },
+        { id:'m3', order:3, name:'Phase 3 – Déploiement massif (450 TPE)', description:'Déploiement sur l\'ensemble du réseau',
+          plannedDate:'2026-07-31', status:'NON_COMMENCE',
+          responsible:'Fatima Zahra', deliverables:['450 TPE déployés','Formation complète'], weight:10, tasks:[]
+        },
+        { id:'m4', order:4, name:'Phase 4 – Clôture & Bilan', description:'Recette finale, documentation et clôture projet',
+          plannedDate:'2026-08-31', status:'NON_COMMENCE',
+          responsible:'Nadrey BOA', deliverables:['PV recette','Bilan projet','Retour d\'expérience'], weight:5, tasks:[]
+        },
+      ],
+      risks:[
+        {id:'r1', title:'Retard homologation BAM', description:'La BAM pourrait prendre plus de temps que prévu pour valider les nouveaux terminaux.', category:'REGLEMENTAIRE', probability:'MOYEN', impact:'ELEVE', score:6, status:'MITIGE', mitigation:'Dossier soumis avec 2 mois d\'avance, suivi hebdomadaire', contingency:'Plan de déploiement des anciens TPE en attendant', owner:'Nadrey BOA', identifiedDate:'2024-01-20'},
+        {id:'r2', title:'Disponibilité équipes terrain', description:'Ressources terrain partagées avec d\'autres projets.', category:'ORGANISATIONNEL', probability:'ELEVE', impact:'MOYEN', score:6, status:'EN_COURS', mitigation:'Arbitrage ressources validé par la Direction', contingency:'Recours à prestataires externes', owner:'Fatima Zahra', identifiedDate:'2024-02-01'},
+        {id:'r3', title:'Rupture de stock fournisseur', description:'Le fournisseur TPE pourrait ne pas livrer dans les délais.', category:'TECHNIQUE', probability:'FAIBLE', impact:'CRITIQUE', score:4, status:'IDENTIFIE', mitigation:'Clause de pénalité dans le contrat, stock tampon de 50 unités', contingency:'Fournisseur alternatif identifié', owner:'Karim Alaoui', identifiedDate:'2024-01-25'},
+      ],
+      journal:[
+        { id:'j1', date:'2026-05-15', type:'COMITE', title:'Comité de pilotage Q1 2024',
+          description:'Présentation de l\'avancement de la phase pilote. Retard constaté sur l\'agence Rabat dû à des travaux de rénovation.',
+          participants:['Nadrey BOA','Karim Alaoui','Direction Monétique','Fatima Zahra'], author:'Nadrey BOA', location:'Siège BOA, Salle Marrakech',
+          actionItems:[
+            {id:'ai1', description:'Replanifier l\'installation Rabat au 10 juin', assignedTo:'Fatima Zahra', dueDate:'2026-06-05', status:'EN_COURS'},
+            {id:'ai2', description:'Valider le planning déploiement massif avec les régions', assignedTo:'Nadrey BOA', dueDate:'2026-05-30', status:'FERME'},
+          ]
+        },
+        { id:'j2', date:'2026-04-22', type:'RELANCE', title:'Relance BAM sur homologation',
+          description:'Relance téléphonique auprès de la BAM pour accélérer le traitement du dossier d\'homologation. Confirmation de réception du dossier complet.',
+          participants:['Nadrey BOA'], author:'Nadrey BOA',
+          actionItems:[ {id:'ai3', description:'Envoyer les documents complémentaires demandés par BAM', assignedTo:'Nadrey BOA', dueDate:'2026-04-25', status:'FERME'} ]
+        },
+        { id:'j3', date:'2024-03-10', type:'DECISION', title:'Choix du fournisseur TPE',
+          description:'Suite à l\'appel d\'offres, la Direction a retenu Ingenico Group pour la fourniture des 500 terminaux.',
+          participants:['Direction Générale','Direction Achats','Nadrey BOA'], author:'Nadrey BOA', actionItems:[]
+        },
+      ],
+      comments:[
+        {id:'c1', date:'2026-05-20', author:'Nadrey BOA', content:'Le pilote Casablanca est un succès. Les commerçants sont très satisfaits de la rapidité des transactions NFC.', type:'IMPORTANT'},
+        {id:'c2', date:'2026-04-15', author:'Karim Alaoui', content:'Attention : la version firmware 3.2.1 présente un bug sur les transactions > 5000 DH. En attente du patch fournisseur.', type:'IMPORTANT'},
+      ],
+      budget:{ currency:'MAD', totalEstimated:2500000, totalActual:890000, lines:[
+        {id:'b1', category:'Matériel', description:'500 terminaux TPE Ingenico', estimated:1800000, actual:0},
+        {id:'b2', category:'Logiciel', description:'Licences & mises à jour', estimated:200000, actual:185000},
+        {id:'b3', category:'Déploiement', description:'Installation & câblage', estimated:300000, actual:520000},
+        {id:'b4', category:'Formation', description:'Formation personnel', estimated:100000, actual:85000},
+        {id:'b5', category:'Gestion projet', description:'Ressources internes', estimated:100000, actual:100000},
+      ]},
+      tags:['TPE','NFC','Déploiement','2024'], createdAt:now, updatedAt:now,
+    },
+    {
+      id:'prj-demo-002', name:'Migration Cartes VISA vers EMV 3DS 2.0', code:'PRJ-2024-002',
+      description:'Migration du protocole d\'authentification des cartes VISA vers EMV 3D Secure 2.0 pour conformité avec les exigences VISA.',
+      category:'CARTE', status:'PLANIFIE', priority:'CRITIQUE', healthStatus:'VERT', progress:10,
+      objectives:'Assurer la conformité totale avec le protocole 3DS 2.0 d\'ici Q3 2026.',
+      scope:'Toutes les cartes VISA émises par BOA Maroc', outOfScope:'Cartes Mastercard (projet séparé)',
+      successCriteria:'100% des cartes migrées, zéro incident en production',
+      assumptions:'Support technique VISA disponible', constraints:'Deadline VISA : 15 octobre 2026',
+      interProjectDependencies:'Aucune',
+      startDate:'2026-06-01', plannedEndDate:'2026-10-15', plannedDurationDays:136,
+      projectManager:'Nadrey BOA', sponsor:'Direction Informatique',
+      team:[
+        {id:'t4', name:'Ahmed Benali', role:'Architecte SI', organization:'BOA Maroc'},
+        {id:'t5', name:'Sara Mansouri', role:'Développeuse Backend', organization:'BOA Maroc'},
+      ],
+      stakeholders:[ {id:'s3', name:'VISA International', role:'Partenaire réseau', organization:'VISA', influence:'FORT', interest:'FORT'} ],
+      milestones:[
+        {id:'m5', order:1, name:'Analyse & Architecture', plannedDate:'2026-07-15', status:'EN_COURS', responsible:'Ahmed Benali', deliverables:['Document architecture','Plan de migration'], weight:6, tasks:[], description:''},
+        {id:'m6', order:2, name:'Développement & Tests', plannedDate:'2026-09-15', status:'NON_COMMENCE', responsible:'Sara Mansouri', deliverables:['Code migré','Tests unitaires','Recette'], weight:10, tasks:[], description:''},
+        {id:'m7', order:3, name:'Mise en production', plannedDate:'2026-10-15', status:'NON_COMMENCE', responsible:'Nadrey BOA', deliverables:['MEP validée','Go-live'], weight:8, tasks:[], description:''},
+      ],
+      risks:[ {id:'r4', title:'Dépassement deadline VISA', description:'Risque de sanctions financières en cas de non-conformité au 15/10.', category:'REGLEMENTAIRE', probability:'FAIBLE', impact:'CRITIQUE', score:4, status:'IDENTIFIE', mitigation:'Planning serré respecté, points hebdomadaires', contingency:'Demande d\'extension auprès de VISA', owner:'Nadrey BOA', identifiedDate:'2026-06-01'} ],
+      journal:[], comments:[],
+      budget:{ currency:'MAD', totalEstimated:500000, totalActual:50000, lines:[
+        {id:'b6', category:'Développement', description:'Ressources internes', estimated:300000, actual:50000},
+        {id:'b7', category:'Tests', description:'Environnement de test VISA', estimated:100000},
+        {id:'b8', category:'Infrastructure', description:'Serveurs HSM', estimated:100000},
+      ]},
+      tags:['VISA','3DS','Conformité','Sécurité'], createdAt:now, updatedAt:now,
+    }
+  ];
+}
+
+/* ─── Routing ───────────────────────────────────────────────── */
+const VIEWS = {
+  dashboard: { title:'Tableau de bord', subtitle:"Vue d'ensemble de l'activité projet", render: renderDashboard },
+  projects:  { title:'Projets', subtitle:'Liste et suivi des projets', render: renderPlaceholder },
+  actions:   { title:'Actions ouvertes', subtitle:"Actions en attente sur l'ensemble des projets", render: renderPlaceholder },
+  risks:     { title:'Risques', subtitle:'Vue consolidée des risques ouverts', render: renderPlaceholder },
+};
+
+function navigate(view){
+  if(!VIEWS[view]) view = 'dashboard';
+  document.querySelectorAll('.nav-item').forEach(el=>{
+    el.classList.toggle('active', el.dataset.view === view);
+  });
+  document.getElementById('page-title').textContent = VIEWS[view].title;
+  document.getElementById('page-subtitle').textContent = VIEWS[view].subtitle;
+  VIEWS[view].render();
+  location.hash = view;
+}
+
+document.querySelectorAll('.nav-item').forEach(el=>{
+  el.addEventListener('click', ()=> navigate(el.dataset.view));
+});
+document.getElementById('new-project-btn').addEventListener('click', e=>{
+  e.preventDefault();
+  alert('La création de projet sera disponible à l\'étape 5.');
+});
+
+/* ─── Vue Placeholder (étapes suivantes) ───────────────────── */
+function renderPlaceholder(){
+  document.getElementById('content').innerHTML = `
+    <div class="placeholder">
+      Cette section sera disponible dans une prochaine étape.
+    </div>`;
+}
+
+/* ─── Vue Tableau de bord ───────────────────────────────────── */
+function renderDashboard(){
+  const projects = loadProjects();
+  const stats = getProjectStats(projects);
+  const openActions = getAllOpenActions(projects);
+  const overdueActions = openActions.filter(a=>isOverdue(a.dueDate));
+  const criticalRisks = projects.flatMap(p=>
+    p.risks.filter(r=>r.score>=6 && r.status!=='CLOS' && r.status!=='MITIGE')
+      .map(r=>({...r, projectId:p.id, projectName:p.name, projectCode:p.code}))
+  );
+  const recentJournal = projects
+    .flatMap(p=>p.journal.map(j=>({...j, projectId:p.id, projectName:p.name, projectCode:p.code})))
+    .sort((a,b)=> b.date.localeCompare(a.date))
+    .slice(0,5);
+  const attention = projects
+    .filter(p=> p.healthStatus !== 'VERT' || (p.status==='EN_COURS' && isOverdue(p.plannedEndDate)))
+    .sort((a,b)=> (a.healthStatus==='ROUGE' ? -1 : 1));
+
+  /* Status pie */
+  const statusCounts = {
+    EN_COURS: stats.enCours,
+    PLANIFIE: projects.filter(p=>p.status==='PLANIFIE').length,
+    TERMINE: stats.termine,
+    EN_PAUSE: projects.filter(p=>p.status==='EN_PAUSE').length,
+    ANNULE: projects.filter(p=>p.status==='ANNULE').length,
+  };
+  const statusEntries = Object.entries(statusCounts).filter(([,v])=>v>0);
+  const totalStatus = statusEntries.reduce((s,[,v])=>s+v,0) || 1;
+  let acc = 0;
+  const stops = statusEntries.map(([k,v])=>{
+    const start = (acc/totalStatus)*360;
+    acc += v;
+    const end = (acc/totalStatus)*360;
+    return `${STATUS_PIE_COLORS[k]} ${start}deg ${end}deg`;
+  }).join(', ');
+
+  /* Category bar */
+  const catCounts = {};
+  projects.forEach(p=> catCounts[p.category] = (catCounts[p.category]||0)+1);
+  const maxCat = Math.max(1, ...Object.values(catCounts));
+
+  document.getElementById('content').innerHTML = `
+    <!-- KPI Cards -->
+    <div class="grid grid-4">
+      ${kpiCard('FolderOpen','#1B2E5E','#e8ecf5', stats.total, 'Total projets')}
+      ${kpiCard('Activity','#1B7A4B','#e8f5ee', stats.enCours, 'En cours')}
+      ${kpiCard('Clock','#c0392b','#fdf0ef', stats.enRetard, 'En retard', true)}
+      ${kpiCard('CheckCircle2','#1B7A4B','#e8f5ee', stats.termine, 'Terminés')}
+    </div>
+
+    <!-- Health row -->
+    <div class="grid grid-3 section">
+      <div class="card health-card">
+        <div class="health-dot green"></div>
+        <div><div class="health-value">${stats.vert}</div><div class="health-label">Projets sains</div></div>
+      </div>
+      <div class="card health-card">
+        <div class="health-dot orange"></div>
+        <div><div class="health-value">${stats.orange}</div><div class="health-label">À surveiller</div></div>
+      </div>
+      <div class="card health-card">
+        <div class="health-dot red"></div>
+        <div><div class="health-value">${stats.rouge}</div><div class="health-label">En danger</div></div>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="grid grid-2 section">
+      <div class="card chart-card">
+        <h2>Répartition par statut</h2>
+        ${statusEntries.length ? `
+        <div class="donut-wrap">
+          <div class="donut" style="--donut-stops:${stops};"></div>
+          <div class="legend">
+            ${statusEntries.map(([k,v])=>`
+              <div class="legend-item">
+                <span class="legend-swatch" style="background:${STATUS_PIE_COLORS[k]}"></span>
+                ${STATUS_LABELS[k]} (${v})
+              </div>`).join('')}
+          </div>
+        </div>` : `<div class="empty">Aucun projet</div>`}
+      </div>
+      <div class="card chart-card">
+        <h2>Projets par catégorie</h2>
+        ${Object.keys(catCounts).length ? `
+        <div class="bars">
+          ${Object.entries(catCounts).map(([cat,count])=>`
+            <div class="bar-row">
+              <div class="bar-label">${CATEGORY_LABELS[cat] ?? cat}</div>
+              <div class="bar-track"><div class="bar-fill" style="width:${(count/maxCat*100)}%"></div></div>
+              <div class="bar-value">${count}</div>
+            </div>`).join('')}
+        </div>` : `<div class="empty">Aucun projet</div>`}
+      </div>
+    </div>
+
+    <!-- Attention + Activité -->
+    <div class="grid grid-2 section">
+      <div class="section-card">
+        <div class="section-head">
+          <h2>${icon('AlertCircle','#f97316')} Projets nécessitant attention</h2>
+          <span class="count">${attention.length} projets</span>
+        </div>
+        <div>
+          ${attention.length===0 ? `<div class="empty">Tous les projets sont sains ✓</div>` :
+            attention.slice(0,4).map(p=>`
+              <a class="list-row" href="#" onclick="return false;">
+                <span class="health-dot ${HEALTH_DOT_CLASS[p.healthStatus]}" style="box-shadow:none;width:10px;height:10px;"></span>
+                <div class="flex1">
+                  <div class="title">${escapeHtml(p.name)}</div>
+                  <div class="meta">${p.code} · Fin prévue : ${fmt(p.plannedEndDate)}</div>
+                </div>
+                ${icon('ChevronRight','#d1d5db')}
+              </a>`).join('')
+          }
+        </div>
+      </div>
+
+      <div class="section-card">
+        <div class="section-head">
+          <h2>${icon('TrendingUp','#3b82f6')} Activité récente</h2>
+        </div>
+        <div>
+          ${recentJournal.length===0 ? `<div class="empty">Aucune activité enregistrée</div>` :
+            recentJournal.map(j=>`
+              <a class="list-row" href="#" onclick="return false;">
+                <span class="badge" style="${JOURNAL_TYPE_COLORS[j.type]}">${JOURNAL_TYPE_LABELS[j.type]}</span>
+                <div class="flex1">
+                  <div class="title">${escapeHtml(j.title)}</div>
+                  <div class="meta">${j.projectCode} · ${fmt(j.date)}</div>
+                </div>
+              </a>`).join('')
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions en retard -->
+    ${overdueActions.length>0 ? `
+    <div class="section">
+      <div class="card" style="background:var(--boa-red-light);border-color:#f5c4bf;padding:18px;">
+        <h2 style="font-size:13px;font-weight:600;color:var(--boa-red);display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          ${icon('AlertTriangle','#c0392b')} ${overdueActions.length} action(s) en retard
+        </h2>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          ${overdueActions.slice(0,5).map(a=>`
+            <div style="display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #f5c4bf;border-radius:8px;padding:10px 14px;">
+              <div class="flex1">
+                <div class="title">${escapeHtml(a.description)}</div>
+                <div class="meta">${a.projectCode} · ${escapeHtml(a.assignedTo)} · Échéance : ${fmt(a.dueDate)}</div>
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>` : ''}
+
+    <!-- Risques critiques -->
+    ${criticalRisks.length>0 ? `
+    <div class="section section-card">
+      <div class="section-head">
+        <h2>${icon('AlertTriangle','#c0392b')} Risques critiques / élevés</h2>
+      </div>
+      <div>
+        ${criticalRisks.slice(0,5).map(r=>`
+          <a class="list-row" href="#" onclick="return false;">
+            <span class="badge" style="${r.score>=8 ? 'background:var(--boa-red-light);color:var(--boa-red);' : 'background:var(--boa-orange-light);color:var(--boa-orange);'}">Score ${r.score}</span>
+            <div class="flex1">
+              <div class="title">${escapeHtml(r.title)}</div>
+              <div class="meta">${r.projectCode} · ${escapeHtml(r.owner)}</div>
+            </div>
+            ${icon('ChevronRight','#d1d5db')}
+          </a>`).join('')}
+      </div>
+    </div>` : ''}
+  `;
+}
+
+/* ─── Helpers d'affichage ───────────────────────────────────── */
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str ?? '';
+  return div.innerHTML;
+}
+
+function kpiCard(name, color, bg, value, label, alert){
+  const valueColor = (alert && value>0) ? 'color:var(--boa-red);' : '';
+  const borderStyle = (alert && value>0) ? 'border-color:#f5c4bf;' : '';
+  return `
+    <div class="card kpi-card${alert?' alert':''}" style="${borderStyle}">
+      <div class="kpi-icon" style="background:${bg};">${icon(name, color)}</div>
+      <div>
+        <div class="kpi-value" style="${valueColor}">${value}</div>
+        <div class="kpi-label">${label}</div>
+      </div>
+    </div>`;
+}
+
+/* Lucide-style inline SVG icons (subset used here) */
+function icon(name, color){
+  const c = color || 'currentColor';
+  const icons = {
+    FolderOpen:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></svg>`,
+    Activity:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>`,
+    Clock:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
+    CheckCircle2:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/></svg>`,
+    AlertCircle:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+    TrendingUp:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>`,
+    AlertTriangle:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>`,
+    ChevronRight:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>`,
+  };
+  return icons[name] || '';
+}
+
+/* ─── Init ──────────────────────────────────────────────────── */
+const initialView = location.hash.replace('#','') || 'dashboard';
+navigate(initialView);
+</script>
+</body>
+</html>
