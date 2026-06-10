@@ -309,6 +309,33 @@
   .action-item-row .flex1{flex:1;}
   .action-item-row .due{color:#9ca3af;font-size:11.5px;}
 
+  /* ─── Forms & modals ─────────────────────────────────────── */
+  .btn-secondary{
+    display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;
+    border:1px solid var(--boa-gray-border);background:#fff;color:#374151;font-size:12.5px;
+    font-weight:600;cursor:pointer;
+  }
+  .btn-secondary:hover{background:var(--boa-gray-bg);}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .form-field{display:flex;flex-direction:column;gap:5px;}
+  .form-field.full{grid-column:1/-1;}
+  .form-field label{font-size:12px;font-weight:600;color:#374151;}
+  .form-field input,.form-field select,.form-field textarea{
+    padding:8px 11px;border:1px solid var(--boa-gray-border);border-radius:8px;
+    font-size:13px;font-family:inherit;background:#fff;color:#111827;
+  }
+  .form-field input:focus,.form-field select:focus,.form-field textarea:focus{
+    outline:2px solid var(--boa-green);outline-offset:-1px;
+  }
+  .form-field textarea{resize:vertical;}
+  .form-section-title{
+    grid-column:1/-1;font-size:12px;text-transform:uppercase;letter-spacing:.04em;
+    color:var(--boa-green);font-weight:700;margin-top:8px;padding-top:14px;border-top:1px solid var(--boa-gray-surf);
+  }
+  .form-section-title:first-child{margin-top:0;padding-top:0;border-top:none;}
+  .modal-card.modal-wide{max-width:560px;}
+  .modal-card .form-grid{margin-top:6px;}
+
   @media (max-width:900px){
     .grid-4{grid-template-columns:repeat(2,1fr);}
     .grid-3{grid-template-columns:1fr;}
@@ -363,6 +390,8 @@
     <div class="content" id="content"></div>
   </main>
 </div>
+
+<div id="modal-root"></div>
 
 <script>
 /* ════════════════════════════════════════════════════════════
@@ -481,6 +510,99 @@ const COMMENT_TYPE_COLORS = {
 function formatMoney(amount, currency){
   if(amount === undefined || amount === null) return '—';
   return amount.toLocaleString('fr-FR') + ' ' + (currency || '');
+}
+
+/* ─── ID / code generators & shared computations ─────────────── */
+function newId(){
+  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+}
+function generateProjectCode(projects){
+  const year = new Date().getFullYear();
+  const nums = projects.map(p=>{
+    const m = p.code.match(/PRJ-\d{4}-(\d{3})/);
+    return m ? parseInt(m[1]) : 0;
+  });
+  const next = nums.length ? Math.max(...nums) + 1 : 1;
+  return `PRJ-${year}-${String(next).padStart(3,'0')}`;
+}
+function computeProjectProgress(milestones){
+  if(!milestones.length) return 0;
+  const totalWeight = milestones.reduce((s,m)=>s+m.weight, 0);
+  if(!totalWeight) return 0;
+  const weighted = milestones.reduce((s,m)=> s + milestoneProgress(m) * m.weight, 0);
+  return Math.round(weighted / totalWeight);
+}
+function computeRiskScore(probability, impact){
+  const probScore = { FAIBLE:1, MOYEN:2, ELEVE:3 };
+  const impactScore = { FAIBLE:1, MOYEN:2, ELEVE:3, CRITIQUE:4 };
+  return probScore[probability] * impactScore[impact];
+}
+
+/* ─── Modal système générique ──────────────────────────────────
+   openModal({title, fields, onSubmit, wide}) où chaque field est :
+   {name, label, type:'text'|'textarea'|'date'|'number'|'email'|'select'|'tags',
+    value, options:[{value,label}], required, full, rows}
+   ────────────────────────────────────────────────────────────── */
+let activeModal = null;
+
+function openModal(config){
+  activeModal = config;
+  renderModal();
+}
+function closeModal(){
+  activeModal = null;
+  document.getElementById('modal-root').innerHTML = '';
+}
+function renderModal(){
+  if(!activeModal){ document.getElementById('modal-root').innerHTML = ''; return; }
+  const { title, fields, wide } = activeModal;
+  document.getElementById('modal-root').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+      <div class="modal-card${wide ? ' modal-wide' : ''}">
+        <h3>${escapeHtml(title)}</h3>
+        <div class="form-grid">
+          ${fields.map(renderModalField).join('')}
+        </div>
+        <div class="modal-actions" style="margin-top:18px;">
+          <button class="btn-outline" onclick="closeModal()">Annuler</button>
+          <button class="btn-primary" onclick="submitModal()">Enregistrer</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+function renderModalField(f){
+  const id = `field-${f.name}`;
+  const value = f.value ?? '';
+  let input;
+  if(f.type === 'textarea'){
+    input = `<textarea id="${id}" rows="${f.rows || 3}">${escapeHtml(value)}</textarea>`;
+  } else if(f.type === 'select'){
+    input = `<select id="${id}">${f.options.map(o=>`<option value="${escapeHtml(o.value)}" ${o.value===value?'selected':''}>${escapeHtml(o.label)}</option>`).join('')}</select>`;
+  } else if(f.type === 'tags'){
+    input = `<input id="${id}" type="text" value="${escapeHtml(Array.isArray(value)?value.join(', '):value)}" placeholder="séparés par des virgules">`;
+  } else {
+    input = `<input id="${id}" type="${f.type || 'text'}" value="${escapeHtml(value)}">`;
+  }
+  return `<div class="form-field${f.full?' full':''}"><label>${escapeHtml(f.label)}${f.required?' *':''}</label>${input}</div>`;
+}
+function submitModal(){
+  const values = {};
+  for(const f of activeModal.fields){
+    const el = document.getElementById(`field-${f.name}`);
+    let v = el.value;
+    if(f.type === 'number') v = v === '' ? undefined : parseFloat(v);
+    if(f.type === 'tags') v = v.split(',').map(s=>s.trim()).filter(Boolean);
+    if(f.required && (v === '' || v === undefined || (Array.isArray(v) && v.length===0))){
+      el.style.outline = '2px solid var(--boa-red)';
+      el.focus();
+      return;
+    }
+    values[f.name] = v;
+  }
+  const onSubmit = activeModal.onSubmit;
+  closeModal();
+  onSubmit(values);
 }
 
 /* ─── Date helpers ──────────────────────────────────────────── */
@@ -682,7 +804,7 @@ document.querySelectorAll('.nav-item').forEach(el=>{
 });
 document.getElementById('new-project-btn').addEventListener('click', e=>{
   e.preventDefault();
-  alert('La création de projet sera disponible à l\'étape 5.');
+  newProjectForm();
 });
 
 /* ─── Vue Placeholder (étapes suivantes) ───────────────────── */
@@ -1166,7 +1288,10 @@ function renderApercuTab(project){
       <div>
         <div class="card" style="padding:20px;margin-bottom:16px;">
           <div class="info-section" style="margin-bottom:0;">
-            <h3>Équipe projet</h3>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <h3 style="margin-bottom:0;">Équipe projet</h3>
+              <button class="btn-secondary" onclick="openTeamModal('${project.id}')">${icon('Plus')} Ajouter</button>
+            </div>
             <div class="team-list">
               ${project.team.length===0 ? `<div class="empty" style="padding:16px;">Aucun membre renseigné</div>` :
                 project.team.map(m=>`
@@ -1184,7 +1309,10 @@ function renderApercuTab(project){
 
         <div class="card" style="padding:20px;margin-bottom:16px;">
           <div class="info-section" style="margin-bottom:0;">
-            <h3>Parties prenantes</h3>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <h3 style="margin-bottom:0;">Parties prenantes</h3>
+              <button class="btn-secondary" onclick="openStakeholderModal('${project.id}')">${icon('Plus')} Ajouter</button>
+            </div>
             <div class="team-list">
               ${project.stakeholders.length===0 ? `<div class="empty" style="padding:16px;">Aucune partie prenante renseignée</div>` :
                 project.stakeholders.map(s=>`
@@ -1214,11 +1342,15 @@ function renderApercuTab(project){
 }
 
 function renderJalonsTab(project){
+  const addBtn = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
+      <button class="btn-primary" onclick="openMilestoneModal('${project.id}')">${icon('Plus')} Nouveau jalon</button>
+    </div>`;
   if(project.milestones.length === 0){
-    return `<div class="empty" style="padding:48px;background:#fff;border:1px solid var(--boa-gray-border);border-radius:12px;">Aucun jalon défini pour ce projet.</div>`;
+    return addBtn + `<div class="empty" style="padding:48px;background:#fff;border:1px solid var(--boa-gray-border);border-radius:12px;">Aucun jalon défini pour ce projet.</div>`;
   }
   const sorted = [...project.milestones].sort((a,b)=>a.order-b.order);
-  return sorted.map(m=>{
+  return addBtn + sorted.map(m=>{
     const prog = milestoneProgress(m);
     return `
     <div class="milestone-card">
@@ -1269,17 +1401,24 @@ function renderJalonsTab(project){
             </tbody>
           </table>` : `<div class="empty" style="padding:16px;">Aucune tâche pour ce jalon.</div>`
         }
+        <div style="margin-top:12px;">
+          <button class="btn-secondary" onclick="openTaskModal('${project.id}','${m.id}')">${icon('Plus')} Ajouter une tâche</button>
+        </div>
       </div>
     </div>`;
   }).join('');
 }
 
 function renderJournalTab(project){
+  const addBtn = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
+      <button class="btn-primary" onclick="openJournalModal('${project.id}')">${icon('Plus')} Nouvel événement</button>
+    </div>`;
   if(project.journal.length === 0){
-    return `<div class="empty" style="padding:48px;background:#fff;border:1px solid var(--boa-gray-border);border-radius:12px;">Aucun événement enregistré pour ce projet.</div>`;
+    return addBtn + `<div class="empty" style="padding:48px;background:#fff;border:1px solid var(--boa-gray-border);border-radius:12px;">Aucun événement enregistré pour ce projet.</div>`;
   }
   const sorted = [...project.journal].sort((a,b)=>b.date.localeCompare(a.date));
-  return sorted.map(j=>`
+  return addBtn + sorted.map(j=>`
     <div class="journal-card">
       <div class="journal-card-head">
         <div>
@@ -1311,7 +1450,7 @@ function renderRisquesTab(project){
 
   return `
     <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
-      <button class="btn-primary" onclick="alert('L\\'ajout de risques sera disponible à l\\'étape 5.')">
+      <button class="btn-primary" onclick="openRiskModal('${project.id}')">
         ${icon('Plus')} Nouveau risque
       </button>
     </div>
@@ -1357,6 +1496,9 @@ function renderBudgetTab(project){
   const ecartColor = ecart > 0 ? 'var(--boa-red)' : 'var(--boa-green)';
 
   return `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
+      <button class="btn-primary" onclick="openBudgetLineModal('${project.id}')">${icon('Plus')} Nouvelle ligne budgétaire</button>
+    </div>
     <div class="grid grid-3" style="margin-bottom:20px;">
       <div class="card" style="padding:18px;">
         <div class="kpi-label">Budget estimé</div>
@@ -1407,7 +1549,7 @@ function renderBudgetTab(project){
 function renderCommentairesTab(project){
   return `
     <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
-      <button class="btn-primary" onclick="alert('L\\'ajout de commentaires sera disponible à l\\'étape 5.')">
+      <button class="btn-primary" onclick="openCommentModal('${project.id}')">
         ${icon('Plus')} Nouveau commentaire
       </button>
     </div>
@@ -1434,6 +1576,361 @@ function milestoneProgress(m){
   if(!m.tasks.length) return m.status==='TERMINE' ? 100 : 0;
   const done = m.tasks.filter(t=>t.status==='TERMINE').length;
   return Math.round((done/m.tasks.length)*100);
+}
+
+/* ─── Ajouts via modales (journal, risques, jalons, tâches, équipe, budget...) ── */
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+
+function openJournalModal(projectId){
+  openModal({
+    title:'Nouvel événement de journal', wide:true,
+    fields:[
+      {name:'date', label:'Date', type:'date', required:true, value:todayStr()},
+      {name:'type', label:'Type', type:'select', required:true, value:'REUNION',
+        options:Object.entries(JOURNAL_TYPE_LABELS).map(([k,v])=>({value:k,label:v}))},
+      {name:'title', label:'Titre', type:'text', required:true, full:true},
+      {name:'description', label:'Description', type:'textarea', full:true},
+      {name:'author', label:'Auteur', type:'text', required:true, value:'Nadrey BOA'},
+      {name:'location', label:'Lieu', type:'text'},
+      {name:'participants', label:'Participants', type:'tags', full:true},
+    ],
+    onSubmit:(v)=>{
+      const projects = loadProjects();
+      const p = projects.find(x=>x.id===projectId);
+      p.journal.unshift({
+        id:newId(), date:v.date, type:v.type, title:v.title, description:v.description||'',
+        participants:v.participants, actionItems:[], author:v.author, location:v.location || undefined,
+      });
+      p.updatedAt = new Date().toISOString();
+      saveProjects(projects);
+      renderProjectDetail();
+    }
+  });
+}
+
+function openRiskModal(projectId){
+  openModal({
+    title:'Nouveau risque', wide:true,
+    fields:[
+      {name:'title', label:'Titre', type:'text', required:true, full:true},
+      {name:'description', label:'Description', type:'textarea', full:true},
+      {name:'category', label:'Catégorie', type:'select', value:'TECHNIQUE',
+        options:Object.entries(RISK_CATEGORY_LABELS).map(([k,v])=>({value:k,label:v}))},
+      {name:'status', label:'Statut', type:'select', value:'IDENTIFIE',
+        options:Object.entries(RISK_STATUS_LABELS).map(([k,v])=>({value:k,label:v}))},
+      {name:'probability', label:'Probabilité', type:'select', value:'MOYEN',
+        options:[{value:'FAIBLE',label:'Faible'},{value:'MOYEN',label:'Moyen'},{value:'ELEVE',label:'Élevé'}]},
+      {name:'impact', label:'Impact', type:'select', value:'MOYEN',
+        options:[{value:'FAIBLE',label:'Faible'},{value:'MOYEN',label:'Moyen'},{value:'ELEVE',label:'Élevé'},{value:'CRITIQUE',label:'Critique'}]},
+      {name:'owner', label:'Responsable', type:'text', required:true},
+      {name:'identifiedDate', label:"Date d'identification", type:'date', required:true, value:todayStr()},
+      {name:'mitigation', label:'Mitigation', type:'textarea', full:true},
+      {name:'contingency', label:'Plan de contingence', type:'textarea', full:true},
+    ],
+    onSubmit:(v)=>{
+      const projects = loadProjects();
+      const p = projects.find(x=>x.id===projectId);
+      p.risks.push({
+        id:newId(), title:v.title, description:v.description||'', category:v.category,
+        probability:v.probability, impact:v.impact, score:computeRiskScore(v.probability, v.impact),
+        status:v.status, mitigation:v.mitigation||'', contingency:v.contingency||'',
+        owner:v.owner, identifiedDate:v.identifiedDate,
+      });
+      p.updatedAt = new Date().toISOString();
+      saveProjects(projects);
+      renderProjectDetail();
+    }
+  });
+}
+
+function openCommentModal(projectId){
+  openModal({
+    title:'Nouveau commentaire',
+    fields:[
+      {name:'author', label:'Auteur', type:'text', required:true, value:'Nadrey BOA'},
+      {name:'date', label:'Date', type:'date', required:true, value:todayStr()},
+      {name:'type', label:'Type', type:'select', value:'GENERAL',
+        options:Object.entries(COMMENT_TYPE_LABELS).map(([k,v])=>({value:k,label:v}))},
+      {name:'content', label:'Commentaire', type:'textarea', required:true, full:true, rows:4},
+    ],
+    onSubmit:(v)=>{
+      const projects = loadProjects();
+      const p = projects.find(x=>x.id===projectId);
+      p.comments.unshift({id:newId(), date:v.date, author:v.author, content:v.content, type:v.type});
+      p.updatedAt = new Date().toISOString();
+      saveProjects(projects);
+      renderProjectDetail();
+    }
+  });
+}
+
+function openMilestoneModal(projectId){
+  openModal({
+    title:'Nouveau jalon', wide:true,
+    fields:[
+      {name:'name', label:'Nom du jalon', type:'text', required:true, full:true},
+      {name:'description', label:'Description', type:'textarea', full:true},
+      {name:'plannedDate', label:'Date prévue', type:'date', required:true},
+      {name:'responsible', label:'Responsable', type:'text', required:true},
+      {name:'weight', label:'Poids (1-10)', type:'number', required:true, value:5},
+      {name:'deliverables', label:'Livrables', type:'tags', full:true},
+    ],
+    onSubmit:(v)=>{
+      const projects = loadProjects();
+      const p = projects.find(x=>x.id===projectId);
+      const order = p.milestones.length ? Math.max(...p.milestones.map(m=>m.order)) + 1 : 1;
+      p.milestones.push({
+        id:newId(), order, name:v.name, description:v.description||'', plannedDate:v.plannedDate,
+        status:'NON_COMMENCE', responsible:v.responsible, deliverables:v.deliverables, weight:v.weight, tasks:[],
+      });
+      p.progress = computeProjectProgress(p.milestones);
+      p.updatedAt = new Date().toISOString();
+      saveProjects(projects);
+      renderProjectDetail();
+    }
+  });
+}
+
+function openTaskModal(projectId, milestoneId){
+  openModal({
+    title:'Nouvelle tâche', wide:true,
+    fields:[
+      {name:'name', label:'Nom de la tâche', type:'text', required:true, full:true},
+      {name:'plannedDate', label:'Date prévue', type:'date', required:true},
+      {name:'status', label:'Statut', type:'select', value:'A_FAIRE',
+        options:Object.entries(TASK_STATUS_LABELS).map(([k,v])=>({value:k,label:v}))},
+      {name:'priority', label:'Priorité', type:'select', value:'MOYENNE',
+        options:[{value:'HAUTE',label:'Haute'},{value:'MOYENNE',label:'Moyenne'},{value:'BASSE',label:'Basse'}]},
+      {name:'assignedTo', label:'Assigné à', type:'tags', full:true},
+      {name:'estimatedDays', label:'Durée estimée (jours)', type:'number', value:1},
+      {name:'progress', label:'Avancement (%)', type:'number', value:0},
+    ],
+    onSubmit:(v)=>{
+      const projects = loadProjects();
+      const p = projects.find(x=>x.id===projectId);
+      const m = p.milestones.find(x=>x.id===milestoneId);
+      const progress = v.status==='TERMINE' ? 100 : Math.min(100, Math.max(0, v.progress || 0));
+      m.tasks.push({
+        id:newId(), milestoneId, name:v.name, plannedDate:v.plannedDate, status:v.status,
+        assignedTo:v.assignedTo, priority:v.priority, estimatedDays:v.estimatedDays || 0,
+        dependencies:[], progress,
+      });
+      p.progress = computeProjectProgress(p.milestones);
+      p.updatedAt = new Date().toISOString();
+      saveProjects(projects);
+      renderProjectDetail();
+    }
+  });
+}
+
+function openTeamModal(projectId){
+  openModal({
+    title:"Ajouter un membre de l'équipe",
+    fields:[
+      {name:'name', label:'Nom', type:'text', required:true},
+      {name:'role', label:'Rôle', type:'text', required:true},
+      {name:'organization', label:'Organisation', type:'text'},
+      {name:'email', label:'Email', type:'email'},
+    ],
+    onSubmit:(v)=>{
+      const projects = loadProjects();
+      const p = projects.find(x=>x.id===projectId);
+      p.team.push({id:newId(), name:v.name, role:v.role, organization:v.organization || undefined, email:v.email || undefined});
+      p.updatedAt = new Date().toISOString();
+      saveProjects(projects);
+      renderProjectDetail();
+    }
+  });
+}
+
+function openStakeholderModal(projectId){
+  openModal({
+    title:'Ajouter une partie prenante', wide:true,
+    fields:[
+      {name:'name', label:'Nom', type:'text', required:true},
+      {name:'role', label:'Rôle', type:'text', required:true},
+      {name:'organization', label:'Organisation', type:'text', required:true},
+      {name:'influence', label:'Influence', type:'select', value:'MOYEN',
+        options:[{value:'FAIBLE',label:'Faible'},{value:'MOYEN',label:'Moyen'},{value:'FORT',label:'Fort'}]},
+      {name:'interest', label:'Intérêt', type:'select', value:'MOYEN',
+        options:[{value:'FAIBLE',label:'Faible'},{value:'MOYEN',label:'Moyen'},{value:'FORT',label:'Fort'}]},
+      {name:'email', label:'Email', type:'email'},
+    ],
+    onSubmit:(v)=>{
+      const projects = loadProjects();
+      const p = projects.find(x=>x.id===projectId);
+      p.stakeholders.push({
+        id:newId(), name:v.name, role:v.role, organization:v.organization,
+        influence:v.influence, interest:v.interest, email:v.email || undefined,
+      });
+      p.updatedAt = new Date().toISOString();
+      saveProjects(projects);
+      renderProjectDetail();
+    }
+  });
+}
+
+function openBudgetLineModal(projectId){
+  openModal({
+    title:'Nouvelle ligne budgétaire', wide:true,
+    fields:[
+      {name:'category', label:'Catégorie', type:'text', required:true},
+      {name:'description', label:'Description', type:'text', required:true, full:true},
+      {name:'estimated', label:'Montant estimé', type:'number', required:true, value:0},
+      {name:'actual', label:'Montant réel', type:'number', value:0},
+    ],
+    onSubmit:(v)=>{
+      const projects = loadProjects();
+      const p = projects.find(x=>x.id===projectId);
+      p.budget.lines.push({id:newId(), category:v.category, description:v.description, estimated:v.estimated, actual:v.actual});
+      p.budget.totalEstimated = p.budget.lines.reduce((s,l)=>s + l.estimated, 0);
+      p.budget.totalActual = p.budget.lines.reduce((s,l)=>s + (l.actual || 0), 0);
+      p.updatedAt = new Date().toISOString();
+      saveProjects(projects);
+      renderProjectDetail();
+    }
+  });
+}
+
+/* ─── Vue Formulaire projet (création / modification) ──────── */
+function newProjectForm(){
+  navigateToProjectForm(null);
+}
+function editProject(id){
+  navigateToProjectForm(id);
+}
+function navigateToProjectForm(id){
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  location.hash = id ? `project-form/${id}` : 'project-form/new';
+  renderProjectForm(id);
+}
+function cancelProjectForm(id){
+  if(id) viewProject(id);
+  else navigate('projects');
+}
+
+function pfField({name, label, type='text', value='', options, full, rows}){
+  const id = `pf-${name}`;
+  let input;
+  if(type === 'textarea'){
+    input = `<textarea id="${id}" rows="${rows||3}">${escapeHtml(value ?? '')}</textarea>`;
+  } else if(type === 'select'){
+    input = `<select id="${id}">${options.map(o=>`<option value="${escapeHtml(o.value)}" ${o.value===value?'selected':''}>${escapeHtml(o.label)}</option>`).join('')}</select>`;
+  } else {
+    input = `<input id="${id}" type="${type}" value="${escapeHtml(value ?? '')}">`;
+  }
+  return `<div class="form-field${full?' full':''}"><label>${escapeHtml(label)}</label>${input}</div>`;
+}
+
+function renderProjectForm(id){
+  const projects = loadProjects();
+  const project = id ? projects.find(p=>p.id===id) : null;
+  const isNew = !project;
+  const p = project || {};
+
+  document.getElementById('page-title').textContent = isNew ? 'Nouveau projet' : `Modifier : ${project.name}`;
+  document.getElementById('page-subtitle').textContent = isNew ? "Création d'un nouveau projet" : project.code;
+
+  const code = isNew ? generateProjectCode(projects) : project.code;
+
+  document.getElementById('content').innerHTML = `
+    <button class="back-link" onclick="cancelProjectForm(${id?`'${id}'`:'null'})">${icon('ArrowLeft')} Annuler</button>
+    <div class="card" style="padding:24px;max-width:900px;">
+      <div class="form-grid">
+        <div class="form-section-title">Informations générales</div>
+        ${pfField({name:'name', label:'Nom du projet', value:p.name, full:true})}
+        ${pfField({name:'code', label:'Code projet', value:code})}
+        ${pfField({name:'category', label:'Catégorie', type:'select', value:p.category||'TPE',
+            options:Object.entries(CATEGORY_LABELS).map(([k,v])=>({value:k,label:v}))})}
+        ${pfField({name:'status', label:'Statut', type:'select', value:p.status||'PLANIFIE',
+            options:Object.entries(STATUS_LABELS).map(([k,v])=>({value:k,label:v}))})}
+        ${pfField({name:'priority', label:'Priorité', type:'select', value:p.priority||'MOYENNE',
+            options:Object.entries(PRIORITY_LABELS).map(([k,v])=>({value:k,label:v}))})}
+        ${pfField({name:'healthStatus', label:'Santé', type:'select', value:p.healthStatus||'VERT',
+            options:Object.entries(HEALTH_LABELS).map(([k,v])=>({value:k,label:v}))})}
+        ${pfField({name:'description', label:'Description', type:'textarea', value:p.description, full:true})}
+
+        <div class="form-section-title">Planning</div>
+        ${pfField({name:'startDate', label:'Date de début', type:'date', value:p.startDate})}
+        ${pfField({name:'plannedEndDate', label:'Fin prévue', type:'date', value:p.plannedEndDate})}
+        ${pfField({name:'plannedDurationDays', label:'Durée prévue (jours)', type:'number', value:p.plannedDurationDays})}
+        ${pfField({name:'actualEndDate', label:'Date de fin réelle', type:'date', value:p.actualEndDate})}
+
+        <div class="form-section-title">Pilotage</div>
+        ${pfField({name:'projectManager', label:'Chef de projet', value:p.projectManager||'Nadrey BOA'})}
+        ${pfField({name:'sponsor', label:'Sponsor', value:p.sponsor})}
+        ${pfField({name:'tags', label:'Tags (séparés par des virgules)', value:(p.tags||[]).join(', '), full:true})}
+
+        <div class="form-section-title">Cadrage</div>
+        ${pfField({name:'objectives', label:'Objectifs', type:'textarea', value:p.objectives, full:true})}
+        ${pfField({name:'scope', label:'Périmètre (in scope)', type:'textarea', value:p.scope})}
+        ${pfField({name:'outOfScope', label:'Hors périmètre', type:'textarea', value:p.outOfScope})}
+        ${pfField({name:'successCriteria', label:'Critères de succès', type:'textarea', value:p.successCriteria, full:true})}
+        ${pfField({name:'assumptions', label:'Hypothèses', type:'textarea', value:p.assumptions})}
+        ${pfField({name:'constraints', label:'Contraintes', type:'textarea', value:p.constraints})}
+        ${pfField({name:'interProjectDependencies', label:'Dépendances inter-projets', type:'textarea', value:p.interProjectDependencies, full:true})}
+      </div>
+      <div class="modal-actions" style="margin-top:20px;">
+        <button class="btn-outline" onclick="cancelProjectForm(${id?`'${id}'`:'null'})">Annuler</button>
+        <button class="btn-primary" onclick="saveProjectForm(${id?`'${id}'`:'null'})">${isNew ? 'Créer le projet' : 'Enregistrer'}</button>
+      </div>
+    </div>
+  `;
+}
+
+function saveProjectForm(id){
+  const v = name => document.getElementById(`pf-${name}`).value;
+
+  const name = v('name').trim();
+  const code = v('code').trim();
+  const startDate = v('startDate');
+  const plannedEndDate = v('plannedEndDate');
+
+  if(!name || !code || !startDate || !plannedEndDate){
+    alert('Merci de renseigner au minimum le nom, le code, la date de début et la date de fin prévue.');
+    return;
+  }
+
+  const projects = loadProjects();
+  const now = new Date().toISOString();
+  let project;
+  if(id){
+    project = projects.find(p=>p.id===id);
+  } else {
+    project = {
+      id:newId(), milestones:[], risks:[], journal:[], comments:[], team:[], stakeholders:[],
+      budget:{ currency:'MAD', totalEstimated:0, totalActual:0, lines:[] },
+      progress:0, createdAt:now,
+    };
+    projects.unshift(project);
+  }
+
+  Object.assign(project, {
+    name, code,
+    description: v('description'),
+    category: v('category'),
+    status: v('status'),
+    priority: v('priority'),
+    healthStatus: v('healthStatus'),
+    objectives: v('objectives'),
+    scope: v('scope'),
+    outOfScope: v('outOfScope'),
+    successCriteria: v('successCriteria'),
+    assumptions: v('assumptions'),
+    constraints: v('constraints'),
+    interProjectDependencies: v('interProjectDependencies'),
+    startDate, plannedEndDate,
+    actualEndDate: v('actualEndDate') || undefined,
+    plannedDurationDays: parseInt(v('plannedDurationDays')) || 0,
+    projectManager: v('projectManager'),
+    sponsor: v('sponsor'),
+    tags: v('tags').split(',').map(s=>s.trim()).filter(Boolean),
+    updatedAt: now,
+  });
+
+  project.progress = computeProjectProgress(project.milestones);
+  saveProjects(projects);
+  viewProject(project.id);
 }
 
 /* ─── Helpers d'affichage ───────────────────────────────────── */
@@ -1481,7 +1978,10 @@ function icon(name, color){
 
 /* ─── Init ──────────────────────────────────────────────────── */
 const initialHash = location.hash.replace('#','') || 'dashboard';
-if(initialHash.startsWith('project/')){
+if(initialHash.startsWith('project-form/')){
+  const fid = initialHash.split('/')[1];
+  navigateToProjectForm(fid === 'new' ? null : fid);
+} else if(initialHash.startsWith('project/')){
   viewProject(initialHash.split('/')[1]);
 } else {
   navigate(initialHash);
