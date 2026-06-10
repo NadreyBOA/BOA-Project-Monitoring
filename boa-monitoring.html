@@ -190,6 +190,59 @@
     padding:60px 24px;text-align:center;color:var(--boa-gray-text);font-size:13.5px;
   }
 
+  /* ─── Filters bar ────────────────────────────────────────── */
+  .filters-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px;}
+  .search-wrap{position:relative;flex:1;min-width:220px;}
+  .search-wrap svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#9ca3af;}
+  .search-wrap input{
+    width:100%;padding:9px 12px 9px 34px;border:1px solid var(--boa-gray-border);
+    border-radius:8px;font-size:13px;background:#fff;
+  }
+  .search-wrap input:focus,.select-wrap select:focus{outline:2px solid var(--boa-green);outline-offset:-1px;}
+  .select-wrap{position:relative;}
+  .select-wrap select{
+    appearance:none;padding:9px 30px 9px 12px;border:1px solid var(--boa-gray-border);
+    border-radius:8px;font-size:13px;background:#fff;color:#374151;cursor:pointer;
+  }
+  .select-wrap svg{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:#9ca3af;pointer-events:none;}
+  .clear-link{font-size:12px;color:#6b7280;text-decoration:underline;cursor:pointer;background:none;border:none;}
+
+  /* ─── Table ──────────────────────────────────────────────── */
+  .table-card{background:#fff;border:1px solid var(--boa-gray-border);border-radius:12px;overflow:hidden;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  thead tr{background:var(--boa-gray-bg);border-bottom:1px solid var(--boa-gray-border);}
+  th{padding:10px 16px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#9ca3af;font-weight:600;}
+  th.right{text-align:right;}
+  td{padding:12px 16px;border-bottom:1px solid var(--boa-gray-surf);vertical-align:middle;}
+  tbody tr:hover{background:var(--boa-gray-bg);}
+  tbody tr:last-child td{border-bottom:none;}
+  td .pname{font-weight:600;color:var(--boa-black);}
+  td .psub{font-size:11.5px;color:#9ca3af;margin-top:2px;}
+  td.right{text-align:right;}
+  .health-cell{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;}
+  .health-cell .dot{width:8px;height:8px;border-radius:50%;}
+
+  /* ─── Progress bar ───────────────────────────────────────── */
+  .progress-track{background:var(--boa-gray-surf);border-radius:6px;height:8px;width:100%;overflow:hidden;}
+  .progress-fill{height:100%;background:var(--boa-green);border-radius:6px;}
+  .progress-label{font-size:11px;color:#6b7280;margin-top:3px;}
+
+  /* ─── Action icon buttons ────────────────────────────────── */
+  .icon-btn{padding:6px;border-radius:6px;border:none;background:none;cursor:pointer;color:#6b7280;display:inline-flex;}
+  .icon-btn:hover{background:var(--boa-gray-bg);color:var(--boa-green);}
+  .icon-btn.danger:hover{background:var(--boa-red-light);color:var(--boa-red);}
+
+  /* ─── Modal ──────────────────────────────────────────────── */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px;}
+  .modal-card{background:#fff;border-radius:12px;padding:24px;max-width:380px;width:100%;}
+  .modal-card h3{font-size:15px;font-weight:700;color:var(--boa-black);margin-bottom:8px;}
+  .modal-card p{font-size:13px;color:#6b7280;margin-bottom:20px;}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;}
+  .btn-outline{padding:8px 16px;border-radius:8px;font-size:13px;border:1px solid var(--boa-gray-border);background:#fff;cursor:pointer;}
+  .btn-outline:hover{background:var(--boa-gray-bg);}
+  .btn-danger{padding:8px 16px;border-radius:8px;font-size:13px;border:none;background:var(--boa-red);color:#fff;cursor:pointer;}
+  .btn-danger:hover{background:#a8311f;}
+
   @media (max-width:900px){
     .grid-4{grid-template-columns:repeat(2,1fr);}
     .grid-3{grid-template-columns:1fr;}
@@ -285,6 +338,24 @@ const CATEGORY_LABELS = {
 
 const STATUS_PIE_COLORS = {
   EN_COURS:'#1B7A4B', PLANIFIE:'#1B2E5E', TERMINE:'#145c38', EN_PAUSE:'#d4830a', ANNULE:'#c0392b'
+};
+
+const STATUS_COLORS = {
+  BROUILLON:'background:var(--boa-gray-surf);color:var(--boa-gray-text);',
+  PLANIFIE:'background:var(--boa-navy-light);color:var(--boa-navy);',
+  EN_COURS:'background:var(--boa-green-light);color:var(--boa-green);',
+  EN_PAUSE:'background:var(--boa-orange-light);color:var(--boa-orange);',
+  TERMINE:'background:var(--boa-green-light);color:var(--boa-green-dark);font-weight:700;',
+  ANNULE:'background:var(--boa-red-light);color:var(--boa-red);'
+};
+
+const PRIORITY_LABELS = { CRITIQUE:'Critique', HAUTE:'Haute', MOYENNE:'Moyenne', BASSE:'Basse' };
+
+const PRIORITY_COLORS = {
+  CRITIQUE:'background:var(--boa-red-light);color:var(--boa-red);border:1px solid #f5c4bf;',
+  HAUTE:'background:var(--boa-orange-light);color:var(--boa-orange);border:1px solid #f5dfa8;',
+  MOYENNE:'background:var(--boa-navy-light);color:var(--boa-navy);border:1px solid #c5cde8;',
+  BASSE:'background:var(--boa-gray-surf);color:var(--boa-gray-text);border:1px solid var(--boa-gray-border);'
 };
 
 /* ─── Date helpers ──────────────────────────────────────────── */
@@ -466,7 +537,7 @@ function getSampleData(){
 /* ─── Routing ───────────────────────────────────────────────── */
 const VIEWS = {
   dashboard: { title:'Tableau de bord', subtitle:"Vue d'ensemble de l'activité projet", render: renderDashboard },
-  projects:  { title:'Projets', subtitle:'Liste et suivi des projets', render: renderPlaceholder },
+  projects:  { title:'Projets', subtitle:'Liste et suivi des projets', render: renderProjects },
   actions:   { title:'Actions ouvertes', subtitle:"Actions en attente sur l'ensemble des projets", render: renderPlaceholder },
   risks:     { title:'Risques', subtitle:'Vue consolidée des risques ouverts', render: renderPlaceholder },
 };
@@ -675,6 +746,184 @@ function renderDashboard(){
   `;
 }
 
+/* ─── Vue Projets ────────────────────────────────────────────── */
+const projectsFilterState = { search:'', status:'', priority:'', category:'' };
+let confirmDeleteId = null;
+
+function updateProjectsFilter(key, value){
+  projectsFilterState[key] = value;
+  renderProjects();
+}
+function clearProjectsFilters(){
+  projectsFilterState.search = '';
+  projectsFilterState.status = '';
+  projectsFilterState.priority = '';
+  projectsFilterState.category = '';
+  renderProjects();
+}
+function requestDeleteProject(id){
+  confirmDeleteId = id;
+  renderProjects();
+}
+function cancelDeleteProject(){
+  confirmDeleteId = null;
+  renderProjects();
+}
+function performDeleteProject(){
+  const projects = loadProjects().filter(p=>p.id !== confirmDeleteId);
+  saveProjects(projects);
+  confirmDeleteId = null;
+  renderProjects();
+}
+function viewProject(id){ alert('La fiche projet sera disponible à l\'étape 3.'); }
+function editProject(id){ alert('Le formulaire de modification sera disponible à l\'étape 5.'); }
+
+function renderProjects(){
+  const projects = loadProjects();
+  const { search, status, priority, category } = projectsFilterState;
+  const q = search.toLowerCase();
+
+  const filtered = projects.filter(p=>{
+    const matchSearch = !q
+      || p.name.toLowerCase().includes(q)
+      || p.code.toLowerCase().includes(q)
+      || p.projectManager.toLowerCase().includes(q);
+    const matchStatus = !status || p.status === status;
+    const matchPriority = !priority || p.priority === priority;
+    const matchCat = !category || p.category === category;
+    return matchSearch && matchStatus && matchPriority && matchCat;
+  });
+
+  document.getElementById('page-subtitle').textContent = `${filtered.length} projet(s)`;
+
+  const hasFilters = search || status || priority || category;
+
+  const statusOptions = Object.keys(STATUS_LABELS)
+    .map(s=>`<option value="${s}" ${status===s?'selected':''}>${STATUS_LABELS[s]}</option>`).join('');
+  const priorityOptions = Object.keys(PRIORITY_LABELS)
+    .map(p=>`<option value="${p}" ${priority===p?'selected':''}>${PRIORITY_LABELS[p]}</option>`).join('');
+  const categoryOptions = Object.entries(CATEGORY_LABELS)
+    .map(([k,v])=>`<option value="${k}" ${category===k?'selected':''}>${v}</option>`).join('');
+
+  let html = `
+    <div class="filters-bar">
+      <div class="search-wrap">
+        ${icon('Search','#9ca3af')}
+        <input id="project-search" type="text" placeholder="Rechercher un projet..." value="${escapeHtml(search)}">
+      </div>
+      <div class="select-wrap">
+        <select onchange="updateProjectsFilter('status', this.value)">
+          <option value="">Statut</option>
+          ${statusOptions}
+        </select>
+        ${icon('ChevronDown','#9ca3af')}
+      </div>
+      <div class="select-wrap">
+        <select onchange="updateProjectsFilter('priority', this.value)">
+          <option value="">Priorité</option>
+          ${priorityOptions}
+        </select>
+        ${icon('ChevronDown','#9ca3af')}
+      </div>
+      <div class="select-wrap">
+        <select onchange="updateProjectsFilter('category', this.value)">
+          <option value="">Catégorie</option>
+          ${categoryOptions}
+        </select>
+        ${icon('ChevronDown','#9ca3af')}
+      </div>
+      ${hasFilters ? `<button class="clear-link" onclick="clearProjectsFilters()">Effacer</button>` : ''}
+    </div>
+  `;
+
+  if(filtered.length === 0){
+    html += `
+      <div class="empty" style="padding:60px 18px;">
+        Aucun projet trouvé.
+      </div>`;
+  } else {
+    html += `
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr>
+              <th>Projet</th>
+              <th>Statut</th>
+              <th>Priorité</th>
+              <th>Santé</th>
+              <th>Avancement</th>
+              <th>Chef de projet</th>
+              <th>Fin prévue</th>
+              <th class="right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filtered.map(p=>{
+              const overdue = p.status === 'EN_COURS' && isOverdue(p.plannedEndDate);
+              const days = daysLeft(p.plannedEndDate);
+              return `
+              <tr>
+                <td>
+                  <div class="pname">${escapeHtml(p.name)}</div>
+                  <div class="psub">${p.code} · ${CATEGORY_LABELS[p.category] ?? p.category}</div>
+                </td>
+                <td><span class="badge" style="${STATUS_COLORS[p.status]}">${STATUS_LABELS[p.status]}</span></td>
+                <td><span class="badge" style="${PRIORITY_COLORS[p.priority]}">${PRIORITY_LABELS[p.priority]}</span></td>
+                <td>
+                  <span class="health-cell">
+                    <span class="dot" style="background:${ {VERT:'#1B7A4B',ORANGE:'#d4830a',ROUGE:'#c0392b'}[p.healthStatus] }"></span>
+                    ${HEALTH_LABELS[p.healthStatus]}
+                  </span>
+                </td>
+                <td style="width:140px;">
+                  <div class="progress-track"><div class="progress-fill" style="width:${p.progress}%"></div></div>
+                  <div class="progress-label">${p.progress}%</div>
+                </td>
+                <td>${escapeHtml(p.projectManager)}</td>
+                <td>
+                  <div style="${overdue ? 'color:var(--boa-red);font-weight:600;' : 'color:#374151;'}">${fmt(p.plannedEndDate)}</div>
+                  ${p.status==='EN_COURS' ? `<div style="font-size:11px;margin-top:2px;${overdue ? 'color:var(--boa-red);' : days<=30 ? 'color:var(--boa-orange);' : 'color:#9ca3af;'}">${overdue ? `${Math.abs(days)}j de retard` : `${days}j restants`}</div>` : ''}
+                </td>
+                <td class="right">
+                  <button class="icon-btn" title="Voir" onclick="viewProject('${p.id}')">${icon('Eye')}</button>
+                  <button class="icon-btn" title="Modifier" onclick="editProject('${p.id}')">${icon('Pencil')}</button>
+                  <button class="icon-btn danger" title="Supprimer" onclick="requestDeleteProject('${p.id}')">${icon('Trash2')}</button>
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  if(confirmDeleteId){
+    html += `
+      <div class="modal-overlay" onclick="if(event.target===this) cancelDeleteProject()">
+        <div class="modal-card">
+          <h3>Supprimer ce projet ?</h3>
+          <p>Cette action est irréversible. Toutes les données associées seront perdues.</p>
+          <div class="modal-actions">
+            <button class="btn-outline" onclick="cancelDeleteProject()">Annuler</button>
+            <button class="btn-danger" onclick="performDeleteProject()">Supprimer</button>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  document.getElementById('content').innerHTML = html;
+
+  const searchInput = document.getElementById('project-search');
+  if(searchInput){
+    searchInput.addEventListener('input', e=>{
+      const cursor = e.target.selectionStart;
+      updateProjectsFilter('search', e.target.value);
+      const newInput = document.getElementById('project-search');
+      newInput.focus();
+      newInput.setSelectionRange(cursor, cursor);
+    });
+  }
+}
+
 /* ─── Helpers d'affichage ───────────────────────────────────── */
 function escapeHtml(str){
   const div = document.createElement('div');
@@ -707,6 +956,11 @@ function icon(name, color){
     TrendingUp:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>`,
     AlertTriangle:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>`,
     ChevronRight:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>`,
+    Search:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
+    ChevronDown:`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`,
+    Eye:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>`,
+    Pencil:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>`,
+    Trash2:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>`,
   };
   return icons[name] || '';
 }
