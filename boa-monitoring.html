@@ -243,6 +243,72 @@
   .btn-danger{padding:8px 16px;border-radius:8px;font-size:13px;border:none;background:var(--boa-red);color:#fff;cursor:pointer;}
   .btn-danger:hover{background:#a8311f;}
 
+  /* ─── Project detail ─────────────────────────────────────── */
+  .back-link{
+    display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#6b7280;
+    text-decoration:none;margin-bottom:14px;cursor:pointer;background:none;border:none;
+  }
+  .back-link:hover{color:var(--boa-green);}
+
+  .detail-header{background:#fff;border:1px solid var(--boa-gray-border);border-radius:12px;padding:20px;}
+  .detail-header-top{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;}
+  .detail-badges{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .detail-progress{min-width:160px;}
+  .detail-meta-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:18px;}
+  .meta-item label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#9ca3af;margin-bottom:4px;}
+  .meta-item .value{font-size:13.5px;font-weight:600;color:var(--boa-black);}
+
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--boa-gray-border);margin:20px 0;overflow-x:auto;}
+  .tab-btn{
+    padding:10px 16px;font-size:13px;font-weight:600;color:#9ca3af;background:none;
+    border:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;
+  }
+  .tab-btn:hover{color:var(--boa-green-dark);}
+  .tab-btn.active{color:var(--boa-green);border-bottom-color:var(--boa-green);}
+
+  .info-section{margin-bottom:20px;}
+  .info-section h3{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#9ca3af;margin-bottom:8px;font-weight:600;}
+  .info-section p{font-size:13.5px;color:#374151;line-height:1.6;white-space:pre-line;}
+
+  .team-list{display:flex;flex-direction:column;gap:8px;}
+  .team-member{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--boa-gray-surf);border-radius:8px;}
+  .avatar{
+    width:32px;height:32px;border-radius:50%;background:var(--boa-navy-light);color:var(--boa-navy);
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;
+  }
+  .team-member .name{font-size:13px;font-weight:600;color:var(--boa-black);}
+  .team-member .role{font-size:11.5px;color:#9ca3af;}
+
+  /* Milestones / tasks */
+  .milestone-card{border:1px solid var(--boa-gray-border);border-radius:12px;margin-bottom:14px;overflow:hidden;background:#fff;}
+  .milestone-head{
+    padding:14px 18px;display:flex;justify-content:space-between;align-items:center;
+    flex-wrap:wrap;gap:10px;background:var(--boa-gray-bg);border-bottom:1px solid var(--boa-gray-border);
+  }
+  .milestone-title{font-size:14px;font-weight:700;color:var(--boa-black);}
+  .milestone-sub{font-size:11.5px;color:#9ca3af;margin-top:2px;}
+  .milestone-body{padding:14px 18px;}
+  .milestone-body table{font-size:12.5px;}
+  .milestone-body th, .milestone-body td{padding:8px 10px;}
+  .milestone-progress{display:flex;align-items:center;gap:8px;min-width:120px;}
+  .milestone-progress .progress-track{width:80px;}
+  .deliverables{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+  .deliverable-tag{font-size:11px;padding:3px 8px;border-radius:6px;background:var(--boa-gray-surf);color:#6b7280;}
+
+  /* Journal */
+  .journal-card{border:1px solid var(--boa-gray-border);border-radius:12px;padding:16px 18px;margin-bottom:12px;background:#fff;}
+  .journal-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:6px;flex-wrap:wrap;}
+  .journal-card-title{font-size:14px;font-weight:700;color:var(--boa-black);}
+  .journal-card-meta{font-size:11.5px;color:#9ca3af;margin-top:2px;}
+  .journal-card-desc{font-size:13px;color:#374151;line-height:1.6;margin-top:8px;}
+  .journal-participants{font-size:11.5px;color:#6b7280;margin-top:8px;}
+  .action-item-row{
+    display:flex;align-items:center;gap:8px;font-size:12.5px;padding:7px 10px;
+    border-radius:6px;background:var(--boa-gray-bg);margin-top:6px;
+  }
+  .action-item-row .flex1{flex:1;}
+  .action-item-row .due{color:#9ca3af;font-size:11.5px;}
+
   @media (max-width:900px){
     .grid-4{grid-template-columns:repeat(2,1fr);}
     .grid-3{grid-template-columns:1fr;}
@@ -274,10 +340,6 @@
       <button class="nav-item" data-view="actions">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
         Actions ouvertes
-      </button>
-      <button class="nav-item" data-view="risks">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-        Risques
       </button>
     </nav>
     <div class="sidebar-footer">
@@ -356,6 +418,35 @@ const PRIORITY_COLORS = {
   HAUTE:'background:var(--boa-orange-light);color:var(--boa-orange);border:1px solid #f5dfa8;',
   MOYENNE:'background:var(--boa-navy-light);color:var(--boa-navy);border:1px solid #c5cde8;',
   BASSE:'background:var(--boa-gray-surf);color:var(--boa-gray-text);border:1px solid var(--boa-gray-border);'
+};
+
+const MILESTONE_STATUS_LABELS = {
+  NON_COMMENCE:'Non commencé', EN_COURS:'En cours', TERMINE:'Terminé', EN_RETARD:'En retard', ANNULE:'Annulé'
+};
+const MILESTONE_STATUS_COLORS = {
+  NON_COMMENCE:'background:var(--boa-gray-surf);color:var(--boa-gray-text);',
+  EN_COURS:'background:var(--boa-navy-light);color:var(--boa-navy);',
+  TERMINE:'background:var(--boa-green-light);color:var(--boa-green);',
+  EN_RETARD:'background:var(--boa-red-light);color:var(--boa-red);',
+  ANNULE:'background:var(--boa-gray-surf);color:var(--boa-gray-text);opacity:.6;'
+};
+
+const TASK_STATUS_LABELS = {
+  A_FAIRE:'À faire', EN_COURS:'En cours', TERMINE:'Terminé', BLOQUE:'Bloqué', ANNULE:'Annulé'
+};
+const TASK_STATUS_COLORS = {
+  A_FAIRE:'background:var(--boa-gray-surf);color:var(--boa-gray-text);',
+  EN_COURS:'background:var(--boa-navy-light);color:var(--boa-navy);',
+  TERMINE:'background:var(--boa-green-light);color:var(--boa-green);',
+  BLOQUE:'background:var(--boa-red-light);color:var(--boa-red);',
+  ANNULE:'background:var(--boa-gray-surf);color:var(--boa-gray-text);opacity:.6;'
+};
+
+const ACTION_STATUS_LABELS = { OUVERT:'Ouvert', EN_COURS:'En cours', FERME:'Fermé' };
+const ACTION_STATUS_COLORS = {
+  OUVERT:'background:var(--boa-orange-light);color:var(--boa-orange);',
+  EN_COURS:'background:var(--boa-navy-light);color:var(--boa-navy);',
+  FERME:'background:var(--boa-green-light);color:var(--boa-green);'
 };
 
 /* ─── Date helpers ──────────────────────────────────────────── */
@@ -539,7 +630,6 @@ const VIEWS = {
   dashboard: { title:'Tableau de bord', subtitle:"Vue d'ensemble de l'activité projet", render: renderDashboard },
   projects:  { title:'Projets', subtitle:'Liste et suivi des projets', render: renderProjects },
   actions:   { title:'Actions ouvertes', subtitle:"Actions en attente sur l'ensemble des projets", render: renderPlaceholder },
-  risks:     { title:'Risques', subtitle:'Vue consolidée des risques ouverts', render: renderPlaceholder },
 };
 
 function navigate(view){
@@ -924,6 +1014,265 @@ function renderProjects(){
   }
 }
 
+/* ─── Vue Fiche projet ───────────────────────────────────────── */
+let detailState = { projectId:null, tab:'apercu' };
+
+function viewProject(id){
+  detailState = { projectId:id, tab:'apercu' };
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  location.hash = `project/${id}`;
+  renderProjectDetail();
+}
+function setDetailTab(tab){
+  detailState.tab = tab;
+  renderProjectDetail();
+}
+function backToProjects(){ navigate('projects'); }
+
+const HEALTH_DOT_HEX = { VERT:'#1B7A4B', ORANGE:'#d4830a', ROUGE:'#c0392b' };
+
+function renderProjectDetail(){
+  const project = loadProjects().find(p=>p.id===detailState.projectId);
+  if(!project){ navigate('projects'); return; }
+
+  document.getElementById('page-title').textContent = project.name;
+  document.getElementById('page-subtitle').textContent = `${project.code} · ${CATEGORY_LABELS[project.category] ?? project.category}`;
+
+  const tabs = [
+    { id:'apercu', label:'Aperçu' },
+    { id:'jalons', label:'Jalons & Tâches' },
+    { id:'journal', label:`Journal (${project.journal.length})` },
+  ];
+
+  let tabContent = '';
+  if(detailState.tab === 'apercu') tabContent = renderApercuTab(project);
+  else if(detailState.tab === 'jalons') tabContent = renderJalonsTab(project);
+  else if(detailState.tab === 'journal') tabContent = renderJournalTab(project);
+
+  document.getElementById('content').innerHTML = `
+    <button class="back-link" onclick="backToProjects()">${icon('ArrowLeft')} Retour aux projets</button>
+
+    <div class="detail-header">
+      <div class="detail-header-top">
+        <div class="detail-badges">
+          <span class="badge" style="${STATUS_COLORS[project.status]}">${STATUS_LABELS[project.status]}</span>
+          <span class="badge" style="${PRIORITY_COLORS[project.priority]}">${PRIORITY_LABELS[project.priority]}</span>
+          <span class="health-cell">
+            <span class="dot" style="background:${HEALTH_DOT_HEX[project.healthStatus]}"></span>
+            ${HEALTH_LABELS[project.healthStatus]}
+          </span>
+        </div>
+        <div class="detail-progress">
+          <div class="progress-track"><div class="progress-fill" style="width:${project.progress}%"></div></div>
+          <div class="progress-label">${project.progress}% complété</div>
+        </div>
+      </div>
+      <div class="detail-meta-grid">
+        <div class="meta-item"><label>Chef de projet</label><div class="value">${escapeHtml(project.projectManager)}</div></div>
+        <div class="meta-item"><label>Sponsor</label><div class="value">${escapeHtml(project.sponsor)}</div></div>
+        <div class="meta-item"><label>Date de début</label><div class="value">${fmt(project.startDate)}</div></div>
+        <div class="meta-item"><label>Fin prévue</label><div class="value">${fmt(project.plannedEndDate)}</div></div>
+        <div class="meta-item"><label>Durée prévue</label><div class="value">${project.plannedDurationDays} jours</div></div>
+        <div class="meta-item"><label>Date de fin réelle</label><div class="value">${fmt(project.actualEndDate)}</div></div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      ${tabs.map(t=>`<button class="tab-btn ${detailState.tab===t.id?'active':''}" onclick="setDetailTab('${t.id}')">${t.label}</button>`).join('')}
+    </div>
+
+    ${tabContent}
+  `;
+}
+
+function renderApercuTab(project){
+  return `
+    <div class="grid grid-2">
+      <div class="card" style="padding:20px;">
+        <div class="info-section">
+          <h3>Description</h3>
+          <p>${escapeHtml(project.description) || '—'}</p>
+        </div>
+        <div class="info-section">
+          <h3>Objectifs</h3>
+          <p>${escapeHtml(project.objectives) || '—'}</p>
+        </div>
+        <div class="info-section">
+          <h3>Périmètre (in scope)</h3>
+          <p>${escapeHtml(project.scope) || '—'}</p>
+        </div>
+        <div class="info-section">
+          <h3>Hors périmètre</h3>
+          <p>${escapeHtml(project.outOfScope) || '—'}</p>
+        </div>
+        <div class="info-section">
+          <h3>Critères de succès</h3>
+          <p>${escapeHtml(project.successCriteria) || '—'}</p>
+        </div>
+        <div class="info-section">
+          <h3>Hypothèses</h3>
+          <p>${escapeHtml(project.assumptions) || '—'}</p>
+        </div>
+        <div class="info-section">
+          <h3>Contraintes</h3>
+          <p>${escapeHtml(project.constraints) || '—'}</p>
+        </div>
+        <div class="info-section" style="margin-bottom:0;">
+          <h3>Dépendances inter-projets</h3>
+          <p>${escapeHtml(project.interProjectDependencies) || '—'}</p>
+        </div>
+      </div>
+
+      <div>
+        <div class="card" style="padding:20px;margin-bottom:16px;">
+          <div class="info-section" style="margin-bottom:0;">
+            <h3>Équipe projet</h3>
+            <div class="team-list">
+              ${project.team.length===0 ? `<div class="empty" style="padding:16px;">Aucun membre renseigné</div>` :
+                project.team.map(m=>`
+                  <div class="team-member">
+                    <div class="avatar">${initials(m.name)}</div>
+                    <div>
+                      <div class="name">${escapeHtml(m.name)}</div>
+                      <div class="role">${escapeHtml(m.role)}${m.organization ? ' · ' + escapeHtml(m.organization) : ''}</div>
+                    </div>
+                  </div>`).join('')
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="padding:20px;margin-bottom:16px;">
+          <div class="info-section" style="margin-bottom:0;">
+            <h3>Parties prenantes</h3>
+            <div class="team-list">
+              ${project.stakeholders.length===0 ? `<div class="empty" style="padding:16px;">Aucune partie prenante renseignée</div>` :
+                project.stakeholders.map(s=>`
+                  <div class="team-member">
+                    <div class="avatar">${initials(s.name)}</div>
+                    <div>
+                      <div class="name">${escapeHtml(s.name)}</div>
+                      <div class="role">${escapeHtml(s.role)} · ${escapeHtml(s.organization)} · Influence ${s.influence.toLowerCase()} / Intérêt ${s.interest.toLowerCase()}</div>
+                    </div>
+                  </div>`).join('')
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="padding:20px;">
+          <div class="info-section" style="margin-bottom:0;">
+            <h3>Tags</h3>
+            <div class="deliverables">
+              ${project.tags.length===0 ? '—' : project.tags.map(t=>`<span class="deliverable-tag">${escapeHtml(t)}</span>`).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderJalonsTab(project){
+  if(project.milestones.length === 0){
+    return `<div class="empty" style="padding:48px;background:#fff;border:1px solid var(--boa-gray-border);border-radius:12px;">Aucun jalon défini pour ce projet.</div>`;
+  }
+  const sorted = [...project.milestones].sort((a,b)=>a.order-b.order);
+  return sorted.map(m=>{
+    const prog = milestoneProgress(m);
+    return `
+    <div class="milestone-card">
+      <div class="milestone-head">
+        <div>
+          <div class="milestone-title">${m.order}. ${escapeHtml(m.name)}</div>
+          <div class="milestone-sub">Responsable : ${escapeHtml(m.responsible)} · Prévu : ${fmt(m.plannedDate)}${m.actualDate ? ' · Réalisé : ' + fmt(m.actualDate) : ''}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span class="badge" style="${MILESTONE_STATUS_COLORS[m.status]}">${MILESTONE_STATUS_LABELS[m.status]}</span>
+          <div class="milestone-progress">
+            <div class="progress-track"><div class="progress-fill" style="width:${prog}%"></div></div>
+            <span class="progress-label" style="margin-top:0;">${prog}%</span>
+          </div>
+        </div>
+      </div>
+      <div class="milestone-body">
+        ${m.description ? `<p style="font-size:13px;color:#374151;margin-bottom:10px;">${escapeHtml(m.description)}</p>` : ''}
+        ${m.deliverables && m.deliverables.length ? `
+          <div class="deliverables">
+            ${m.deliverables.map(d=>`<span class="deliverable-tag">${escapeHtml(d)}</span>`).join('')}
+          </div>` : ''}
+        ${m.tasks.length > 0 ? `
+          <table style="margin-top:12px;">
+            <thead>
+              <tr>
+                <th>Tâche</th>
+                <th>Statut</th>
+                <th>Assigné à</th>
+                <th>Prévu</th>
+                <th>Réalisé</th>
+                <th>Avancement</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${m.tasks.map(t=>`
+                <tr>
+                  <td>${escapeHtml(t.name)}</td>
+                  <td><span class="badge" style="${TASK_STATUS_COLORS[t.status]}">${TASK_STATUS_LABELS[t.status]}</span></td>
+                  <td>${t.assignedTo.map(escapeHtml).join(', ') || '—'}</td>
+                  <td>${fmt(t.plannedDate)}</td>
+                  <td>${fmt(t.actualDate)}</td>
+                  <td style="width:120px;">
+                    <div class="progress-track"><div class="progress-fill" style="width:${t.progress}%"></div></div>
+                    <div class="progress-label">${t.progress}%</div>
+                  </td>
+                </tr>`).join('')}
+            </tbody>
+          </table>` : `<div class="empty" style="padding:16px;">Aucune tâche pour ce jalon.</div>`
+        }
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderJournalTab(project){
+  if(project.journal.length === 0){
+    return `<div class="empty" style="padding:48px;background:#fff;border:1px solid var(--boa-gray-border);border-radius:12px;">Aucun événement enregistré pour ce projet.</div>`;
+  }
+  const sorted = [...project.journal].sort((a,b)=>b.date.localeCompare(a.date));
+  return sorted.map(j=>`
+    <div class="journal-card">
+      <div class="journal-card-head">
+        <div>
+          <div class="journal-card-title">${escapeHtml(j.title)}</div>
+          <div class="journal-card-meta">${fmt(j.date)} · ${escapeHtml(j.author)}${j.location ? ' · ' + escapeHtml(j.location) : ''}</div>
+        </div>
+        <span class="badge" style="${JOURNAL_TYPE_COLORS[j.type]}">${JOURNAL_TYPE_LABELS[j.type]}</span>
+      </div>
+      <div class="journal-card-desc">${escapeHtml(j.description)}</div>
+      ${j.participants && j.participants.length ? `<div class="journal-participants">Participants : ${j.participants.map(escapeHtml).join(', ')}</div>` : ''}
+      ${j.nextMeetingDate ? `<div class="journal-participants">Prochaine échéance : ${fmt(j.nextMeetingDate)}</div>` : ''}
+      ${j.actionItems && j.actionItems.length ? `
+        <div class="journal-actions-list">
+          ${j.actionItems.map(a=>`
+            <div class="action-item-row">
+              <span class="badge" style="${ACTION_STATUS_COLORS[a.status]}">${ACTION_STATUS_LABELS[a.status]}</span>
+              <span class="flex1">${escapeHtml(a.description)} — ${escapeHtml(a.assignedTo)}</span>
+              <span class="due">Échéance : ${fmt(a.dueDate)}</span>
+            </div>`).join('')}
+        </div>` : ''
+      }
+    </div>`).join('');
+}
+
+function initials(name){
+  return (name || '').split(' ').map(p=>p[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
+}
+function milestoneProgress(m){
+  if(!m.tasks.length) return m.status==='TERMINE' ? 100 : 0;
+  const done = m.tasks.filter(t=>t.status==='TERMINE').length;
+  return Math.round((done/m.tasks.length)*100);
+}
+
 /* ─── Helpers d'affichage ───────────────────────────────────── */
 function escapeHtml(str){
   const div = document.createElement('div');
@@ -961,13 +1310,18 @@ function icon(name, color){
     Eye:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>`,
     Pencil:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>`,
     Trash2:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>`,
+    ArrowLeft:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>`,
   };
   return icons[name] || '';
 }
 
 /* ─── Init ──────────────────────────────────────────────────── */
-const initialView = location.hash.replace('#','') || 'dashboard';
-navigate(initialView);
+const initialHash = location.hash.replace('#','') || 'dashboard';
+if(initialHash.startsWith('project/')){
+  viewProject(initialHash.split('/')[1]);
+} else {
+  navigate(initialHash);
+}
 </script>
 </body>
 </html>
