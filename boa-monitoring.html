@@ -348,6 +348,7 @@
   .gantt-handle-right{right:-4px;}
   .gantt-handle:hover{background:rgba(0,0,0,.18);border-radius:4px;}
   .gantt-bar.dragging{box-shadow:0 0 0 2px var(--boa-navy);}
+  .gantt-bar.critical{box-shadow:0 0 0 2px var(--boa-red);}
   .gantt-diamond{position:absolute;top:9px;width:16px;height:16px;transform:rotate(45deg);border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.08);}
   .gantt-today{position:absolute;top:0;bottom:0;width:2px;background:var(--boa-red);z-index:2;}
   .gantt-deps-svg{position:absolute;top:0;left:0;z-index:1;pointer-events:none;}
@@ -2040,6 +2041,61 @@ function ganttDepPath(x1, y1, x2, y2){
   return `M${x1},${y1} h12 V${midY} H${x2-12} V${y2} H${x2}`;
 }
 
+// Calcule le chemin critique (méthode CPM) sur la base des durées et dépendances Fin->Début
+function computeCriticalPath(project){
+  const tasks = allProjectTasks(project).filter(t=>t.plannedDate);
+  const byId = {};
+  tasks.forEach(t=>byId[t.id] = t);
+  const dur = {};
+  tasks.forEach(t=>dur[t.id] = Math.max(1, t.estimatedDays || 1));
+
+  const ES = {}, EF = {};
+  function computeEF(id, seen){
+    if(EF[id] !== undefined) return EF[id];
+    if(seen.has(id)){ ES[id] = 0; return ES[id] + dur[id]; }
+    seen.add(id);
+    const deps = (byId[id].dependencies || []).filter(d=>byId[d]);
+    const es = deps.length ? Math.max(...deps.map(d=>computeEF(d, seen))) : 0;
+    ES[id] = es;
+    EF[id] = es + dur[id];
+    return EF[id];
+  }
+  tasks.forEach(t=>computeEF(t.id, new Set()));
+
+  const projectEnd = Math.max(0, ...tasks.map(t=>EF[t.id]));
+
+  const successors = {};
+  tasks.forEach(t=>successors[t.id] = []);
+  tasks.forEach(t=>(t.dependencies || []).forEach(d=>{ if(successors[d]) successors[d].push(t.id); }));
+
+  const LS = {};
+  function computeLS(id, seen){
+    if(LS[id] !== undefined) return LS[id];
+    if(seen.has(id)){ LS[id] = projectEnd - dur[id]; return LS[id]; }
+    seen.add(id);
+    const succs = successors[id];
+    const lf = succs.length ? Math.min(...succs.map(s=>computeLS(s, seen))) : projectEnd;
+    LS[id] = lf - dur[id];
+    return LS[id];
+  }
+  tasks.forEach(t=>computeLS(t.id, new Set()));
+
+  const criticalTasks = new Set();
+  tasks.forEach(t=>{ if(LS[t.id] - ES[t.id] === 0) criticalTasks.add(t.id); });
+
+  const criticalEdges = new Set();
+  tasks.forEach(t=>{
+    (t.dependencies || []).forEach(predId=>{
+      if(!byId[predId]) return;
+      if(criticalTasks.has(t.id) && criticalTasks.has(predId) && EF[predId] === ES[t.id]){
+        criticalEdges.add(predId + '|' + t.id);
+      }
+    });
+  });
+
+  return { criticalTasks, criticalEdges };
+}
+
 function renderJalonsChrono(project){
   const { min, max } = ganttDateRange(project);
   const months = ganttMonths(min, max);
@@ -2053,6 +2109,8 @@ function renderJalonsChrono(project){
     if(yearGroups.length && yearGroups[yearGroups.length-1].year === y) yearGroups[yearGroups.length-1].count++;
     else yearGroups.push({ year:y, count:1 });
   });
+
+  const { criticalTasks, criticalEdges } = computeCriticalPath(project);
 
   const todayX = ganttDateToX(new Date(), min, mw);
   let labelsHtml = `<div class="gantt-labels-head">Jalons &amp; tâches</div>`;
@@ -2081,8 +2139,9 @@ function renderJalonsChrono(project){
         const x2 = ganttDateToX(end, min, mw);
         const w = Math.max(8, x2 - x1);
         taskPos[t.id] = { x1, x2: x1 + w, y: rowY };
+        const isCritical = criticalTasks.has(t.id);
         barHtml = `
-          <div class="gantt-bar" style="left:${x1}px;width:${w}px;" title="${escapeHtml(t.name)} : du ${fmt(start.toISOString().slice(0,10))} au ${fmt(t.plannedDate)} — ${t.progress}%">
+          <div class="gantt-bar${isCritical ? ' critical' : ''}" style="left:${x1}px;width:${w}px;" title="${escapeHtml(t.name)} : du ${fmt(start.toISOString().slice(0,10))} au ${fmt(t.plannedDate)} — ${t.progress}%${isCritical ? ' — Chemin critique' : ''}">
             <div class="gantt-bar-fill" style="width:${t.progress}%;background:${TASK_STATUS_BAR[t.status]};"></div>
             <div class="gantt-handle gantt-handle-left" data-project="${project.id}" data-task="${t.id}" data-edge="start"></div>
             <div class="gantt-handle gantt-handle-right" data-project="${project.id}" data-task="${t.id}" data-edge="end"></div>
@@ -2102,8 +2161,11 @@ function renderJalonsChrono(project){
       const from = taskPos[predId];
       const to = taskPos[t.id];
       if(!from || !to) return;
+      const isCritical = criticalEdges.has(predId + '|' + t.id);
+      const stroke = isCritical ? 'var(--boa-red)' : '#9ca3af';
+      const marker = isCritical ? 'ganttArrowCritical' : 'ganttArrow';
       depPaths.push(`<path class="gantt-dep-link" data-pred="${predId}" data-succ="${t.id}" data-project="${project.id}"
-        d="${ganttDepPath(from.x2, from.y, to.x1, to.y)}" fill="none" stroke="#9ca3af" stroke-width="1.5" marker-end="url(#ganttArrow)">
+        d="${ganttDepPath(from.x2, from.y, to.x1, to.y)}" fill="none" stroke="${stroke}" stroke-width="${isCritical ? 2.5 : 1.5}" marker-end="url(#${marker})">
         <title>Dépendance Fin→Début (clic pour supprimer)</title>
       </path>`);
     });
@@ -2113,6 +2175,9 @@ function renderJalonsChrono(project){
       <defs>
         <marker id="ganttArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
           <path d="M0,0 L10,5 L0,10 z" fill="#9ca3af"/>
+        </marker>
+        <marker id="ganttArrowCritical" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--boa-red)"/>
         </marker>
       </defs>
       ${depPaths.join('')}
@@ -2147,6 +2212,7 @@ function renderJalonsChrono(project){
       <span><span class="lg-swatch" style="background:${TASK_STATUS_BAR.BLOQUE}"></span>Tâche bloquée</span>
       <span style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-block;width:14px;height:2px;background:var(--boa-red);"></span>Aujourd'hui</span>
       <span style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-block;width:14px;height:2px;background:#9ca3af;"></span>Dépendance (glisser depuis le point bleu pour en créer une, clic sur le lien pour le supprimer)</span>
+      <span style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:#fff;box-shadow:0 0 0 2px var(--boa-red);"></span>Chemin critique</span>
     </div>`;
 }
 
