@@ -336,6 +336,8 @@
   .gantt-labels-head{height:46px;border-bottom:1px solid var(--boa-gray-border);display:flex;align-items:center;padding:0 12px;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;}
   .gantt-row{height:34px;display:flex;align-items:center;padding:0 12px;font-size:12px;border-bottom:1px solid var(--boa-gray-border);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
   .gantt-row.gantt-milestone-row{font-weight:700;background:var(--boa-gray-bg);}
+  .gantt-resource{position:absolute;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:4px;white-space:nowrap;font-size:11px;color:#374151;pointer-events:none;z-index:2;}
+  .gantt-resource .avatar-sm{width:18px;height:18px;border-radius:50%;background:var(--boa-navy-light);color:var(--boa-navy);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:9px;flex-shrink:0;}
   .gantt-toggle{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;margin-right:2px;cursor:pointer;border-radius:4px;flex-shrink:0;}
   .gantt-toggle:hover{background:var(--boa-gray-border);}
   .gantt-row.gantt-task-row{color:#6b7280;padding-left:24px;}
@@ -2225,6 +2227,16 @@ function renderJalonsChrono(project){
           baselineHtml = `<div class="gantt-baseline" style="left:${bx1}px;width:${bw}px;" title="Référence initiale : du ${fmt(baseline.start.toISOString().slice(0,10))} au ${fmt(t.baselinePlannedDate)}"></div>`;
         }
 
+        let resourceHtml = '';
+        const assignee = (t.assignedTo || [])[0];
+        if(assignee){
+          const extra = t.assignedTo.length > 1 ? ` +${t.assignedTo.length - 1}` : '';
+          resourceHtml = `<div class="gantt-resource" style="left:${x1+w+22}px;" title="${escapeHtml(t.assignedTo.join(', '))}">
+            <span class="avatar-sm">${initials(assignee)}</span>
+            <span>${escapeHtml(assignee)}${extra}</span>
+          </div>`;
+        }
+
         barHtml = `
           ${baselineHtml}
           <div class="gantt-bar${isCritical ? ' critical' : ''}" style="left:${x1}px;width:${w}px;" title="${escapeHtml(t.name)} : du ${fmt(start.toISOString().slice(0,10))} au ${fmt(t.plannedDate)} — ${t.progress}%${isCritical ? ' — Chemin critique' : ''}">
@@ -2232,7 +2244,8 @@ function renderJalonsChrono(project){
             <div class="gantt-handle gantt-handle-left" data-project="${project.id}" data-task="${t.id}" data-edge="start"></div>
             <div class="gantt-handle gantt-handle-right" data-project="${project.id}" data-task="${t.id}" data-edge="end"></div>
           </div>
-          <div class="gantt-connector" style="left:${x1+w+9}px;" data-project="${project.id}" data-task="${t.id}" title="Glisser pour créer une dépendance"></div>`;
+          <div class="gantt-connector" style="left:${x1+w+9}px;" data-project="${project.id}" data-task="${t.id}" title="Glisser pour créer une dépendance"></div>
+          ${resourceHtml}`;
       }
       rowsHtml += `<div class="gantt-track" data-task-id="${t.id}">${barHtml}</div>`;
     });
@@ -2304,6 +2317,7 @@ function renderJalonsChrono(project){
       <span style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-block;width:14px;height:4px;border-radius:2px;background:repeating-linear-gradient(135deg,#cbd5e1,#cbd5e1 4px,#fff 4px,#fff 8px);border:1px solid #9ca3af;"></span>Référence (baseline) initiale</span>
       <span style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:rgba(0,0,0,.06);"></span>Week-end</span>
       <span style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:rgba(192,57,43,.12);"></span>Jour férié</span>
+      <span style="display:inline-flex;align-items:center;gap:6px;"><span class="avatar-sm" style="position:static;">XX</span>Ressource affectée</span>
     </div>`;
 }
 
