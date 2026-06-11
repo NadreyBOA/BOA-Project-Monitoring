@@ -338,7 +338,16 @@
   .gantt-row.gantt-milestone-row{font-weight:700;background:var(--boa-gray-bg);}
   .gantt-row.gantt-task-row{color:#6b7280;padding-left:24px;}
   .gantt-track{position:relative;height:34px;border-bottom:1px solid var(--boa-gray-border);}
-  .gantt-bar{position:absolute;top:7px;height:20px;border-radius:6px;font-size:10px;color:#fff;display:flex;align-items:center;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .gantt-bar{
+    position:absolute;top:7px;height:20px;border-radius:6px;background:var(--boa-gray-surf);
+    border:1px solid var(--boa-gray-border);overflow:visible;box-sizing:border-box;
+  }
+  .gantt-bar-fill{height:100%;border-radius:5px;}
+  .gantt-handle{position:absolute;top:0;bottom:0;width:8px;cursor:ew-resize;z-index:3;}
+  .gantt-handle-left{left:-4px;}
+  .gantt-handle-right{right:-4px;}
+  .gantt-handle:hover{background:rgba(0,0,0,.18);border-radius:4px;}
+  .gantt-bar.dragging{box-shadow:0 0 0 2px var(--boa-navy);}
   .gantt-diamond{position:absolute;top:9px;width:16px;height:16px;transform:rotate(45deg);border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.08);}
   .gantt-today{position:absolute;top:0;bottom:0;width:2px;background:var(--boa-red);z-index:2;}
   .gantt-legend{display:flex;gap:18px;flex-wrap:wrap;align-items:center;font-size:11.5px;color:#6b7280;margin-top:10px;}
@@ -1718,6 +1727,10 @@ function renderProjectDetail(){
 
     ${tabContent}
   `;
+
+  if(detailState.tab === 'jalons' && (detailState.jalonsView || 'liste') === 'chrono'){
+    initGanttDrag();
+  }
 }
 
 function renderApercuTab(project){
@@ -2043,8 +2056,13 @@ function renderJalonsChrono(project){
         const { start, end } = ganttTaskDates(t);
         const x1 = ganttDateToX(start, min, mw);
         const x2 = ganttDateToX(end, min, mw);
-        const w = Math.max(6, x2 - x1);
-        barHtml = `<div class="gantt-bar" style="left:${x1}px;width:${w}px;background:${TASK_STATUS_BAR[t.status]};" title="${escapeHtml(t.name)} : du ${fmt(start.toISOString().slice(0,10))} au ${fmt(t.plannedDate)} — ${t.progress}%">${t.progress}%</div>`;
+        const w = Math.max(8, x2 - x1);
+        barHtml = `
+          <div class="gantt-bar" style="left:${x1}px;width:${w}px;" title="${escapeHtml(t.name)} : du ${fmt(start.toISOString().slice(0,10))} au ${fmt(t.plannedDate)} — ${t.progress}%">
+            <div class="gantt-bar-fill" style="width:${t.progress}%;background:${TASK_STATUS_BAR[t.status]};"></div>
+            <div class="gantt-handle gantt-handle-left" data-project="${project.id}" data-task="${t.id}" data-edge="start"></div>
+            <div class="gantt-handle gantt-handle-right" data-project="${project.id}" data-task="${t.id}" data-edge="end"></div>
+          </div>`;
       }
       rowsHtml += `<div class="gantt-track">${barHtml}</div>`;
     });
@@ -2080,6 +2098,89 @@ function renderJalonsChrono(project){
       <span><span class="lg-swatch" style="background:${TASK_STATUS_BAR.BLOQUE}"></span>Tâche bloquée</span>
       <span style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-block;width:14px;height:2px;background:var(--boa-red);"></span>Aujourd'hui</span>
     </div>`;
+}
+
+let ganttDrag = null;
+
+function initGanttDrag(){
+  document.querySelectorAll('.gantt-handle').forEach(handle=>{
+    handle.addEventListener('mousedown', startGanttResize);
+  });
+}
+
+function startGanttResize(ev){
+  ev.preventDefault();
+  ev.stopPropagation();
+  const handle = ev.currentTarget;
+  const track = handle.parentElement;
+  track.classList.add('dragging');
+  ganttDrag = {
+    track, handle,
+    edge: handle.dataset.edge,
+    projectId: handle.dataset.project,
+    taskId: handle.dataset.task,
+    startX: ev.clientX,
+    origLeft: parseFloat(track.style.left),
+    origWidth: parseFloat(track.style.width),
+    pxPerDay: GANTT_MONTH_WIDTH / 30,
+  };
+  document.addEventListener('mousemove', onGanttResizeMove);
+  document.addEventListener('mouseup', onGanttResizeEnd);
+}
+
+function onGanttResizeMove(ev){
+  if(!ganttDrag) return;
+  const dx = ev.clientX - ganttDrag.startX;
+  const minW = 8;
+  if(ganttDrag.edge === 'end'){
+    const newWidth = Math.max(minW, ganttDrag.origWidth + dx);
+    ganttDrag.track.style.width = newWidth + 'px';
+  } else {
+    let newLeft = ganttDrag.origLeft + dx;
+    let newWidth = ganttDrag.origWidth - dx;
+    if(newWidth < minW){
+      newWidth = minW;
+      newLeft = ganttDrag.origLeft + (ganttDrag.origWidth - minW);
+    }
+    ganttDrag.track.style.left = newLeft + 'px';
+    ganttDrag.track.style.width = newWidth + 'px';
+  }
+}
+
+function onGanttResizeEnd(ev){
+  if(!ganttDrag) return;
+  document.removeEventListener('mousemove', onGanttResizeMove);
+  document.removeEventListener('mouseup', onGanttResizeEnd);
+  const { track, edge, projectId, taskId, startX, pxPerDay } = ganttDrag;
+  track.classList.remove('dragging');
+  const dx = ev.clientX - startX;
+  const dayDelta = Math.round(dx / pxPerDay);
+  ganttDrag = null;
+  if(dayDelta === 0) return;
+
+  const projects = loadProjects();
+  const p = projects.find(x=>x.id===projectId);
+  let task = null;
+  p.milestones.forEach(m=>m.tasks.forEach(t=>{ if(t.id === taskId) task = t; }));
+  if(!task || !task.plannedDate) return;
+
+  const end = new Date(task.plannedDate);
+  const start = new Date(end);
+  start.setDate(start.getDate() - Math.max(1, task.estimatedDays || 1));
+
+  if(edge === 'end'){
+    end.setDate(end.getDate() + dayDelta);
+    if(end <= start) end.setTime(start.getTime() + 86400000);
+    task.plannedDate = end.toISOString().slice(0, 10);
+  } else {
+    start.setDate(start.getDate() + dayDelta);
+    if(start >= end) start.setTime(end.getTime() - 86400000);
+  }
+  task.estimatedDays = Math.max(1, Math.round((end - start) / 86400000));
+
+  p.updatedAt = new Date().toISOString();
+  saveProjects(projects);
+  renderProjectDetail();
 }
 
 function allProjectTasks(project){
