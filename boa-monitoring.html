@@ -355,6 +355,9 @@
   .gantt-diamond{position:absolute;top:9px;width:16px;height:16px;transform:rotate(45deg);border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.08);}
   .gantt-today{position:absolute;top:0;bottom:0;width:2px;background:var(--boa-red);z-index:2;}
   .gantt-deps-svg{position:absolute;top:0;left:0;z-index:1;pointer-events:none;}
+  .gantt-nonworking{position:absolute;top:0;z-index:0;}
+  .gantt-nonworking.weekend{background:rgba(0,0,0,.035);}
+  .gantt-nonworking.holiday{background:rgba(192,57,43,.08);}
   .gantt-deps-svg path.gantt-dep-link{cursor:pointer;pointer-events:stroke;}
   .gantt-deps-svg path.gantt-dep-link:hover{stroke:var(--boa-red);stroke-width:2.5;}
   .gantt-connector{
@@ -1988,6 +1991,55 @@ function dropMilestone(ev, projectId, newStatus){
 const GANTT_MONTH_WIDTH = 46;
 const MONTH_LABELS_FR = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'];
 
+// Jours fériés fixes au Maroc (date Grégorienne fixe, hors fêtes religieuses mobiles)
+const MOROCCO_HOLIDAYS = {
+  '01-01': "Jour de l'an",
+  '01-11': "Manifeste de l'Indépendance",
+  '05-01': 'Fête du Travail',
+  '07-30': 'Fête du Trône',
+  '08-14': "Allégeance de l'Oued Eddahab",
+  '08-20': 'Révolution du Roi et du Peuple',
+  '08-21': 'Fête de la Jeunesse',
+  '11-06': 'Marche Verte',
+  '11-18': "Fête de l'Indépendance",
+};
+
+function moroccoHolidayName(date){
+  const mmdd = String(date.getMonth()+1).padStart(2,'0') + '-' + String(date.getDate()).padStart(2,'0');
+  return MOROCCO_HOLIDAYS[mmdd] || null;
+}
+
+// Bandes de fond pour les week-ends et jours fériés sur la période [min, max)
+function ganttNonWorkingBands(min, max, monthWidth){
+  const bands = [];
+  let cur = null;
+  const d = new Date(min);
+  while(d < max){
+    const day = d.getDay();
+    const holidayName = moroccoHolidayName(d);
+    const type = holidayName ? 'holiday' : (day === 0 || day === 6) ? 'weekend' : null;
+    const x = ganttDateToX(d, min, monthWidth);
+    const next = new Date(d); next.setDate(next.getDate()+1);
+    const xNext = ganttDateToX(next, min, monthWidth);
+    if(type){
+      if(cur && cur.type === type && Math.abs(cur.x2 - x) < 0.01){
+        cur.x2 = xNext;
+        if(holidayName) cur.title = cur.title ? cur.title + ', ' + holidayName : holidayName;
+      } else {
+        if(cur) bands.push(cur);
+        cur = { type, x1:x, x2:xNext, title: holidayName || '' };
+      }
+    } else if(cur){
+      bands.push(cur);
+      cur = null;
+    }
+    d.setDate(d.getDate()+1);
+  }
+  if(cur) bands.push(cur);
+  return bands;
+}
+
+
 function ganttTaskDates(t){
   const end = new Date(t.plannedDate);
   const start = new Date(end);
@@ -2187,6 +2239,7 @@ function renderJalonsChrono(project){
   });
 
   const totalHeight = rowCount * 34;
+  const nonWorkingBands = ganttNonWorkingBands(min, max, mw);
 
   // Liens de dépendance (FS : fin du prédécesseur -> début du successeur)
   const depPaths = [];
@@ -2231,6 +2284,7 @@ function renderJalonsChrono(project){
             ${months.map(m=>`<div class="gantt-head-cell" style="width:${mw}px;">${MONTH_LABELS_FR[m.getMonth()]}</div>`).join('')}
           </div>
           <div style="position:relative;">
+            ${nonWorkingBands.map(b=>`<div class="gantt-nonworking ${b.type}" style="left:${b.x1}px;width:${b.x2-b.x1}px;height:${totalHeight}px;" ${b.title ? `title="${escapeHtml(b.title)}"` : ''}></div>`).join('')}
             ${todayX >= 0 && todayX <= totalWidth ? `<div class="gantt-today" style="left:${todayX}px;height:${totalHeight}px;" title="Aujourd'hui : ${fmt(todayStr())}"></div>` : ''}
             ${depsSvg}
             ${rowsHtml}
@@ -2248,6 +2302,8 @@ function renderJalonsChrono(project){
       <span style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-block;width:14px;height:2px;background:#9ca3af;"></span>Dépendance (glisser depuis le point bleu pour en créer une, clic sur le lien pour le supprimer)</span>
       <span style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:#fff;box-shadow:0 0 0 2px var(--boa-red);"></span>Chemin critique</span>
       <span style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-block;width:14px;height:4px;border-radius:2px;background:repeating-linear-gradient(135deg,#cbd5e1,#cbd5e1 4px,#fff 4px,#fff 8px);border:1px solid #9ca3af;"></span>Référence (baseline) initiale</span>
+      <span style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:rgba(0,0,0,.06);"></span>Week-end</span>
+      <span style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:rgba(192,57,43,.12);"></span>Jour férié</span>
     </div>`;
 }
 
