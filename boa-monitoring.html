@@ -337,6 +337,8 @@
     outline:2px solid var(--boa-green);outline-offset:-1px;
   }
   .form-field textarea{resize:vertical;}
+  .form-field input:disabled,.form-field select:disabled{background:var(--boa-gray-bg);color:#9ca3af;cursor:not-allowed;}
+  .field-hint{font-size:11px;color:#9ca3af;}
   .form-section-title{
     grid-column:1/-1;font-size:12px;text-transform:uppercase;letter-spacing:.04em;
     color:var(--boa-green);font-weight:700;margin-top:8px;padding-top:14px;border-top:1px solid var(--boa-gray-surf);
@@ -373,9 +375,9 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>
         Projets
       </button>
-      <button class="nav-item" data-view="actions">
+      <button class="nav-item" data-view="run">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
-        Actions ouvertes
+        Suivi du Run
       </button>
     </nav>
     <div class="sidebar-footer">
@@ -423,6 +425,7 @@
    ════════════════════════════════════════════════════════════ */
 
 const STORAGE_KEY = 'boa_projects_v1';
+const STORAGE_KEY_RUN = 'boa_run_items_v1';
 
 /* ─── Label / couleur maps ─────────────────────────────────── */
 const STATUS_LABELS = {
@@ -433,7 +436,7 @@ const HEALTH_LABELS = { VERT:'Sain', ORANGE:'À surveiller', ROUGE:'En danger' }
 const HEALTH_DOT_CLASS = { VERT:'green', ORANGE:'orange', ROUGE:'red' };
 const JOURNAL_TYPE_LABELS = {
   REUNION:'Réunion', RELANCE:'Relance', DECISION:'Décision', INCIDENT:'Incident',
-  LIVRAISON:'Livraison', VALIDATION:'Validation', ESCALADE:'Escalade', COMITE:'Comité', AUTRE:'Autre'
+  LIVRAISON:'Livraison', VALIDATION:'Validation', ESCALADE:'Escalade', COMITE:'Comité', BUDGET:'Budget', AUTRE:'Autre'
 };
 const JOURNAL_TYPE_COLORS = {
   REUNION:'background:var(--boa-navy-light);color:var(--boa-navy);',
@@ -444,6 +447,7 @@ const JOURNAL_TYPE_COLORS = {
   VALIDATION:'background:var(--boa-green-light);color:var(--boa-green-dark);',
   ESCALADE:'background:var(--boa-orange-light);color:var(--boa-orange);',
   COMITE:'background:var(--boa-navy-light);color:var(--boa-navy);',
+  BUDGET:'background:#fdf6e8;color:#8a5a00;',
   AUTRE:'background:var(--boa-gray-surf);color:var(--boa-gray-text);'
 };
 const CATEGORY_LABELS = {
@@ -497,6 +501,24 @@ const TASK_STATUS_COLORS = {
 
 const ACTION_STATUS_LABELS = { OUVERT:'Ouvert', EN_COURS:'En cours', FERME:'Fermé' };
 const ACTION_STATUS_COLORS = {
+  OUVERT:'background:var(--boa-orange-light);color:var(--boa-orange);',
+  EN_COURS:'background:var(--boa-navy-light);color:var(--boa-navy);',
+  FERME:'background:var(--boa-green-light);color:var(--boa-green);'
+};
+
+const RUN_TYPE_LABELS = {
+  REQUETE:'Requête', INCIDENT:'Incident', SUIVI:'Sujet de suivi', DECISION:'Décision', INFO:'Information', AUTRE:'Autre'
+};
+const RUN_TYPE_COLORS = {
+  REQUETE:'background:var(--boa-navy-light);color:var(--boa-navy);',
+  INCIDENT:'background:var(--boa-red-light);color:var(--boa-red);',
+  SUIVI:'background:var(--boa-orange-light);color:var(--boa-orange);',
+  DECISION:'background:#f0ecf7;color:#5b3d8a;',
+  INFO:'background:var(--boa-green-light);color:var(--boa-green);',
+  AUTRE:'background:var(--boa-gray-surf);color:var(--boa-gray-text);'
+};
+const RUN_STATUS_LABELS = { OUVERT:'Ouvert', EN_COURS:'En cours', FERME:'Clôturé' };
+const RUN_STATUS_COLORS = {
   OUVERT:'background:var(--boa-orange-light);color:var(--boa-orange);',
   EN_COURS:'background:var(--boa-navy-light);color:var(--boa-navy);',
   FERME:'background:var(--boa-green-light);color:var(--boa-green);'
@@ -697,6 +719,39 @@ function loadProjects(){
   }catch(e){ return getSampleData(); }
 }
 
+/* ─── Stockage : Suivi du Run ────────────────────────────────── */
+function loadRunItems(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY_RUN);
+    if(!raw){ const items = getSampleRunItems(); saveRunItems(items); return items; }
+    return JSON.parse(raw);
+  }catch(e){ return []; }
+}
+function saveRunItems(items){
+  localStorage.setItem(STORAGE_KEY_RUN, JSON.stringify(items));
+}
+function getSampleRunItems(){
+  const now = new Date().toISOString();
+  return [
+    {
+      id:'run-001', date:'2026-06-08', title:'Lenteur sur le portail commerçant', type:'INCIDENT',
+      description:"Plusieurs commerçants signalent des lenteurs lors de la connexion au portail de gestion des TPE.",
+      status:'EN_COURS', responsible:'Karim Alaoui', dueDate:'2026-06-15', projectId:'',
+      updates:[
+        { id:'ru-001', date:'2026-06-09', author:'Nadrey BOA', note:"Investigation en cours avec l'équipe infra, hypothèse : surcharge serveur." }
+      ],
+      createdAt:now, updatedAt:now,
+    },
+    {
+      id:'run-002', date:'2026-06-10', title:"Demande d'extraction de reporting mensuel", type:'REQUETE',
+      description:"La Direction Monétique demande un export mensuel automatisé du reporting des projets en cours.",
+      status:'OUVERT', responsible:'Nadrey BOA', dueDate:'2026-06-20', projectId:'',
+      updates:[],
+      createdAt:now, updatedAt:now,
+    },
+  ];
+}
+
 /* Ajoute le journal des dépenses (expenses) aux anciens projets qui n'en ont pas encore */
 function migrateBudgets(projects){
   let changed = false;
@@ -709,6 +764,11 @@ function migrateBudgets(projects){
           p.budget.expenses.push({ id:newId(), date:p.startDate, lineId:l.id, description:'Solde initial', amount:l.actual });
         }
       });
+      changed = true;
+    }
+    if(p.budget.established === undefined){
+      p.budget.established = p.budget.lines.length > 0;
+      if(p.budget.established) p.budget.establishedDate = p.startDate;
       changed = true;
     }
   });
@@ -844,7 +904,7 @@ function getSampleData(){
 const VIEWS = {
   dashboard: { title:'Tableau de bord', subtitle:"Vue d'ensemble de l'activité projet", render: renderDashboard },
   projects:  { title:'Projets', subtitle:'Liste et suivi des projets', render: renderProjects },
-  actions:   { title:'Actions ouvertes', subtitle:"Actions en attente sur l'ensemble des projets", render: renderActions },
+  run:       { title:'Suivi du Run', subtitle:"Sujets, requêtes et incidents traités au quotidien", render: renderRun },
 };
 
 function navigate(view){
@@ -868,8 +928,7 @@ document.getElementById('new-project-btn').addEventListener('click', e=>{
 
 /* ─── Export / Import / Impression ─────────────────────────── */
 document.getElementById('export-btn').addEventListener('click', ()=>{
-  const projects = loadProjects();
-  const data = JSON.stringify(projects, null, 2);
+  const data = JSON.stringify({ projects: loadProjects(), runItems: loadRunItems() }, null, 2);
   const blob = new Blob([data], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -891,10 +950,13 @@ document.getElementById('import-file').addEventListener('change', e=>{
   const reader = new FileReader();
   reader.onload = ()=>{
     try{
-      const projects = JSON.parse(reader.result);
+      const data = JSON.parse(reader.result);
+      const projects = Array.isArray(data) ? data : data.projects;
+      const runItems = Array.isArray(data) ? null : data.runItems;
       if(!Array.isArray(projects)) throw new Error('Format invalide');
       if(!confirm(`Importer ${projects.length} projet(s) ? Cela remplacera toutes les données actuelles.`)) return;
       saveProjects(projects);
+      if(Array.isArray(runItems)) saveRunItems(runItems);
       const view = location.hash.replace('#','') || 'dashboard';
       if(view.startsWith('project/')) viewProject(view.split('/')[1]);
       else navigate(view.startsWith('project-form') ? 'projects' : view);
@@ -919,68 +981,223 @@ function renderPlaceholder(){
     </div>`;
 }
 
-/* ─── Vue Actions ouvertes ──────────────────────────────────── */
-function actionRow(a){
-  const overdue = isOverdue(a.dueDate);
+/* ─── Vue Suivi du Run ───────────────────────────────────────── */
+const runFilterState = { search:'', status:'', type:'', responsible:'' };
+
+function updateRunFilter(key, value){
+  runFilterState[key] = value;
+  renderRun();
+}
+function clearRunFilters(){
+  runFilterState.search = '';
+  runFilterState.status = '';
+  runFilterState.type = '';
+  runFilterState.responsible = '';
+  renderRun();
+}
+
+function runItemCard(item, projects){
+  const overdue = item.status !== 'FERME' && item.dueDate && isOverdue(item.dueDate);
+  const project = item.projectId ? projects.find(p=>p.id===item.projectId) : null;
   return `
-    <div class="journal-card" style="${overdue ? 'border-color:#f5c4bf;background:var(--boa-red-light);' : ''}margin-bottom:10px;">
+    <div class="journal-card" style="${overdue ? 'border-color:#f5c4bf;background:var(--boa-red-light);' : ''}">
       <div class="journal-card-head">
         <div>
-          <div class="journal-card-title">${escapeHtml(a.description)}</div>
+          <div class="journal-card-title">${escapeHtml(item.title)}</div>
           <div class="journal-card-meta">
-            ${escapeHtml(a.projectCode)} · ${escapeHtml(a.projectName)}${a.journalTitle ? ' · ' + escapeHtml(a.journalTitle) : ''}
+            ${fmt(item.date)} · Responsable : ${escapeHtml(item.responsible)}${item.dueDate ? ' · Échéance : ' + fmt(item.dueDate) : ''}
+            ${project ? ` · Projet : ${escapeHtml(project.code)} — ${escapeHtml(project.name)}` : ''}
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
-          <span class="badge" style="${ACTION_STATUS_COLORS[a.status]}">${ACTION_STATUS_LABELS[a.status]}</span>
+          <span class="badge" style="${RUN_TYPE_COLORS[item.type]}">${RUN_TYPE_LABELS[item.type]}</span>
+          <span class="badge" style="${RUN_STATUS_COLORS[item.status]}">${RUN_STATUS_LABELS[item.status]}</span>
           ${overdue ? `<span class="badge" style="background:var(--boa-red-light);color:var(--boa-red);">En retard</span>` : ''}
         </div>
       </div>
-      <div class="journal-participants">
-        Responsable : ${escapeHtml(a.assignedTo)} · Échéance : ${fmt(a.dueDate)}
-      </div>
-      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px;">
-        <button class="btn-secondary" onclick="navigate('projects'); viewProject('${a.projectId}')">${icon('Eye')} Voir le projet</button>
-        <button class="btn-primary" onclick="closeAction('${a.projectId}','${a.journalId}','${a.id}')">${icon('CheckCircle2')} Clôturer</button>
+      <div class="journal-card-desc">${escapeHtml(item.description)}</div>
+      ${item.updates && item.updates.length ? `
+        <div class="journal-actions-list">
+          ${item.updates.map(u=>`
+            <div class="action-item-row" style="align-items:flex-start;">
+              <span class="due" style="flex-shrink:0;">${fmt(u.date)}</span>
+              <span class="flex1">${escapeHtml(u.note)}${u.author ? ' — ' + escapeHtml(u.author) : ''}</span>
+            </div>`).join('')}
+        </div>` : ''
+      }
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px;flex-wrap:wrap;">
+        ${project ? `<button class="btn-secondary" onclick="navigate('projects'); viewProject('${project.id}')">${icon('Eye')} Voir le projet</button>` : ''}
+        <button class="btn-secondary" onclick="openRunUpdateModal('${item.id}')">${icon('Plus')} Ajouter un suivi</button>
+        <button class="btn-secondary" onclick="openRunItemModal('${item.id}')">${icon('Pencil')} Modifier</button>
+        ${item.status === 'FERME'
+          ? `<button class="btn-secondary" onclick="reopenRunItem('${item.id}')">${icon('Activity')} Réouvrir</button>`
+          : `<button class="btn-primary" onclick="closeRunItem('${item.id}')">${icon('CheckCircle2')} Clôturer</button>`
+        }
+        <button class="btn-secondary" onclick="deleteRunItem('${item.id}')">${icon('Trash2','#c0392b')}</button>
       </div>
     </div>`;
 }
 
-function renderActions(){
+function renderRun(){
   const projects = loadProjects();
-  const all = getAllOpenActions(projects);
-  const overdue = all.filter(a=>isOverdue(a.dueDate)).sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
-  const upcoming = all.filter(a=>!isOverdue(a.dueDate)).sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
+  const items = loadRunItems();
+  const { search, status, type, responsible } = runFilterState;
+  const q = search.toLowerCase();
+
+  const filtered = items.filter(it=>{
+    const matchSearch = !q || it.title.toLowerCase().includes(q) || it.description.toLowerCase().includes(q);
+    const matchStatus = !status || it.status === status;
+    const matchType = !type || it.type === type;
+    const matchResp = !responsible || it.responsible === responsible;
+    return matchSearch && matchStatus && matchType && matchResp;
+  });
+
+  const open = filtered.filter(it=>it.status !== 'FERME');
+  const overdue = open.filter(it=>it.dueDate && isOverdue(it.dueDate)).sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
+  const ongoing = open.filter(it=>!(it.dueDate && isOverdue(it.dueDate))).sort((a,b)=>b.date.localeCompare(a.date));
+  const closed = filtered.filter(it=>it.status === 'FERME').sort((a,b)=>b.date.localeCompare(a.date));
+
+  const responsibles = [...new Set(items.map(it=>it.responsible))].sort();
+  const hasFilters = search || status || type || responsible;
 
   document.getElementById('content').innerHTML = `
+    <div class="filters-bar">
+      <div class="search-wrap">
+        ${icon('Search','#9ca3af')}
+        <input id="run-search" type="text" placeholder="Rechercher un sujet..." value="${escapeHtml(search)}">
+      </div>
+      <div class="select-wrap">
+        <select onchange="updateRunFilter('status', this.value)">
+          <option value="">Statut</option>
+          ${Object.entries(RUN_STATUS_LABELS).map(([k,v])=>`<option value="${k}" ${status===k?'selected':''}>${v}</option>`).join('')}
+        </select>
+        ${icon('ChevronDown','#9ca3af')}
+      </div>
+      <div class="select-wrap">
+        <select onchange="updateRunFilter('type', this.value)">
+          <option value="">Type</option>
+          ${Object.entries(RUN_TYPE_LABELS).map(([k,v])=>`<option value="${k}" ${type===k?'selected':''}>${v}</option>`).join('')}
+        </select>
+        ${icon('ChevronDown','#9ca3af')}
+      </div>
+      <div class="select-wrap">
+        <select onchange="updateRunFilter('responsible', this.value)">
+          <option value="">Responsable</option>
+          ${responsibles.map(r=>`<option value="${escapeHtml(r)}" ${responsible===r?'selected':''}>${escapeHtml(r)}</option>`).join('')}
+        </select>
+        ${icon('ChevronDown','#9ca3af')}
+      </div>
+      ${hasFilters ? `<button class="clear-link" onclick="clearRunFilters()">Effacer</button>` : ''}
+      <button class="btn-primary" style="margin-left:auto;" onclick="openRunItemModal()">${icon('Plus')} Nouveau point</button>
+    </div>
+
     <div class="section-card" style="margin-bottom:20px;">
       <div class="section-head">
-        <h2>${icon('AlertTriangle','#c0392b')} Actions en retard <span class="count">${overdue.length}</span></h2>
+        <h2>${icon('AlertTriangle','#c0392b')} En retard <span class="count">${overdue.length}</span></h2>
       </div>
       <div style="padding:16px;">
-        ${overdue.length ? overdue.map(actionRow).join('') : `<div class="empty">Aucune action en retard.</div>`}
+        ${overdue.length ? overdue.map(it=>runItemCard(it, projects)).join('') : `<div class="empty">Aucun point en retard.</div>`}
+      </div>
+    </div>
+    <div class="section-card" style="margin-bottom:20px;">
+      <div class="section-head">
+        <h2>${icon('Clock','#1B2E5E')} En cours / à traiter <span class="count">${ongoing.length}</span></h2>
+      </div>
+      <div style="padding:16px;">
+        ${ongoing.length ? ongoing.map(it=>runItemCard(it, projects)).join('') : `<div class="empty">Aucun point en cours.</div>`}
       </div>
     </div>
     <div class="section-card">
       <div class="section-head">
-        <h2>${icon('Clock','#1B2E5E')} Actions à venir <span class="count">${upcoming.length}</span></h2>
+        <h2>${icon('CheckCircle2','#1B7A4B')} Clôturés <span class="count">${closed.length}</span></h2>
       </div>
       <div style="padding:16px;">
-        ${upcoming.length ? upcoming.map(actionRow).join('') : `<div class="empty">Aucune action à venir.</div>`}
+        ${closed.length ? closed.slice(0,10).map(it=>runItemCard(it, projects)).join('') : `<div class="empty">Aucun point clôturé.</div>`}
       </div>
     </div>`;
+
+  document.getElementById('run-search').addEventListener('input', e=>{
+    runFilterState.search = e.target.value;
+    renderRun();
+  });
 }
 
-function closeAction(projectId, journalId, actionId){
+function openRunItemModal(itemId){
   const projects = loadProjects();
-  const p = projects.find(x=>x.id===projectId);
-  const j = p.journal.find(x=>x.id===journalId);
-  const a = j.actionItems.find(x=>x.id===actionId);
-  a.status = 'FERME';
-  a.closedDate = todayStr();
-  p.updatedAt = new Date().toISOString();
-  saveProjects(projects);
-  renderActions();
+  const items = loadRunItems();
+  const item = itemId ? items.find(it=>it.id===itemId) : null;
+
+  openModal({
+    title: item ? 'Modifier le point de suivi' : 'Nouveau point de suivi', wide:true,
+    fields:[
+      {name:'title', label:'Sujet', type:'text', required:true, full:true, value:item?.title},
+      {name:'description', label:'Description', type:'textarea', required:true, full:true, value:item?.description},
+      {name:'type', label:'Type', type:'select', required:true,
+        options:Object.entries(RUN_TYPE_LABELS).map(([k,v])=>({value:k, label:v})), value:item?.type || 'SUIVI'},
+      {name:'status', label:'Statut', type:'select', required:true,
+        options:Object.entries(RUN_STATUS_LABELS).map(([k,v])=>({value:k, label:v})), value:item?.status || 'OUVERT'},
+      {name:'date', label:'Date', type:'date', required:true, value:item?.date || todayStr()},
+      {name:'dueDate', label:'Échéance', type:'date', value:item?.dueDate},
+      {name:'responsible', label:'Responsable', type:'text', required:true, value:item?.responsible || 'Nadrey BOA'},
+      {name:'projectId', label:'Projet lié (optionnel)', type:'select',
+        options:[{value:'', label:'Aucun'}, ...projects.map(p=>({value:p.id, label:`${p.code} — ${p.name}`}))],
+        value:item?.projectId || ''},
+    ],
+    onSubmit:(v)=>{
+      const all = loadRunItems();
+      if(item){
+        const idx = all.findIndex(it=>it.id===item.id);
+        all[idx] = { ...item, ...v, updatedAt:new Date().toISOString() };
+      } else {
+        const now = new Date().toISOString();
+        all.unshift({ id:newId(), ...v, updates:[], createdAt:now, updatedAt:now });
+      }
+      saveRunItems(all);
+      renderRun();
+    }
+  });
+}
+
+function openRunUpdateModal(itemId){
+  openModal({
+    title:'Ajouter un suivi', wide:true,
+    fields:[
+      {name:'date', label:'Date', type:'date', required:true, value:todayStr()},
+      {name:'note', label:'Suivi / commentaire', type:'textarea', required:true, full:true},
+    ],
+    onSubmit:(v)=>{
+      const all = loadRunItems();
+      const item = all.find(it=>it.id===itemId);
+      item.updates.push({ id:newId(), date:v.date, note:v.note, author:'Nadrey BOA' });
+      item.updatedAt = new Date().toISOString();
+      saveRunItems(all);
+      renderRun();
+    }
+  });
+}
+
+function closeRunItem(id){
+  const all = loadRunItems();
+  const item = all.find(it=>it.id===id);
+  item.status = 'FERME';
+  item.closedDate = todayStr();
+  item.updatedAt = new Date().toISOString();
+  saveRunItems(all);
+  renderRun();
+}
+function reopenRunItem(id){
+  const all = loadRunItems();
+  const item = all.find(it=>it.id===id);
+  item.status = 'EN_COURS';
+  item.closedDate = undefined;
+  item.updatedAt = new Date().toISOString();
+  saveRunItems(all);
+  renderRun();
+}
+function deleteRunItem(id){
+  if(!confirm('Supprimer définitivement ce point de suivi ?')) return;
+  saveRunItems(loadRunItems().filter(it=>it.id!==id));
+  renderRun();
 }
 
 /* ─── Vue Tableau de bord ───────────────────────────────────── */
@@ -1684,29 +1901,99 @@ function renderRisquesTab(project){
   `;
 }
 
-function setBudgetCurrency(projectId, currency){
-  const projects = loadProjects();
-  const p = projects.find(x=>x.id===projectId);
-  p.budget.currency = currency;
-  p.updatedAt = new Date().toISOString();
-  saveProjects(projects);
-  renderProjectDetail();
+function addBudgetJournalEntry(project, title, description){
+  project.journal.unshift({
+    id:newId(), date:todayStr(), type:'BUDGET', title, description,
+    participants:[], actionItems:[], author:'Nadrey BOA',
+  });
+}
+
+function budgetLinesTable(project, showActuals){
+  const b = project.budget;
+  if(b.lines.length===0){
+    return `<div class="empty" style="padding:48px;background:#fff;border:1px solid var(--boa-gray-border);border-radius:12px;">Aucune ligne budgétaire renseignée.</div>`;
+  }
+  return `
+    <div class="table-card" style="margin-bottom:24px;">
+      <table>
+        <thead>
+          <tr>
+            <th>Catégorie</th>
+            <th>Description</th>
+            <th class="right">Estimé</th>
+            ${showActuals ? `<th class="right">Réel</th><th class="right">Écart</th>` : ''}
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${b.lines.map(l=>{
+            let actualCols = '';
+            if(showActuals){
+              const actual = lineActual(project, l.id);
+              const lineEcart = actual - l.estimated;
+              const lineEcartColor = lineEcart > 0 ? 'var(--boa-red)' : lineEcart < 0 ? 'var(--boa-green)' : '#9ca3af';
+              actualCols = `
+              <td class="right">${formatMoney(actual, b.currency)}</td>
+              <td class="right" style="color:${lineEcartColor};font-weight:600;">${(lineEcart>0?'+':'') + formatMoney(lineEcart, b.currency)}</td>`;
+            }
+            return `
+            <tr>
+              <td><span class="pname">${escapeHtml(l.category)}</span></td>
+              <td>${escapeHtml(l.description)}</td>
+              <td class="right">${formatMoney(l.estimated, b.currency)}</td>
+              ${actualCols}
+              <td style="white-space:nowrap;text-align:right;">
+                <button class="icon-btn" title="Modifier" onclick="openBudgetLineModal('${project.id}','${l.id}')">${icon('Pencil')}</button>
+                <button class="icon-btn danger" title="Supprimer" onclick="deleteBudgetLine('${project.id}','${l.id}')">${icon('Trash2')}</button>
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
 }
 
 function renderBudgetTab(project){
   const b = project.budget;
   const totalEstimated = budgetTotalEstimated(project);
+
+  if(!b.established){
+    return `
+      <div class="card" style="padding:18px;margin-bottom:18px;background:var(--boa-navy-light);border-color:#c5cde8;">
+        <h3 style="font-size:13px;font-weight:700;color:var(--boa-navy);margin-bottom:6px;">Établissement du budget initial</h3>
+        <p style="font-size:12.5px;color:#374151;line-height:1.6;">
+          Renseignez les lignes budgétaires (rubriques, descriptions, montants estimés) du projet, en <strong>${b.currency}</strong>.
+          Une fois le budget validé, toute modification ultérieure des lignes sera automatiquement enregistrée dans le journal du projet.
+        </p>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
+        <button class="btn-primary" onclick="openBudgetLineModal('${project.id}')">${icon('Plus')} Nouvelle ligne budgétaire</button>
+      </div>
+
+      ${budgetLinesTable(project, false)}
+
+      <div class="card" style="padding:18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+        <div>
+          <div class="kpi-label">Total estimé du projet</div>
+          <div class="kpi-value" style="margin-top:4px;">${formatMoney(totalEstimated, b.currency)}</div>
+        </div>
+        <button class="btn-primary" onclick="validateInitialBudget('${project.id}')" ${b.lines.length===0 ? 'disabled' : ''}>
+          ${icon('CheckCircle2')} Valider le budget initial
+        </button>
+      </div>
+    `;
+  }
+
   const totalActual = budgetTotalActual(project);
   const ecart = totalActual - totalEstimated;
   const ecartColor = ecart > 0 ? 'var(--boa-red)' : 'var(--boa-green)';
 
   return `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
-      <div class="select-wrap">
-        <select onchange="setBudgetCurrency('${project.id}', this.value)">
-          ${CURRENCIES.map(c=>`<option value="${c}" ${c===b.currency?'selected':''}>${c}</option>`).join('')}
-        </select>
-        ${icon('ChevronDown','#9ca3af')}
+      <div>
+        <span class="badge" style="background:var(--boa-gray-surf);color:var(--boa-gray-text);">Devise : ${b.currency}</span>
+        <span class="field-hint" style="margin-left:8px;">Budget initial validé le ${fmt(b.establishedDate)}</span>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <button class="btn-secondary" onclick="openExpenseModal('${project.id}')">${icon('Plus')} Enregistrer une dépense</button>
@@ -1730,35 +2017,7 @@ function renderBudgetTab(project){
     </div>
 
     <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#9ca3af;margin-bottom:8px;font-weight:600;">Lignes budgétaires</h3>
-    ${b.lines.length===0 ? `<div class="empty" style="padding:48px;background:#fff;border:1px solid var(--boa-gray-border);border-radius:12px;">Aucune ligne budgétaire renseignée.</div>` : `
-    <div class="table-card" style="margin-bottom:24px;">
-      <table>
-        <thead>
-          <tr>
-            <th>Catégorie</th>
-            <th>Description</th>
-            <th class="right">Estimé</th>
-            <th class="right">Réel</th>
-            <th class="right">Écart</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${b.lines.map(l=>{
-            const actual = lineActual(project, l.id);
-            const lineEcart = actual - l.estimated;
-            const lineEcartColor = lineEcart > 0 ? 'var(--boa-red)' : lineEcart < 0 ? 'var(--boa-green)' : '#9ca3af';
-            return `
-            <tr>
-              <td><span class="pname">${escapeHtml(l.category)}</span></td>
-              <td>${escapeHtml(l.description)}</td>
-              <td class="right">${formatMoney(l.estimated, b.currency)}</td>
-              <td class="right">${formatMoney(actual, b.currency)}</td>
-              <td class="right" style="color:${lineEcartColor};font-weight:600;">${(lineEcart>0?'+':'') + formatMoney(lineEcart, b.currency)}</td>
-            </tr>`;
-          }).join('')}
-        </tbody>
-      </table>
-    </div>`}
+    ${budgetLinesTable(project, true)}
 
     <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#9ca3af;margin-bottom:8px;font-weight:600;">Journal comptable (dépenses enregistrées)</h3>
     ${b.expenses.length===0 ? `<div class="empty" style="padding:48px;background:#fff;border:1px solid var(--boa-gray-border);border-radius:12px;">Aucune dépense enregistrée pour ce projet.</div>` : `
@@ -1787,6 +2046,35 @@ function renderBudgetTab(project){
       </table>
     </div>`}
   `;
+}
+
+function validateInitialBudget(projectId){
+  const projects = loadProjects();
+  const p = projects.find(x=>x.id===projectId);
+  if(p.budget.lines.length === 0) return;
+  if(!confirm("Valider le budget initial ? Toute modification ultérieure des lignes sera tracée dans le journal du projet.")) return;
+  p.budget.established = true;
+  p.budget.establishedDate = todayStr();
+  addBudgetJournalEntry(p, 'Validation du budget initial',
+    `Budget initial validé pour un montant total estimé de ${formatMoney(budgetTotalEstimated(p), p.budget.currency)} (${p.budget.lines.length} ligne(s)).`);
+  p.updatedAt = new Date().toISOString();
+  saveProjects(projects);
+  renderProjectDetail();
+}
+
+function deleteBudgetLine(projectId, lineId){
+  const projects = loadProjects();
+  const p = projects.find(x=>x.id===projectId);
+  const line = p.budget.lines.find(l=>l.id===lineId);
+  if(!confirm(`Supprimer la ligne "${line.category} — ${line.description}" ?`)) return;
+  p.budget.lines = p.budget.lines.filter(l=>l.id!==lineId);
+  if(p.budget.established){
+    addBudgetJournalEntry(p, 'Suppression d\'une ligne budgétaire',
+      `Ligne supprimée : ${line.category} — ${line.description} (estimé ${formatMoney(line.estimated, p.budget.currency)}).`);
+  }
+  p.updatedAt = new Date().toISOString();
+  saveProjects(projects);
+  renderProjectDetail();
 }
 
 function renderCommentairesTab(project){
@@ -2013,20 +2301,37 @@ function openStakeholderModal(projectId){
   });
 }
 
-function openBudgetLineModal(projectId){
+function openBudgetLineModal(projectId, lineId){
+  const projects = loadProjects();
+  const p = projects.find(x=>x.id===projectId);
+  const line = lineId ? p.budget.lines.find(l=>l.id===lineId) : null;
+
   openModal({
-    title:'Nouvelle ligne budgétaire', wide:true,
+    title: line ? 'Modifier la ligne budgétaire' : 'Nouvelle ligne budgétaire', wide:true,
     fields:[
-      {name:'category', label:'Catégorie', type:'text', required:true},
-      {name:'description', label:'Description', type:'text', required:true, full:true},
-      {name:'estimated', label:'Montant estimé', type:'number', required:true, value:0},
+      {name:'category', label:'Catégorie', type:'text', required:true, value:line?.category},
+      {name:'description', label:'Description', type:'text', required:true, full:true, value:line?.description},
+      {name:'estimated', label:'Montant estimé', type:'number', required:true, value:line ? line.estimated : 0},
     ],
     onSubmit:(v)=>{
-      const projects = loadProjects();
-      const p = projects.find(x=>x.id===projectId);
-      p.budget.lines.push({id:newId(), category:v.category, description:v.description, estimated:v.estimated});
-      p.updatedAt = new Date().toISOString();
-      saveProjects(projects);
+      const projects2 = loadProjects();
+      const p2 = projects2.find(x=>x.id===projectId);
+      if(line){
+        const target = p2.budget.lines.find(l=>l.id===lineId);
+        if(p2.budget.established && (target.category!==v.category || target.description!==v.description || target.estimated!==v.estimated)){
+          addBudgetJournalEntry(p2, "Modification d'une ligne budgétaire",
+            `${target.category} — ${target.description} (${formatMoney(target.estimated, p2.budget.currency)}) modifiée en ${v.category} — ${v.description} (${formatMoney(v.estimated, p2.budget.currency)}).`);
+        }
+        Object.assign(target, v);
+      } else {
+        p2.budget.lines.push({id:newId(), ...v});
+        if(p2.budget.established){
+          addBudgetJournalEntry(p2, "Ajout d'une ligne budgétaire",
+            `Nouvelle ligne ajoutée : ${v.category} — ${v.description} (${formatMoney(v.estimated, p2.budget.currency)}).`);
+        }
+      }
+      p2.updatedAt = new Date().toISOString();
+      saveProjects(projects2);
       renderProjectDetail();
     }
   });
@@ -2035,8 +2340,8 @@ function openBudgetLineModal(projectId){
 function openExpenseModal(projectId){
   const projects = loadProjects();
   const p = projects.find(x=>x.id===projectId);
-  if(p.budget.lines.length === 0){
-    alert("Ajoutez d'abord une ligne budgétaire avant d'enregistrer une dépense.");
+  if(!p.budget.established || p.budget.lines.length === 0){
+    alert("Établissez et validez d'abord le budget initial avant d'enregistrer une dépense.");
     return;
   }
   openModal({
@@ -2076,17 +2381,18 @@ function cancelProjectForm(id){
   else navigate('projects');
 }
 
-function pfField({name, label, type='text', value='', options, full, rows}){
+function pfField({name, label, type='text', value='', options, full, rows, disabled, hint}){
   const id = `pf-${name}`;
+  const dis = disabled ? 'disabled' : '';
   let input;
   if(type === 'textarea'){
-    input = `<textarea id="${id}" rows="${rows||3}">${escapeHtml(value ?? '')}</textarea>`;
+    input = `<textarea id="${id}" rows="${rows||3}" ${dis}>${escapeHtml(value ?? '')}</textarea>`;
   } else if(type === 'select'){
-    input = `<select id="${id}">${options.map(o=>`<option value="${escapeHtml(o.value)}" ${o.value===value?'selected':''}>${escapeHtml(o.label)}</option>`).join('')}</select>`;
+    input = `<select id="${id}" ${dis}>${options.map(o=>`<option value="${escapeHtml(o.value)}" ${o.value===value?'selected':''}>${escapeHtml(o.label)}</option>`).join('')}</select>`;
   } else {
-    input = `<input id="${id}" type="${type}" value="${escapeHtml(value ?? '')}">`;
+    input = `<input id="${id}" type="${type}" value="${escapeHtml(value ?? '')}" ${dis}>`;
   }
-  return `<div class="form-field${full?' full':''}"><label>${escapeHtml(label)}</label>${input}</div>`;
+  return `<div class="form-field${full?' full':''}"><label>${escapeHtml(label)}</label>${input}${hint ? `<div class="field-hint">${escapeHtml(hint)}</div>` : ''}</div>`;
 }
 
 function renderProjectForm(id){
@@ -2126,6 +2432,9 @@ function renderProjectForm(id){
         <div class="form-section-title">Pilotage</div>
         ${pfField({name:'projectManager', label:'Chef de projet', value:p.projectManager||'Nadrey BOA'})}
         ${pfField({name:'sponsor', label:'Sponsor', value:p.sponsor})}
+        ${pfField({name:'currency', label:'Devise de comptabilisation', type:'select', value:isNew ? (p.budget?.currency || 'MAD') : project.budget.currency,
+            options:CURRENCIES.map(c=>({value:c, label:c})), disabled:!isNew,
+            hint: isNew ? "Définie une fois pour toutes à la création du projet." : "La devise est figée après la création du projet."})}
         ${pfField({name:'tags', label:'Tags (séparés par des virgules)', value:(p.tags||[]).join(', '), full:true})}
 
         <div class="form-section-title">Cadrage</div>
@@ -2166,7 +2475,7 @@ function saveProjectForm(id){
   } else {
     project = {
       id:newId(), milestones:[], risks:[], journal:[], comments:[], team:[], stakeholders:[],
-      budget:{ currency:'MAD', totalEstimated:0, totalActual:0, lines:[] },
+      budget:{ currency:v('currency') || 'MAD', totalEstimated:0, totalActual:0, lines:[], expenses:[], established:false },
       progress:0, createdAt:now,
     };
     projects.unshift(project);
