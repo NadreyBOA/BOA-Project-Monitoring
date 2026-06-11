@@ -324,26 +324,37 @@
   .kanban-card .kc-sub{font-size:11px;color:#9ca3af;margin-bottom:8px;}
   .kanban-empty{font-size:12px;color:#9ca3af;text-align:center;padding:16px 4px;}
 
-  /* Jalons : vue chronologique */
-  .timeline{position:relative;padding-left:28px;}
-  .timeline::before{content:'';position:absolute;left:9px;top:6px;bottom:6px;width:2px;background:var(--boa-gray-border);}
-  .timeline-item{position:relative;padding-bottom:22px;}
-  .timeline-item:last-child{padding-bottom:0;}
-  .timeline-dot{position:absolute;left:-28px;top:4px;width:18px;height:18px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1px var(--boa-gray-border);}
-  .timeline-card{background:#fff;border:1px solid var(--boa-gray-border);border-radius:10px;padding:12px 16px;}
-  .timeline-date{font-size:11px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px;}
-  .timeline-tasks{margin-top:8px;display:flex;flex-direction:column;gap:4px;}
-  .timeline-task{font-size:12px;color:#374151;display:flex;align-items:center;gap:8px;padding:4px 0;border-top:1px dashed var(--boa-gray-border);}
-  .timeline-task:first-child{border-top:none;}
+  /* Jalons : vue chronologique (Gantt) */
+  .gantt-wrap{display:flex;border:1px solid var(--boa-gray-border);border-radius:12px;background:#fff;overflow:hidden;}
+  .gantt-labels{flex:0 0 240px;border-right:1px solid var(--boa-gray-border);}
+  .gantt-scroll{overflow-x:auto;flex:1;}
+  .gantt-inner{position:relative;}
+  .gantt-head-years{display:flex;height:24px;border-bottom:1px solid var(--boa-gray-border);}
+  .gantt-head-months{display:flex;height:22px;border-bottom:1px solid var(--boa-gray-border);}
+  .gantt-head-cell{flex-shrink:0;text-align:center;font-size:10px;color:#9ca3af;border-right:1px solid var(--boa-gray-border);display:flex;align-items:center;justify-content:center;}
+  .gantt-head-cell.year{font-weight:700;color:#374151;font-size:11px;}
+  .gantt-labels-head{height:46px;border-bottom:1px solid var(--boa-gray-border);display:flex;align-items:center;padding:0 12px;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;}
+  .gantt-row{height:34px;display:flex;align-items:center;padding:0 12px;font-size:12px;border-bottom:1px solid var(--boa-gray-border);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+  .gantt-row.gantt-milestone-row{font-weight:700;background:var(--boa-gray-bg);}
+  .gantt-row.gantt-task-row{color:#6b7280;padding-left:24px;}
+  .gantt-track{position:relative;height:34px;border-bottom:1px solid var(--boa-gray-border);}
+  .gantt-bar{position:absolute;top:7px;height:20px;border-radius:6px;font-size:10px;color:#fff;display:flex;align-items:center;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .gantt-diamond{position:absolute;top:9px;width:16px;height:16px;transform:rotate(45deg);border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.08);}
+  .gantt-today{position:absolute;top:0;bottom:0;width:2px;background:var(--boa-red);z-index:2;}
+  .gantt-legend{display:flex;gap:18px;flex-wrap:wrap;align-items:center;font-size:11.5px;color:#6b7280;margin-top:10px;}
+  .gantt-legend .lg-swatch{display:inline-block;width:14px;height:14px;border-radius:4px;margin-right:5px;vertical-align:middle;}
+  .gantt-legend .lg-diamond{display:inline-block;width:10px;height:10px;transform:rotate(45deg);margin-right:7px;vertical-align:middle;}
 
-  /* Jalons : vue dépendances */
-  .deps-board{display:flex;gap:18px;overflow-x:auto;padding-bottom:8px;}
-  .deps-col{flex:0 0 240px;}
-  .deps-col-head{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#9ca3af;font-weight:700;margin-bottom:10px;}
-  .deps-card{background:#fff;border:1px solid var(--boa-gray-border);border-radius:10px;padding:10px 12px;margin-bottom:12px;}
-  .deps-card .dc-title{font-size:12.5px;font-weight:700;color:var(--boa-black);margin-bottom:4px;}
-  .deps-card .dc-sub{font-size:11px;color:#9ca3af;margin-bottom:6px;}
-  .deps-card .dc-deps{font-size:11px;color:var(--boa-navy);background:var(--boa-navy-light);border-radius:6px;padding:4px 8px;margin-top:6px;}
+  /* Jalons : vue dépendances (graphe) */
+  .deps-graph{position:relative;overflow:auto;background:#fff;border:1px solid var(--boa-gray-border);border-radius:12px;padding:20px;}
+  .deps-lines{position:absolute;top:0;left:0;pointer-events:none;}
+  .deps-task-card{position:absolute;background:#fff;border:1px solid var(--boa-gray-border);border-radius:10px;padding:8px 10px;box-shadow:0 1px 2px rgba(0,0,0,.04);}
+  .deps-task-card .dc-title{font-size:12px;font-weight:700;color:var(--boa-black);margin-bottom:3px;line-height:1.25;}
+  .deps-task-card .dc-sub{font-size:10.5px;color:#9ca3af;}
+  .deps-milestone-wrap{position:absolute;display:flex;flex-direction:column;align-items:center;}
+  .deps-milestone-diamond{width:48px;height:48px;transform:rotate(45deg);border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.08);display:flex;align-items:center;justify-content:center;}
+  .deps-milestone-diamond span{transform:rotate(-45deg);color:#fff;font-size:11px;font-weight:700;}
+  .deps-milestone-label{margin-top:6px;font-size:11px;font-weight:700;color:var(--boa-black);text-align:center;width:140px;}
 
   /* Journal */
   .journal-card{border:1px solid var(--boa-gray-border);border-radius:12px;padding:16px 18px;margin-bottom:12px;background:#fff;}
@@ -530,6 +541,9 @@ const MILESTONE_STATUS_COLORS = {
 };
 const MILESTONE_STATUS_DOT = {
   NON_COMMENCE:'#9ca3af', EN_COURS:'#1B3A6B', TERMINE:'#1B7A4B', EN_RETARD:'#c0392b', ANNULE:'#9ca3af'
+};
+const TASK_STATUS_BAR = {
+  A_FAIRE:'#9ca3af', EN_COURS:'#1B3A6B', TERMINE:'#1B7A4B', BLOQUE:'#c0392b', ANNULE:'#9ca3af'
 };
 
 const TASK_STATUS_LABELS = {
@@ -1941,41 +1955,130 @@ function dropMilestone(ev, projectId, newStatus){
   renderProjectDetail();
 }
 
+const GANTT_MONTH_WIDTH = 46;
+const MONTH_LABELS_FR = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'];
+
+function ganttTaskDates(t){
+  const end = new Date(t.plannedDate);
+  const start = new Date(end);
+  start.setDate(start.getDate() - Math.max(1, t.estimatedDays || 1));
+  return { start, end };
+}
+
+function ganttDateRange(project){
+  let min = null, max = null;
+  const consider = (dt)=>{
+    if(!dt || isNaN(dt)) return;
+    if(!min || dt < min) min = dt;
+    if(!max || dt > max) max = dt;
+  };
+  project.milestones.forEach(m=>{
+    if(m.plannedDate) consider(new Date(m.plannedDate));
+    if(m.actualDate) consider(new Date(m.actualDate));
+    m.tasks.forEach(t=>{
+      if(t.plannedDate){
+        const { start, end } = ganttTaskDates(t);
+        consider(start); consider(end);
+      }
+      if(t.actualDate) consider(new Date(t.actualDate));
+    });
+  });
+  consider(new Date());
+  if(!min || !max){ min = new Date(); max = new Date(); }
+  min = new Date(min.getFullYear(), min.getMonth() - 1, 1);
+  max = new Date(max.getFullYear(), max.getMonth() + 2, 1);
+  return { min, max };
+}
+
+function ganttMonths(min, max){
+  const months = [];
+  let d = new Date(min.getFullYear(), min.getMonth(), 1);
+  const end = new Date(max.getFullYear(), max.getMonth(), 1);
+  while(d <= end){
+    months.push(new Date(d));
+    d = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+  }
+  return months;
+}
+
+function ganttDateToX(date, min, monthWidth){
+  const months = (date.getFullYear() - min.getFullYear()) * 12 + (date.getMonth() - min.getMonth());
+  const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  const frac = (date.getDate() - 1) / daysInMonth;
+  return (months + frac) * monthWidth;
+}
+
 function renderJalonsChrono(project){
-  const sorted = [...project.milestones].sort((a,b)=>(a.plannedDate||'').localeCompare(b.plannedDate||''));
+  const { min, max } = ganttDateRange(project);
+  const months = ganttMonths(min, max);
+  const mw = GANTT_MONTH_WIDTH;
+  const totalWidth = months.length * mw;
+  const sorted = [...project.milestones].sort((a,b)=>a.order-b.order);
+
+  const yearGroups = [];
+  months.forEach(m=>{
+    const y = m.getFullYear();
+    if(yearGroups.length && yearGroups[yearGroups.length-1].year === y) yearGroups[yearGroups.length-1].count++;
+    else yearGroups.push({ year:y, count:1 });
+  });
+
+  const todayX = ganttDateToX(new Date(), min, mw);
+  let labelsHtml = `<div class="gantt-labels-head">Jalons &amp; tâches</div>`;
+  let rowsHtml = '';
+  let rowCount = 0;
+
+  sorted.forEach(m=>{
+    rowCount++;
+    labelsHtml += `<div class="gantt-row gantt-milestone-row" title="${escapeHtml(m.name)}">${m.order}. ${escapeHtml(m.name)}</div>`;
+    const msX = m.plannedDate ? ganttDateToX(new Date(m.plannedDate), min, mw) : null;
+    rowsHtml += `<div class="gantt-track">
+      ${msX !== null ? `<div class="gantt-diamond" style="left:${msX-8}px;background:${MILESTONE_STATUS_DOT[m.status]};" title="${escapeHtml(m.name)} — échéance : ${fmt(m.plannedDate)}"></div>` : ''}
+    </div>`;
+
+    [...m.tasks].sort((a,b)=>(a.plannedDate||'').localeCompare(b.plannedDate||'')).forEach(t=>{
+      rowCount++;
+      labelsHtml += `<div class="gantt-row gantt-task-row" title="${escapeHtml(t.name)}">${escapeHtml(t.name)}</div>`;
+      let barHtml = '';
+      if(t.plannedDate){
+        const { start, end } = ganttTaskDates(t);
+        const x1 = ganttDateToX(start, min, mw);
+        const x2 = ganttDateToX(end, min, mw);
+        const w = Math.max(6, x2 - x1);
+        barHtml = `<div class="gantt-bar" style="left:${x1}px;width:${w}px;background:${TASK_STATUS_BAR[t.status]};" title="${escapeHtml(t.name)} : du ${fmt(start.toISOString().slice(0,10))} au ${fmt(t.plannedDate)} — ${t.progress}%">${t.progress}%</div>`;
+      }
+      rowsHtml += `<div class="gantt-track">${barHtml}</div>`;
+    });
+  });
+
+  const totalHeight = rowCount * 34;
+
   return `
-    <div class="timeline">
-      ${sorted.map(m=>{
-        const prog = milestoneProgress(m);
-        const tasks = [...m.tasks].sort((a,b)=>(a.plannedDate||'').localeCompare(b.plannedDate||''));
-        return `
-        <div class="timeline-item">
-          <div class="timeline-dot" style="background:${MILESTONE_STATUS_DOT[m.status]}"></div>
-          <div class="timeline-card">
-            <div class="timeline-date">${fmt(m.plannedDate)}${m.actualDate ? ' · réalisé le ' + fmt(m.actualDate) : ''}</div>
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-              <div class="milestone-title">${m.order}. ${escapeHtml(m.name)}</div>
-              <div style="display:flex;align-items:center;gap:10px;">
-                <span class="badge" style="${MILESTONE_STATUS_COLORS[m.status]}">${MILESTONE_STATUS_LABELS[m.status]}</span>
-                <div class="milestone-progress">
-                  <div class="progress-track"><div class="progress-fill" style="width:${prog}%"></div></div>
-                  <span class="progress-label" style="margin-top:0;">${prog}%</span>
-                </div>
-              </div>
-            </div>
-            <div class="milestone-sub">Responsable : ${escapeHtml(m.responsible)}</div>
-            ${tasks.length ? `
-              <div class="timeline-tasks">
-                ${tasks.map(t=>`
-                  <div class="timeline-task">
-                    <span class="badge" style="${TASK_STATUS_COLORS[t.status]}">${TASK_STATUS_LABELS[t.status]}</span>
-                    <span class="flex1">${escapeHtml(t.name)}</span>
-                    <span style="color:#9ca3af;">${fmt(t.plannedDate)}</span>
-                  </div>`).join('')}
-              </div>` : ''}
+    <div class="gantt-wrap">
+      <div class="gantt-labels">
+        ${labelsHtml}
+      </div>
+      <div class="gantt-scroll">
+        <div class="gantt-inner" style="width:${totalWidth}px;">
+          <div class="gantt-head-years">
+            ${yearGroups.map(g=>`<div class="gantt-head-cell year" style="width:${g.count*mw}px;">${g.year}</div>`).join('')}
           </div>
-        </div>`;
-      }).join('')}
+          <div class="gantt-head-months">
+            ${months.map(m=>`<div class="gantt-head-cell" style="width:${mw}px;">${MONTH_LABELS_FR[m.getMonth()]}</div>`).join('')}
+          </div>
+          <div style="position:relative;">
+            ${todayX >= 0 && todayX <= totalWidth ? `<div class="gantt-today" style="left:${todayX}px;height:${totalHeight}px;" title="Aujourd'hui : ${fmt(todayStr())}"></div>` : ''}
+            ${rowsHtml}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="gantt-legend">
+      <span><span class="lg-diamond" style="background:${MILESTONE_STATUS_DOT.EN_COURS}"></span>Jalon (échéance)</span>
+      <span><span class="lg-swatch" style="background:${TASK_STATUS_BAR.A_FAIRE}"></span>Tâche à faire</span>
+      <span><span class="lg-swatch" style="background:${TASK_STATUS_BAR.EN_COURS}"></span>Tâche en cours</span>
+      <span><span class="lg-swatch" style="background:${TASK_STATUS_BAR.TERMINE}"></span>Tâche terminée</span>
+      <span><span class="lg-swatch" style="background:${TASK_STATUS_BAR.BLOQUE}"></span>Tâche bloquée</span>
+      <span style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-block;width:14px;height:2px;background:var(--boa-red);"></span>Aujourd'hui</span>
     </div>`;
 }
 
@@ -1989,11 +2092,9 @@ function allProjectTasks(project){
 
 function renderJalonsDeps(project){
   const tasks = allProjectTasks(project);
-  if(tasks.length === 0){
-    return `<div class="empty" style="padding:48px;background:#fff;border:1px solid var(--boa-gray-border);border-radius:12px;">Aucune tâche définie pour ce projet.</div>`;
-  }
   const byId = {};
   tasks.forEach(t=>byId[t.id] = t);
+
   const level = {};
   function computeLevel(id, seen){
     if(level[id] !== undefined) return level[id];
@@ -2005,23 +2106,100 @@ function renderJalonsDeps(project){
     return lvl;
   }
   tasks.forEach(t=>computeLevel(t.id, new Set()));
-  const maxLevel = Math.max(...tasks.map(t=>level[t.id]));
+
+  const sortedMilestones = [...project.milestones].sort((a,b)=>a.order-b.order);
+  const msLevel = {};
+  sortedMilestones.forEach(m=>{
+    const taskLevels = m.tasks.map(t=>level[t.id]);
+    msLevel[m.id] = taskLevels.length ? Math.max(...taskLevels) + 1 : 0;
+  });
+
+  const maxLevel = Math.max(0, ...tasks.map(t=>level[t.id]), ...Object.values(msLevel));
+  const colWidth = 230, rowHeight = 86, cardW = 190, cardH = 60, diamond = 50;
+
   const columns = [];
-  for(let i=0;i<=maxLevel;i++) columns.push(tasks.filter(t=>level[t.id]===i));
+  for(let i=0;i<=maxLevel;i++) columns.push([]);
+  tasks.forEach(t=>columns[level[t.id]].push({ type:'task', data:t }));
+  sortedMilestones.forEach(m=>columns[msLevel[m.id]].push({ type:'milestone', data:m }));
+
+  const maxRows = Math.max(1, ...columns.map(c=>c.length));
+  const totalWidth = (maxLevel + 1) * colWidth + 40;
+  const totalHeight = maxRows * rowHeight + 40;
+
+  const pos = {};
+  columns.forEach((col, lvl)=>{
+    col.forEach((node, row)=>{
+      const x = lvl * colWidth + 20;
+      const y = row * rowHeight + 20;
+      if(node.type === 'task'){
+        pos[node.data.id] = { x, y, w:cardW, h:cardH, cx:x+cardW/2, cy:y+cardH/2 };
+      } else {
+        pos['m_'+node.data.id] = { x:x+(cardW-diamond)/2, y, w:diamond, h:diamond, cx:x+cardW/2, cy:y+diamond/2 };
+      }
+    });
+  });
+
+  const edges = [];
+  tasks.forEach(t=>{
+    (t.dependencies || []).forEach(d=>{
+      if(pos[d] && pos[t.id]) edges.push({ from:pos[d], to:pos[t.id] });
+    });
+  });
+  sortedMilestones.forEach(m=>{
+    m.tasks.forEach(t=>{
+      if(pos[t.id] && pos['m_'+m.id]) edges.push({ from:pos[t.id], to:pos['m_'+m.id] });
+    });
+  });
+
+  const edgePath = (e)=>{
+    const x1 = e.from.x + e.from.w, y1 = e.from.cy;
+    const x2 = e.to.x, y2 = e.to.cy;
+    const mx = (x1 + x2) / 2;
+    return `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`;
+  };
+
+  let nodesHtml = '';
+  columns.forEach((col)=>{
+    col.forEach((node)=>{
+      if(node.type === 'task'){
+        const t = node.data, p = pos[t.id];
+        nodesHtml += `
+          <div class="deps-task-card" style="left:${p.x}px;top:${p.y}px;width:${p.w}px;height:${p.h}px;border-left:4px solid ${TASK_STATUS_BAR[t.status]};">
+            <div class="dc-title">${escapeHtml(t.name)}</div>
+            <div class="dc-sub">Jalon ${t.milestoneOrder} · ${TASK_STATUS_LABELS[t.status]} · ${fmt(t.plannedDate)}</div>
+          </div>`;
+      } else {
+        const m = node.data, p = pos['m_'+m.id];
+        nodesHtml += `
+          <div class="deps-milestone-wrap" style="left:${p.x-(cardW-diamond)/2}px;top:${p.y}px;width:${cardW}px;">
+            <div class="deps-milestone-diamond" style="background:${MILESTONE_STATUS_DOT[m.status]};"><span>J${m.order}</span></div>
+            <div class="deps-milestone-label">${escapeHtml(m.name)}</div>
+          </div>`;
+      }
+    });
+  });
+
+  const linesHtml = `
+    <svg class="deps-lines" width="${totalWidth}" height="${totalHeight}">
+      <defs>
+        <marker id="depsArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#9ca3af"/>
+        </marker>
+      </defs>
+      ${edges.map(e=>`<path d="${edgePath(e)}" fill="none" stroke="#9ca3af" stroke-width="1.5" marker-end="url(#depsArrow)"/>`).join('')}
+    </svg>`;
 
   return `
-    <div class="deps-board">
-      ${columns.map((col,i)=>`
-        <div class="deps-col">
-          <div class="deps-col-head">${i===0 ? 'Sans dépendance' : 'Étape ' + (i+1)}</div>
-          ${col.map(t=>`
-            <div class="deps-card">
-              <div class="dc-title">${escapeHtml(t.name)}</div>
-              <div class="dc-sub">Jalon ${t.milestoneOrder} · ${escapeHtml(t.milestoneName)}</div>
-              <div class="dc-sub"><span class="badge" style="${TASK_STATUS_COLORS[t.status]}">${TASK_STATUS_LABELS[t.status]}</span> · Prévu : ${fmt(t.plannedDate)}</div>
-              ${t.dependencies && t.dependencies.length ? `<div class="dc-deps">Dépend de : ${t.dependencies.map(d=>escapeHtml(byId[d] ? byId[d].name : d)).join(', ')}</div>` : ''}
-            </div>`).join('')}
-        </div>`).join('')}
+    <div class="deps-graph" style="max-height:640px;">
+      <div style="position:relative;width:${totalWidth}px;height:${totalHeight}px;">
+        ${linesHtml}
+        ${nodesHtml}
+      </div>
+    </div>
+    <div class="gantt-legend">
+      <span><span class="lg-swatch" style="background:#fff;border:1px solid var(--boa-gray-border);"></span>Tâche (couleur de bord = statut)</span>
+      <span><span class="lg-diamond" style="background:${MILESTONE_STATUS_DOT.EN_COURS}"></span>Jalon (point de validation)</span>
+      <span>→ Lien de dépendance / enchaînement</span>
     </div>`;
 }
 
