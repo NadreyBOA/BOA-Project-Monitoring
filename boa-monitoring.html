@@ -336,6 +336,8 @@
   .gantt-labels-head{height:46px;border-bottom:1px solid var(--boa-gray-border);display:flex;align-items:center;padding:0 12px;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;}
   .gantt-row{height:34px;display:flex;align-items:center;padding:0 12px;font-size:12px;border-bottom:1px solid var(--boa-gray-border);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
   .gantt-row.gantt-milestone-row{font-weight:700;background:var(--boa-gray-bg);}
+  .gantt-toggle{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;margin-right:2px;cursor:pointer;border-radius:4px;flex-shrink:0;}
+  .gantt-toggle:hover{background:var(--boa-gray-border);}
   .gantt-row.gantt-task-row{color:#6b7280;padding-left:24px;}
   .gantt-track{position:relative;height:34px;border-bottom:1px solid var(--boa-gray-border);}
   .gantt-bar{
@@ -1659,10 +1661,10 @@ function renderProjects(){
 }
 
 /* ─── Vue Fiche projet ───────────────────────────────────────── */
-let detailState = { projectId:null, tab:'apercu', jalonsView:'liste' };
+let detailState = { projectId:null, tab:'apercu', jalonsView:'liste', ganttCollapsed:{} };
 
 function viewProject(id){
-  detailState = { projectId:id, tab:'apercu', jalonsView:'liste' };
+  detailState = { projectId:id, tab:'apercu', jalonsView:'liste', ganttCollapsed:{} };
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   location.hash = `project/${id}`;
   renderProjectDetail();
@@ -1673,6 +1675,10 @@ function setDetailTab(tab){
 }
 function setJalonsView(view){
   detailState.jalonsView = view;
+  renderProjectDetail();
+}
+function toggleGanttMilestone(milestoneId){
+  detailState.ganttCollapsed[milestoneId] = !detailState.ganttCollapsed[milestoneId];
   renderProjectDetail();
 }
 function backToProjects(){ navigate('projects'); }
@@ -2121,11 +2127,17 @@ function renderJalonsChrono(project){
 
   sorted.forEach(m=>{
     rowCount++;
-    labelsHtml += `<div class="gantt-row gantt-milestone-row" title="${escapeHtml(m.name)}">${m.order}. ${escapeHtml(m.name)}</div>`;
+    const collapsed = !!detailState.ganttCollapsed[m.id];
+    labelsHtml += `<div class="gantt-row gantt-milestone-row" title="${escapeHtml(m.name)}">
+      <span class="gantt-toggle" onclick="toggleGanttMilestone('${m.id}')">${icon(collapsed ? 'ChevronRight' : 'ChevronDown', '#374151')}</span>
+      ${m.order}. ${escapeHtml(m.name)}
+    </div>`;
     const msX = m.plannedDate ? ganttDateToX(new Date(m.plannedDate), min, mw) : null;
     rowsHtml += `<div class="gantt-track">
       ${msX !== null ? `<div class="gantt-diamond" style="left:${msX-8}px;background:${MILESTONE_STATUS_DOT[m.status]};" title="${escapeHtml(m.name)} — échéance : ${fmt(m.plannedDate)}"></div>` : ''}
     </div>`;
+
+    if(collapsed) return;
 
     [...m.tasks].sort((a,b)=>(a.plannedDate||'').localeCompare(b.plannedDate||'')).forEach(t=>{
       rowCount++;
