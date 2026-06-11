@@ -398,16 +398,31 @@
   .gantt-legend .lg-swatch{display:inline-block;width:14px;height:14px;border-radius:4px;margin-right:5px;vertical-align:middle;}
   .gantt-legend .lg-diamond{display:inline-block;width:10px;height:10px;transform:rotate(45deg);margin-right:7px;vertical-align:middle;}
 
-  /* Jalons : vue dépendances (graphe) */
-  .deps-graph{position:relative;overflow:auto;background:#fff;border:1px solid var(--boa-gray-border);border-radius:12px;padding:20px;}
-  .deps-lines{position:absolute;top:0;left:0;pointer-events:none;}
-  .deps-task-card{position:absolute;background:#fff;border:1px solid var(--boa-gray-border);border-radius:10px;padding:8px 10px;box-shadow:0 1px 2px rgba(0,0,0,.04);}
-  .deps-task-card .dc-title{font-size:12px;font-weight:700;color:var(--boa-black);margin-bottom:3px;line-height:1.25;}
-  .deps-task-card .dc-sub{font-size:10.5px;color:#9ca3af;}
-  .deps-milestone-wrap{position:absolute;display:flex;flex-direction:column;align-items:center;}
-  .deps-milestone-diamond{width:48px;height:48px;transform:rotate(45deg);border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.08);display:flex;align-items:center;justify-content:center;}
-  .deps-milestone-diamond span{transform:rotate(-45deg);color:#fff;font-size:11px;font-weight:700;}
-  .deps-milestone-label{margin-top:6px;font-size:11px;font-weight:700;color:var(--boa-black);text-align:center;width:140px;}
+  /* Jalons : vue frise chronologique */
+  .frise-wrap{border:1px solid var(--boa-gray-border);border-radius:12px;background:#fff;overflow:hidden;}
+  .frise-scroll{overflow-x:auto;}
+  .frise-inner{position:relative;min-width:100%;}
+  .frise-zones-row{position:absolute;left:0;right:0;}
+  .frise-zone{position:absolute;top:0;bottom:0;border-top:3px solid transparent;}
+  .frise-axis-svg{position:absolute;left:0;}
+  .frise-ticks-row{position:absolute;left:0;right:0;display:flex;border-top:1px solid var(--boa-gray-border);border-bottom:1px solid var(--boa-gray-border);}
+  .frise-tick{flex-shrink:0;text-align:center;font-size:10px;color:#9ca3af;border-right:1px solid var(--boa-gray-border);display:flex;align-items:center;justify-content:center;white-space:nowrap;overflow:hidden;}
+  .frise-tick.weekend{background:rgba(0,0,0,.035);}
+  .frise-dot{position:absolute;width:14px;height:14px;margin-left:-7px;margin-top:-7px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.1);z-index:3;}
+  .frise-connector{position:absolute;width:2px;margin-left:-1px;background:#cbd5e1;z-index:1;}
+  .frise-connector.up{height:13px;}
+  .frise-connector.down{height:35px;}
+  .frise-label{position:absolute;width:150px;margin-left:-75px;text-align:center;display:flex;flex-direction:column;}
+  .frise-label.above{justify-content:flex-end;}
+  .frise-label.below{justify-content:flex-start;}
+  .frise-label-title{font-size:11.5px;font-weight:700;color:var(--boa-black);background:#fff;border-top:3px solid;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:6px 8px;line-height:1.3;}
+  .frise-label-date{font-size:10.5px;color:#9ca3af;margin-top:4px;}
+  .frise-today{position:absolute;top:0;width:2px;background:var(--boa-red);z-index:2;}
+  .frise-today-label{
+    position:absolute;top:0;left:50%;transform:translateX(-50%);
+    background:var(--boa-red);color:#fff;font-size:10px;font-weight:700;
+    padding:1px 6px;border-radius:4px;white-space:nowrap;line-height:1.5;
+  }
 
   /* Journal */
   .journal-card{border:1px solid var(--boa-gray-border);border-radius:12px;padding:16px 18px;margin-bottom:12px;background:#fff;}
@@ -1693,10 +1708,10 @@ function renderProjects(){
 }
 
 /* ─── Vue Fiche projet ───────────────────────────────────────── */
-let detailState = { projectId:null, tab:'apercu', jalonsView:'liste', ganttCollapsed:{}, ganttZoom:'semaine' };
+let detailState = { projectId:null, tab:'apercu', jalonsView:'liste', ganttCollapsed:{}, ganttZoom:'semaine', friseZoom:'semaine' };
 
 function viewProject(id){
-  detailState = { projectId:id, tab:'apercu', jalonsView:'liste', ganttCollapsed:{}, ganttZoom:'semaine' };
+  detailState = { projectId:id, tab:'apercu', jalonsView:'liste', ganttCollapsed:{}, ganttZoom:'semaine', friseZoom:'semaine' };
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   location.hash = `project/${id}`;
   renderProjectDetail();
@@ -1715,6 +1730,10 @@ function toggleGanttMilestone(milestoneId){
 }
 function setGanttZoom(zoom){
   detailState.ganttZoom = zoom;
+  renderProjectDetail();
+}
+function setFriseZoom(zoom){
+  detailState.friseZoom = zoom;
   renderProjectDetail();
 }
 function backToProjects(){ navigate('projects'); }
@@ -1783,6 +1802,9 @@ function renderProjectDetail(){
   if(detailState.tab === 'jalons' && (detailState.jalonsView || 'liste') === 'chrono'){
     initGanttDrag();
     scrollGanttToToday();
+  }
+  if(detailState.tab === 'jalons' && (detailState.jalonsView || 'liste') === 'frise'){
+    scrollToToday('.frise-scroll', '.frise-today');
   }
 }
 
@@ -1884,7 +1906,7 @@ const JALONS_VIEWS = [
   { id:'liste', label:'Liste', icon:'List' },
   { id:'kanban', label:'Kanban', icon:'LayoutGrid' },
   { id:'chrono', label:'Chronologique', icon:'CalendarRange' },
-  { id:'deps', label:'Dépendances', icon:'GitBranch' },
+  { id:'frise', label:'Frise chronologique', icon:'ArrowRight' },
 ];
 
 function renderJalonsTab(project){
@@ -1906,7 +1928,7 @@ function renderJalonsTab(project){
   let body;
   if(view === 'kanban') body = renderJalonsKanban(project);
   else if(view === 'chrono') body = renderJalonsChrono(project);
-  else if(view === 'deps') body = renderJalonsDeps(project);
+  else if(view === 'frise') body = renderJalonsFrise(project);
   else body = renderJalonsListe(project);
 
   return header + body;
@@ -2029,6 +2051,41 @@ const GANTT_ZOOMS = {
   semaine: { label:'Semaine', dayWidth: 13, showDays:true },
   jour:    { label:'Jour',    dayWidth: 30, showDays:true },
 };
+
+// Variantes de couleurs (claires) déclinées de la charte BOA, utilisées pour les zones de la frise chronologique
+const FRISE_PHASE_COLORS = [
+  { bg:'rgba(27,122,75,.08)',  accent:'var(--boa-green)'  },
+  { bg:'rgba(27,46,94,.08)',   accent:'var(--boa-navy)'   },
+  { bg:'rgba(212,131,10,.08)', accent:'var(--boa-orange)' },
+  { bg:'rgba(192,57,43,.08)',  accent:'var(--boa-red)'    },
+];
+
+// Découpage de la période [min, max) en graduations selon le niveau de zoom choisi
+function friseTicks(min, max, zoomKey, dayWidth){
+  const ticks = [];
+  const d = new Date(min);
+  if(zoomKey === 'mois'){
+    while(d < max){
+      const y = d.getFullYear(), mo = d.getMonth();
+      let days = 0;
+      while(d < max && d.getFullYear() === y && d.getMonth() === mo){ days++; d.setDate(d.getDate()+1); }
+      ticks.push({ label:`${MONTH_LABELS_FR[mo]} ${y}`, width:days*dayWidth, weekend:false });
+    }
+  } else if(zoomKey === 'semaine'){
+    while(d < max){
+      const weekStart = new Date(d);
+      let days = 0;
+      while(d < max && days < 7){ days++; d.setDate(d.getDate()+1); }
+      ticks.push({ label:weekStart.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit' }), width:days*dayWidth, weekend:false });
+    }
+  } else {
+    while(d < max){
+      ticks.push({ label:String(d.getDate()), width:dayWidth, weekend: d.getDay()===0 || d.getDay()===6 });
+      d.setDate(d.getDate()+1);
+    }
+  }
+  return ticks;
+}
 
 // Nombre de jours (entiers) entre deux dates, en ignorant l'heure
 function ganttDaysBetween(from, to){
@@ -2367,8 +2424,12 @@ let ganttDrag = null;
 let ganttLink = null;
 
 function scrollGanttToToday(){
-  const scroller = document.querySelector('.gantt-scroll');
-  const todayLine = document.querySelector('.gantt-today');
+  scrollToToday('.gantt-scroll', '.gantt-today');
+}
+
+function scrollToToday(scrollSelector, todaySelector){
+  const scroller = document.querySelector(scrollSelector);
+  const todayLine = document.querySelector(todaySelector);
   if(!scroller || !todayLine) return;
   const target = todayLine.offsetLeft - scroller.clientWidth / 2;
   scroller.scrollLeft = Math.max(0, target);
@@ -2606,116 +2667,83 @@ function allProjectTasks(project){
   return tasks;
 }
 
-function renderJalonsDeps(project){
-  const tasks = allProjectTasks(project);
-  const byId = {};
-  tasks.forEach(t=>byId[t.id] = t);
+function renderJalonsFrise(project){
+  const { min, max } = ganttDateRange(project);
+  const zoomKey = detailState.friseZoom || 'semaine';
+  const zoom = GANTT_ZOOMS[zoomKey] || GANTT_ZOOMS.semaine;
+  const dw = zoom.dayWidth;
+  const totalDays = ganttDaysBetween(min, max);
+  const totalWidth = totalDays * dw;
 
-  const level = {};
-  function computeLevel(id, seen){
-    if(level[id] !== undefined) return level[id];
-    if(seen.has(id)) return 0;
-    seen.add(id);
-    const deps = (byId[id].dependencies || []).filter(d=>byId[d]);
-    const lvl = deps.length === 0 ? 0 : 1 + Math.max(...deps.map(d=>computeLevel(d, seen)));
-    level[id] = lvl;
-    return lvl;
+  const TOP = 90, AXIS = 40, TICKS = 22, BOTTOM = 90;
+  const HEIGHT = TOP + AXIS + TICKS + BOTTOM;
+  const AXIS_Y = TOP + AXIS / 2;
+
+  const sorted = [...project.milestones]
+    .filter(m=>m.plannedDate)
+    .sort((a,b)=> new Date(a.plannedDate) - new Date(b.plannedDate));
+
+  // Zones colorées : une par jalon, de la fin du jalon précédent (ou du début de la période) jusqu'à son échéance
+  let zonesHtml = '';
+  let prevX = 0;
+  sorted.forEach((m, i)=>{
+    const x = ganttDateToX(new Date(m.plannedDate), min, dw);
+    const color = FRISE_PHASE_COLORS[i % FRISE_PHASE_COLORS.length];
+    zonesHtml += `<div class="frise-zone" style="left:${prevX}px;width:${Math.max(0, x - prevX)}px;background:${color.bg};border-top-color:${color.accent};"></div>`;
+    prevX = x;
+  });
+  if(sorted.length){
+    const color = FRISE_PHASE_COLORS[sorted.length % FRISE_PHASE_COLORS.length];
+    zonesHtml += `<div class="frise-zone" style="left:${prevX}px;width:${Math.max(0, totalWidth - prevX)}px;background:${color.bg};border-top-color:${color.accent};"></div>`;
   }
-  tasks.forEach(t=>computeLevel(t.id, new Set()));
 
-  const sortedMilestones = [...project.milestones].sort((a,b)=>a.order-b.order);
-  const msLevel = {};
-  sortedMilestones.forEach(m=>{
-    const taskLevels = m.tasks.map(t=>level[t.id]);
-    msLevel[m.id] = taskLevels.length ? Math.max(...taskLevels) + 1 : 0;
+  // Graduation de l'axe selon le zoom choisi
+  const ticks = friseTicks(min, max, zoomKey, dw);
+  const ticksHtml = ticks.map(t=>`<div class="frise-tick${t.weekend ? ' weekend' : ''}" style="width:${t.width}px;">${t.label}</div>`).join('');
+
+  // Étapes (jalons) positionnées sur l'axe, étiquettes alternées au-dessus / en-dessous
+  let markersHtml = '';
+  sorted.forEach((m, i)=>{
+    const x = ganttDateToX(new Date(m.plannedDate), min, dw);
+    const above = i % 2 === 0;
+    const dot = MILESTONE_STATUS_DOT[m.status];
+    markersHtml += `
+      <div class="frise-dot" style="left:${x}px;top:${AXIS_Y}px;background:${dot};" title="${escapeHtml(m.name)} — ${fmt(m.plannedDate)}"></div>
+      <div class="frise-connector ${above ? 'up' : 'down'}" style="left:${x}px;${above ? `top:${TOP}px;` : `top:${AXIS_Y + 7}px;`}"></div>
+      <div class="frise-label ${above ? 'above' : 'below'}" style="left:${x}px;${above ? `top:0px;height:${TOP}px;` : `top:${TOP + AXIS + TICKS}px;height:${BOTTOM}px;`}">
+        <div class="frise-label-title" style="border-color:${dot};">${m.order}. ${escapeHtml(m.name)}</div>
+        <div class="frise-label-date">${fmt(m.plannedDate)}</div>
+      </div>`;
   });
 
-  const maxLevel = Math.max(0, ...tasks.map(t=>level[t.id]), ...Object.values(msLevel));
-  const colWidth = 230, rowHeight = 86, cardW = 190, cardH = 60, diamond = 50;
-
-  const columns = [];
-  for(let i=0;i<=maxLevel;i++) columns.push([]);
-  tasks.forEach(t=>columns[level[t.id]].push({ type:'task', data:t }));
-  sortedMilestones.forEach(m=>columns[msLevel[m.id]].push({ type:'milestone', data:m }));
-
-  const maxRows = Math.max(1, ...columns.map(c=>c.length));
-  const totalWidth = (maxLevel + 1) * colWidth + 40;
-  const totalHeight = maxRows * rowHeight + 40;
-
-  const pos = {};
-  columns.forEach((col, lvl)=>{
-    col.forEach((node, row)=>{
-      const x = lvl * colWidth + 20;
-      const y = row * rowHeight + 20;
-      if(node.type === 'task'){
-        pos[node.data.id] = { x, y, w:cardW, h:cardH, cx:x+cardW/2, cy:y+cardH/2 };
-      } else {
-        pos['m_'+node.data.id] = { x:x+(cardW-diamond)/2, y, w:diamond, h:diamond, cx:x+cardW/2, cy:y+diamond/2 };
-      }
-    });
-  });
-
-  const edges = [];
-  tasks.forEach(t=>{
-    (t.dependencies || []).forEach(d=>{
-      if(pos[d] && pos[t.id]) edges.push({ from:pos[d], to:pos[t.id] });
-    });
-  });
-  sortedMilestones.forEach(m=>{
-    m.tasks.forEach(t=>{
-      if(pos[t.id] && pos['m_'+m.id]) edges.push({ from:pos[t.id], to:pos['m_'+m.id] });
-    });
-  });
-
-  const edgePath = (e)=>{
-    const x1 = e.from.x + e.from.w, y1 = e.from.cy;
-    const x2 = e.to.x, y2 = e.to.cy;
-    const mx = (x1 + x2) / 2;
-    return `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`;
-  };
-
-  let nodesHtml = '';
-  columns.forEach((col)=>{
-    col.forEach((node)=>{
-      if(node.type === 'task'){
-        const t = node.data, p = pos[t.id];
-        nodesHtml += `
-          <div class="deps-task-card" style="left:${p.x}px;top:${p.y}px;width:${p.w}px;height:${p.h}px;border-left:4px solid ${TASK_STATUS_BAR[t.status]};">
-            <div class="dc-title">${escapeHtml(t.name)}</div>
-            <div class="dc-sub">Jalon ${t.milestoneOrder} · ${TASK_STATUS_LABELS[t.status]} · ${fmt(t.plannedDate)}</div>
-          </div>`;
-      } else {
-        const m = node.data, p = pos['m_'+m.id];
-        nodesHtml += `
-          <div class="deps-milestone-wrap" style="left:${p.x-(cardW-diamond)/2}px;top:${p.y}px;width:${cardW}px;">
-            <div class="deps-milestone-diamond" style="background:${MILESTONE_STATUS_DOT[m.status]};"><span>J${m.order}</span></div>
-            <div class="deps-milestone-label">${escapeHtml(m.name)}</div>
-          </div>`;
-      }
-    });
-  });
-
-  const linesHtml = `
-    <svg class="deps-lines" width="${totalWidth}" height="${totalHeight}">
-      <defs>
-        <marker id="depsArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-          <path d="M0,0 L10,5 L0,10 z" fill="#9ca3af"/>
-        </marker>
-      </defs>
-      ${edges.map(e=>`<path d="${edgePath(e)}" fill="none" stroke="#9ca3af" stroke-width="1.5" marker-end="url(#depsArrow)"/>`).join('')}
-    </svg>`;
+  const todayX = ganttDateToX(new Date(), min, dw);
 
   return `
-    <div class="deps-graph" style="max-height:640px;">
-      <div style="position:relative;width:${totalWidth}px;height:${totalHeight}px;">
-        ${linesHtml}
-        ${nodesHtml}
+    <div class="frise-zoom-bar">
+      ${Object.keys(GANTT_ZOOMS).map(key=>`<button class="gantt-zoom-btn ${zoomKey===key ? 'active' : ''}" onclick="setFriseZoom('${key}')">${GANTT_ZOOMS[key].label}</button>`).join('')}
+    </div>
+    <div class="frise-wrap">
+      <div class="frise-scroll">
+        <div class="frise-inner" style="width:${totalWidth}px;height:${HEIGHT}px;">
+          <div class="frise-zones-row" style="top:${TOP}px;height:${AXIS}px;">${zonesHtml}</div>
+          <svg class="frise-axis-svg" style="top:${AXIS_Y - 1}px;" width="${totalWidth + 14}" height="4">
+            <defs>
+              <marker id="friseArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" fill="var(--boa-navy)"/>
+              </marker>
+            </defs>
+            <line x1="0" y1="2" x2="${totalWidth + 6}" y2="2" stroke="var(--boa-navy)" stroke-width="2" marker-end="url(#friseArrow)"/>
+          </svg>
+          <div class="frise-ticks-row" style="top:${TOP + AXIS}px;height:${TICKS}px;">${ticksHtml}</div>
+          ${todayX >= 0 && todayX <= totalWidth ? `<div class="frise-today" style="left:${todayX}px;height:${HEIGHT}px;"><span class="frise-today-label">Aujourd'hui</span></div>` : ''}
+          ${markersHtml}
+        </div>
       </div>
     </div>
     <div class="gantt-legend">
-      <span><span class="lg-swatch" style="background:#fff;border:1px solid var(--boa-gray-border);"></span>Tâche (couleur de bord = statut)</span>
-      <span><span class="lg-diamond" style="background:${MILESTONE_STATUS_DOT.EN_COURS}"></span>Jalon (point de validation)</span>
-      <span>→ Lien de dépendance / enchaînement</span>
+      <span><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${MILESTONE_STATUS_DOT.EN_COURS};border:2px solid #fff;box-shadow:0 0 0 1px ${MILESTONE_STATUS_DOT.EN_COURS};"></span>Jalon (échéance)</span>
+      <span style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-block;width:14px;height:2px;background:var(--boa-red);"></span>Aujourd'hui</span>
+      ${FRISE_PHASE_COLORS.map((c,i)=>`<span style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:${c.bg};border-top:3px solid ${c.accent};"></span>Phase ${i+1}, ${i+5}, …</span>`).join('')}
     </div>`;
 }
 
@@ -3453,6 +3481,7 @@ function icon(name, color){
     LayoutGrid:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>`,
     CalendarRange:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M7 14h2"/><path d="M15 14h2"/><path d="M7 18h2"/><path d="M15 18h2"/></svg>`,
     GitBranch:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>`,
+    ArrowRight:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>`,
   };
   return icons[name] || '';
 }
