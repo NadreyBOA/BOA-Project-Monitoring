@@ -351,6 +351,7 @@
   .gantt-handle:hover{background:rgba(0,0,0,.18);border-radius:4px;}
   .gantt-bar.dragging{box-shadow:0 0 0 2px var(--boa-navy);}
   .gantt-bar.critical{box-shadow:0 0 0 2px var(--boa-red);}
+  .gantt-baseline{position:absolute;top:29px;height:4px;border-radius:2px;background:repeating-linear-gradient(135deg,#cbd5e1,#cbd5e1 4px,#fff 4px,#fff 8px);border:1px solid #9ca3af;box-sizing:border-box;}
   .gantt-diamond{position:absolute;top:9px;width:16px;height:16px;transform:rotate(45deg);border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.08);}
   .gantt-today{position:absolute;top:0;bottom:0;width:2px;background:var(--boa-red);z-index:2;}
   .gantt-deps-svg{position:absolute;top:0;left:0;z-index:1;pointer-events:none;}
@@ -887,17 +888,17 @@ function getSampleData(){
           plannedDate:'2024-03-31', actualDate:'2024-04-10', status:'TERMINE',
           responsible:'Nadrey BOA', deliverables:['CDC validé','Homologation BAM','Contrat fournisseur'], weight:8,
           tasks:[
-            {id:'tk1', milestoneId:'m1', name:'Rédaction CDC', plannedDate:'2024-02-15', actualDate:'2024-02-18', status:'TERMINE', assignedTo:['Karim Alaoui'], priority:'HAUTE', estimatedDays:20, actualDays:22, dependencies:[], progress:100},
-            {id:'tk2', milestoneId:'m1', name:'Dossier homologation BAM', plannedDate:'2024-03-15', actualDate:'2024-03-28', status:'TERMINE', assignedTo:['Nadrey BOA'], priority:'HAUTE', estimatedDays:30, actualDays:35, dependencies:['tk1'], progress:100},
+            {id:'tk1', milestoneId:'m1', name:'Rédaction CDC', plannedDate:'2024-02-15', actualDate:'2024-02-18', status:'TERMINE', assignedTo:['Karim Alaoui'], priority:'HAUTE', estimatedDays:20, actualDays:22, dependencies:[], progress:100, baselinePlannedDate:'2024-02-10', baselineEstimatedDays:18},
+            {id:'tk2', milestoneId:'m1', name:'Dossier homologation BAM', plannedDate:'2024-03-15', actualDate:'2024-03-28', status:'TERMINE', assignedTo:['Nadrey BOA'], priority:'HAUTE', estimatedDays:30, actualDays:35, dependencies:['tk1'], progress:100, baselinePlannedDate:'2024-03-05', baselineEstimatedDays:25},
           ]
         },
         { id:'m2', order:2, name:'Phase 2 – Pilote (50 TPE)', description:'Déploiement pilote sur 3 agences test',
           plannedDate:'2024-06-30', status:'EN_COURS',
           responsible:'Fatima Zahra', deliverables:['50 TPE installés','Rapport pilote','Formation personnel'], weight:7,
           tasks:[
-            {id:'tk3', milestoneId:'m2', name:'Installation pilote agence Casablanca', plannedDate:'2024-05-31', actualDate:'2024-05-29', status:'TERMINE', assignedTo:['Mohamed Idrissi'], priority:'HAUTE', estimatedDays:10, actualDays:9, dependencies:['tk2'], progress:100},
-            {id:'tk4', milestoneId:'m2', name:'Installation pilote agence Rabat', plannedDate:'2024-06-15', status:'EN_COURS', assignedTo:['Mohamed Idrissi'], priority:'HAUTE', estimatedDays:10, dependencies:[], progress:60},
-            {id:'tk5', milestoneId:'m2', name:'Formation personnel pilote', plannedDate:'2024-06-30', status:'A_FAIRE', assignedTo:['Fatima Zahra'], priority:'MOYENNE', estimatedDays:5, dependencies:['tk4'], progress:0},
+            {id:'tk3', milestoneId:'m2', name:'Installation pilote agence Casablanca', plannedDate:'2024-05-31', actualDate:'2024-05-29', status:'TERMINE', assignedTo:['Mohamed Idrissi'], priority:'HAUTE', estimatedDays:10, actualDays:9, dependencies:['tk2'], progress:100, baselinePlannedDate:'2024-05-31', baselineEstimatedDays:10},
+            {id:'tk4', milestoneId:'m2', name:'Installation pilote agence Rabat', plannedDate:'2024-06-15', status:'EN_COURS', assignedTo:['Mohamed Idrissi'], priority:'HAUTE', estimatedDays:10, dependencies:[], progress:60, baselinePlannedDate:'2024-06-10', baselineEstimatedDays:8},
+            {id:'tk5', milestoneId:'m2', name:'Formation personnel pilote', plannedDate:'2024-06-30', status:'A_FAIRE', assignedTo:['Fatima Zahra'], priority:'MOYENNE', estimatedDays:5, dependencies:['tk4'], progress:0, baselinePlannedDate:'2024-06-30', baselineEstimatedDays:5},
           ]
         },
         { id:'m3', order:3, name:'Phase 3 – Déploiement massif (450 TPE)', description:'Déploiement sur l\'ensemble du réseau',
@@ -1994,6 +1995,14 @@ function ganttTaskDates(t){
   return { start, end };
 }
 
+function ganttTaskBaselineDates(t){
+  if(!t.baselinePlannedDate) return null;
+  const end = new Date(t.baselinePlannedDate);
+  const start = new Date(end);
+  start.setDate(start.getDate() - Math.max(1, t.baselineEstimatedDays || 1));
+  return { start, end };
+}
+
 function ganttDateRange(project){
   let min = null, max = null;
   const consider = (dt)=>{
@@ -2009,6 +2018,8 @@ function ganttDateRange(project){
         const { start, end } = ganttTaskDates(t);
         consider(start); consider(end);
       }
+      const baseline = ganttTaskBaselineDates(t);
+      if(baseline){ consider(baseline.start); consider(baseline.end); }
       if(t.actualDate) consider(new Date(t.actualDate));
     });
   });
@@ -2152,7 +2163,18 @@ function renderJalonsChrono(project){
         const w = Math.max(8, x2 - x1);
         taskPos[t.id] = { x1, x2: x1 + w, y: rowY };
         const isCritical = criticalTasks.has(t.id);
+
+        let baselineHtml = '';
+        const baseline = ganttTaskBaselineDates(t);
+        if(baseline && (t.baselinePlannedDate !== t.plannedDate || (t.baselineEstimatedDays || 0) !== (t.estimatedDays || 0))){
+          const bx1 = ganttDateToX(baseline.start, min, mw);
+          const bx2 = ganttDateToX(baseline.end, min, mw);
+          const bw = Math.max(8, bx2 - bx1);
+          baselineHtml = `<div class="gantt-baseline" style="left:${bx1}px;width:${bw}px;" title="Référence initiale : du ${fmt(baseline.start.toISOString().slice(0,10))} au ${fmt(t.baselinePlannedDate)}"></div>`;
+        }
+
         barHtml = `
+          ${baselineHtml}
           <div class="gantt-bar${isCritical ? ' critical' : ''}" style="left:${x1}px;width:${w}px;" title="${escapeHtml(t.name)} : du ${fmt(start.toISOString().slice(0,10))} au ${fmt(t.plannedDate)} — ${t.progress}%${isCritical ? ' — Chemin critique' : ''}">
             <div class="gantt-bar-fill" style="width:${t.progress}%;background:${TASK_STATUS_BAR[t.status]};"></div>
             <div class="gantt-handle gantt-handle-left" data-project="${project.id}" data-task="${t.id}" data-edge="start"></div>
@@ -2225,6 +2247,7 @@ function renderJalonsChrono(project){
       <span style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-block;width:14px;height:2px;background:var(--boa-red);"></span>Aujourd'hui</span>
       <span style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-block;width:14px;height:2px;background:#9ca3af;"></span>Dépendance (glisser depuis le point bleu pour en créer une, clic sur le lien pour le supprimer)</span>
       <span style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:#fff;box-shadow:0 0 0 2px var(--boa-red);"></span>Chemin critique</span>
+      <span style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-block;width:14px;height:4px;border-radius:2px;background:repeating-linear-gradient(135deg,#cbd5e1,#cbd5e1 4px,#fff 4px,#fff 8px);border:1px solid #9ca3af;"></span>Référence (baseline) initiale</span>
     </div>`;
 }
 
@@ -3001,6 +3024,7 @@ function openTaskModal(projectId, milestoneId){
         id:newId(), milestoneId, name:v.name, plannedDate:v.plannedDate, status:v.status,
         assignedTo:v.assignedTo, priority:v.priority, estimatedDays:v.estimatedDays || 0,
         dependencies:[], progress,
+        baselinePlannedDate:v.plannedDate, baselineEstimatedDays:v.estimatedDays || 0,
       });
       p.progress = computeProjectProgress(p.milestones);
       p.updatedAt = new Date().toISOString();
