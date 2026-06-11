@@ -336,6 +336,13 @@
   .kanban-empty{font-size:12px;color:#9ca3af;text-align:center;padding:16px 4px;}
 
   /* Jalons : vue chronologique (Gantt) */
+  .gantt-zoom-bar{display:flex;justify-content:flex-end;gap:6px;margin-bottom:8px;}
+  .gantt-zoom-btn{
+    padding:5px 12px;border-radius:6px;border:1px solid var(--boa-gray-border);background:#fff;
+    font-size:12px;font-weight:600;color:#6b7280;cursor:pointer;transition:background .15s,color .15s,border-color .15s;
+  }
+  .gantt-zoom-btn:hover{background:var(--boa-gray-bg);}
+  .gantt-zoom-btn.active{background:var(--boa-navy);color:#fff;border-color:var(--boa-navy);}
   .gantt-wrap{display:flex;border:1px solid var(--boa-gray-border);border-radius:12px;background:#fff;overflow:hidden;}
   .gantt-labels{flex:0 0 240px;border-right:1px solid var(--boa-gray-border);}
   .gantt-scroll{overflow-x:auto;flex:1;}
@@ -344,7 +351,11 @@
   .gantt-head-months{display:flex;height:22px;border-bottom:1px solid var(--boa-gray-border);}
   .gantt-head-cell{flex-shrink:0;text-align:center;font-size:10px;color:#9ca3af;border-right:1px solid var(--boa-gray-border);display:flex;align-items:center;justify-content:center;}
   .gantt-head-cell.year{font-weight:700;color:#374151;font-size:11px;}
-  .gantt-labels-head{height:46px;border-bottom:1px solid var(--boa-gray-border);display:flex;align-items:center;padding:0 12px;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;}
+  .gantt-head-days{display:flex;height:18px;border-bottom:1px solid var(--boa-gray-border);}
+  .gantt-head-cell.day{flex-direction:column;font-size:9px;line-height:1;gap:1px;color:#6b7280;font-weight:600;}
+  .gantt-head-cell.day.weekend{background:rgba(0,0,0,.035);color:#9ca3af;}
+  .gantt-head-cell.day .day-name{font-size:8px;font-weight:400;color:#b0b6c0;text-transform:uppercase;}
+  .gantt-labels-head{border-bottom:1px solid var(--boa-gray-border);display:flex;align-items:center;padding:0 12px;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;}
   .gantt-row{height:34px;display:flex;align-items:center;padding:0 12px;font-size:12px;border-bottom:1px solid var(--boa-gray-border);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
   .gantt-row.gantt-milestone-row{font-weight:700;background:var(--boa-gray-bg);}
   .gantt-resource{position:absolute;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:4px;white-space:nowrap;font-size:11px;color:#374151;pointer-events:none;z-index:2;}
@@ -1682,10 +1693,10 @@ function renderProjects(){
 }
 
 /* ─── Vue Fiche projet ───────────────────────────────────────── */
-let detailState = { projectId:null, tab:'apercu', jalonsView:'liste', ganttCollapsed:{} };
+let detailState = { projectId:null, tab:'apercu', jalonsView:'liste', ganttCollapsed:{}, ganttZoom:'semaine' };
 
 function viewProject(id){
-  detailState = { projectId:id, tab:'apercu', jalonsView:'liste', ganttCollapsed:{} };
+  detailState = { projectId:id, tab:'apercu', jalonsView:'liste', ganttCollapsed:{}, ganttZoom:'semaine' };
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   location.hash = `project/${id}`;
   renderProjectDetail();
@@ -1700,6 +1711,10 @@ function setJalonsView(view){
 }
 function toggleGanttMilestone(milestoneId){
   detailState.ganttCollapsed[milestoneId] = !detailState.ganttCollapsed[milestoneId];
+  renderProjectDetail();
+}
+function setGanttZoom(zoom){
+  detailState.ganttZoom = zoom;
   renderProjectDetail();
 }
 function backToProjects(){ navigate('projects'); }
@@ -2008,18 +2023,31 @@ function dropMilestone(ev, projectId, newStatus){
 
 const GANTT_MONTH_WIDTH = 46;
 const MONTH_LABELS_FR = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'];
+const DAY_LABELS_FR = ['D','L','M','M','J','V','S'];
+const GANTT_ZOOMS = {
+  mois:    { label:'Mois',    dayWidth: GANTT_MONTH_WIDTH/30.44, showDays:false },
+  semaine: { label:'Semaine', dayWidth: 13, showDays:true },
+  jour:    { label:'Jour',    dayWidth: 30, showDays:true },
+};
+
+// Nombre de jours (entiers) entre deux dates, en ignorant l'heure
+function ganttDaysBetween(from, to){
+  const a = Date.UTC(from.getFullYear(), from.getMonth(), from.getDate());
+  const b = Date.UTC(to.getFullYear(), to.getMonth(), to.getDate());
+  return Math.round((b - a) / 86400000);
+}
 
 // Bandes de fond pour les week-ends sur la période [min, max)
-function ganttNonWorkingBands(min, max, monthWidth){
+function ganttNonWorkingBands(min, max, dayWidth){
   const bands = [];
   let cur = null;
   const d = new Date(min);
   while(d < max){
     const day = d.getDay();
     const type = (day === 0 || day === 6) ? 'weekend' : null;
-    const x = ganttDateToX(d, min, monthWidth);
+    const x = ganttDateToX(d, min, dayWidth);
     const next = new Date(d); next.setDate(next.getDate()+1);
-    const xNext = ganttDateToX(next, min, monthWidth);
+    const xNext = ganttDateToX(next, min, dayWidth);
     if(type){
       if(cur && cur.type === type && Math.abs(cur.x2 - x) < 0.01){
         cur.x2 = xNext;
@@ -2080,22 +2108,8 @@ function ganttDateRange(project){
   return { min, max };
 }
 
-function ganttMonths(min, max){
-  const months = [];
-  let d = new Date(min.getFullYear(), min.getMonth(), 1);
-  const end = new Date(max.getFullYear(), max.getMonth(), 1);
-  while(d <= end){
-    months.push(new Date(d));
-    d = new Date(d.getFullYear(), d.getMonth() + 1, 1);
-  }
-  return months;
-}
-
-function ganttDateToX(date, min, monthWidth){
-  const months = (date.getFullYear() - min.getFullYear()) * 12 + (date.getMonth() - min.getMonth());
-  const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-  const frac = (date.getDate() - 1) / daysInMonth;
-  return (months + frac) * monthWidth;
+function ganttDateToX(date, min, dayWidth){
+  return ganttDaysBetween(min, date) * dayWidth;
 }
 
 // Chemin coudé reliant la fin d'une tâche prédécesseur (x1,y1) au début de la tâche successeur (x2,y2)
@@ -2165,22 +2179,46 @@ function computeCriticalPath(project){
 
 function renderJalonsChrono(project){
   const { min, max } = ganttDateRange(project);
-  const months = ganttMonths(min, max);
-  const mw = GANTT_MONTH_WIDTH;
-  const totalWidth = months.length * mw;
+  const zoom = GANTT_ZOOMS[detailState.ganttZoom] || GANTT_ZOOMS.semaine;
+  const mw = zoom.dayWidth;
+  const totalDays = ganttDaysBetween(min, max);
+  const totalWidth = totalDays * mw;
   const sorted = [...project.milestones].sort((a,b)=>a.order-b.order);
 
+  // Regroupement des jours de la période par mois (et par année) pour l'en-tête
+  const monthGroups = [];
+  {
+    const d = new Date(min);
+    while(d < max){
+      const y = d.getFullYear(), mo = d.getMonth();
+      if(monthGroups.length && monthGroups[monthGroups.length-1].year === y && monthGroups[monthGroups.length-1].month === mo){
+        monthGroups[monthGroups.length-1].days++;
+      } else {
+        monthGroups.push({ year:y, month:mo, days:1 });
+      }
+      d.setDate(d.getDate()+1);
+    }
+  }
   const yearGroups = [];
-  months.forEach(m=>{
-    const y = m.getFullYear();
-    if(yearGroups.length && yearGroups[yearGroups.length-1].year === y) yearGroups[yearGroups.length-1].count++;
-    else yearGroups.push({ year:y, count:1 });
+  monthGroups.forEach(g=>{
+    if(yearGroups.length && yearGroups[yearGroups.length-1].year === g.year) yearGroups[yearGroups.length-1].days += g.days;
+    else yearGroups.push({ year:g.year, days:g.days });
   });
+
+  // Cellules jour par jour (affichées en zoom semaine/jour)
+  const dayCells = [];
+  if(zoom.showDays){
+    const d = new Date(min);
+    while(d < max){
+      dayCells.push({ date:new Date(d), weekend: d.getDay()===0 || d.getDay()===6 });
+      d.setDate(d.getDate()+1);
+    }
+  }
 
   const { criticalTasks, criticalEdges } = computeCriticalPath(project);
 
   const todayX = ganttDateToX(new Date(), min, mw);
-  let labelsHtml = `<div class="gantt-labels-head">Jalons &amp; tâches</div>`;
+  let labelsHtml = `<div class="gantt-labels-head" style="height:${zoom.showDays ? 64 : 46}px;">Jalons &amp; tâches</div>`;
   let rowsHtml = '';
   let rowCount = 0;
   const taskPos = {};
@@ -2280,6 +2318,9 @@ function renderJalonsChrono(project){
     </svg>`;
 
   return `
+    <div class="gantt-zoom-bar">
+      ${Object.keys(GANTT_ZOOMS).map(key=>`<button class="gantt-zoom-btn ${detailState.ganttZoom===key ? 'active' : ''}" onclick="setGanttZoom('${key}')">${GANTT_ZOOMS[key].label}</button>`).join('')}
+    </div>
     <div class="gantt-wrap">
       <div class="gantt-labels">
         ${labelsHtml}
@@ -2287,11 +2328,17 @@ function renderJalonsChrono(project){
       <div class="gantt-scroll">
         <div class="gantt-inner" style="width:${totalWidth}px;">
           <div class="gantt-head-years">
-            ${yearGroups.map(g=>`<div class="gantt-head-cell year" style="width:${g.count*mw}px;">${g.year}</div>`).join('')}
+            ${yearGroups.map(g=>`<div class="gantt-head-cell year" style="width:${g.days*mw}px;">${g.year}</div>`).join('')}
           </div>
           <div class="gantt-head-months">
-            ${months.map(m=>`<div class="gantt-head-cell" style="width:${mw}px;">${MONTH_LABELS_FR[m.getMonth()]}</div>`).join('')}
+            ${monthGroups.map(g=>`<div class="gantt-head-cell" style="width:${g.days*mw}px;">${MONTH_LABELS_FR[g.month]}</div>`).join('')}
           </div>
+          ${zoom.showDays ? `<div class="gantt-head-days">
+            ${dayCells.map(c=>`<div class="gantt-head-cell day${c.weekend ? ' weekend' : ''}" style="width:${mw}px;">
+              <span class="day-num">${c.date.getDate()}</span>
+              ${zoom.dayWidth >= 28 ? `<span class="day-name">${DAY_LABELS_FR[c.date.getDay()]}</span>` : ''}
+            </div>`).join('')}
+          </div>` : ''}
           <div style="position:relative;">
             ${nonWorkingBands.map(b=>`<div class="gantt-nonworking ${b.type}" style="left:${b.x1}px;width:${b.x2-b.x1}px;height:${totalHeight}px;"></div>`).join('')}
             ${todayX >= 0 && todayX <= totalWidth ? `<div class="gantt-today" style="left:${todayX}px;height:${totalHeight}px;" title="Aujourd'hui : ${fmt(todayStr())}"><span class="gantt-today-label">Aujourd'hui</span></div>` : ''}
@@ -2353,7 +2400,7 @@ function startGanttResize(ev){
     startX: ev.clientX,
     origLeft: parseFloat(track.style.left),
     origWidth: parseFloat(track.style.width),
-    pxPerDay: GANTT_MONTH_WIDTH / 30,
+    pxPerDay: (GANTT_ZOOMS[detailState.ganttZoom] || GANTT_ZOOMS.semaine).dayWidth,
   };
   document.addEventListener('mousemove', onGanttResizeMove);
   document.addEventListener('mouseup', onGanttResizeEnd);
