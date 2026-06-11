@@ -350,6 +350,15 @@
   .gantt-bar.dragging{box-shadow:0 0 0 2px var(--boa-navy);}
   .gantt-diamond{position:absolute;top:9px;width:16px;height:16px;transform:rotate(45deg);border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.08);}
   .gantt-today{position:absolute;top:0;bottom:0;width:2px;background:var(--boa-red);z-index:2;}
+  .gantt-deps-svg{position:absolute;top:0;left:0;z-index:1;pointer-events:none;}
+  .gantt-deps-svg path.gantt-dep-link{cursor:pointer;pointer-events:stroke;}
+  .gantt-deps-svg path.gantt-dep-link:hover{stroke:var(--boa-red);stroke-width:2.5;}
+  .gantt-connector{
+    position:absolute;top:50%;width:10px;height:10px;margin-top:-5px;margin-left:-5px;
+    border-radius:50%;background:var(--boa-navy);border:2px solid #fff;box-shadow:0 0 0 1px var(--boa-navy);
+    cursor:crosshair;z-index:4;
+  }
+  .gantt-connector:hover{transform:scale(1.3);}
   .gantt-legend{display:flex;gap:18px;flex-wrap:wrap;align-items:center;font-size:11.5px;color:#6b7280;margin-top:10px;}
   .gantt-legend .lg-swatch{display:inline-block;width:14px;height:14px;border-radius:4px;margin-right:5px;vertical-align:middle;}
   .gantt-legend .lg-diamond{display:inline-block;width:10px;height:10px;transform:rotate(45deg);margin-right:7px;vertical-align:middle;}
@@ -2021,6 +2030,16 @@ function ganttDateToX(date, min, monthWidth){
   return (months + frac) * monthWidth;
 }
 
+// Chemin coudé reliant la fin d'une tâche prédécesseur (x1,y1) au début de la tâche successeur (x2,y2)
+function ganttDepPath(x1, y1, x2, y2){
+  if(x2 - x1 >= 16){
+    const midX = (x1 + x2) / 2;
+    return `M${x1},${y1} H${midX} V${y2} H${x2}`;
+  }
+  const midY = y1 <= y2 ? y1 + 17 : y1 - 17;
+  return `M${x1},${y1} h12 V${midY} H${x2-12} V${y2} H${x2}`;
+}
+
 function renderJalonsChrono(project){
   const { min, max } = ganttDateRange(project);
   const months = ganttMonths(min, max);
@@ -2039,6 +2058,8 @@ function renderJalonsChrono(project){
   let labelsHtml = `<div class="gantt-labels-head">Jalons &amp; tâches</div>`;
   let rowsHtml = '';
   let rowCount = 0;
+  const taskPos = {};
+  const allTasks = [];
 
   sorted.forEach(m=>{
     rowCount++;
@@ -2050,25 +2071,52 @@ function renderJalonsChrono(project){
 
     [...m.tasks].sort((a,b)=>(a.plannedDate||'').localeCompare(b.plannedDate||'')).forEach(t=>{
       rowCount++;
+      allTasks.push(t);
       labelsHtml += `<div class="gantt-row gantt-task-row" title="${escapeHtml(t.name)}">${escapeHtml(t.name)}</div>`;
       let barHtml = '';
+      const rowY = (rowCount - 1) * 34 + 17;
       if(t.plannedDate){
         const { start, end } = ganttTaskDates(t);
         const x1 = ganttDateToX(start, min, mw);
         const x2 = ganttDateToX(end, min, mw);
         const w = Math.max(8, x2 - x1);
+        taskPos[t.id] = { x1, x2: x1 + w, y: rowY };
         barHtml = `
           <div class="gantt-bar" style="left:${x1}px;width:${w}px;" title="${escapeHtml(t.name)} : du ${fmt(start.toISOString().slice(0,10))} au ${fmt(t.plannedDate)} — ${t.progress}%">
             <div class="gantt-bar-fill" style="width:${t.progress}%;background:${TASK_STATUS_BAR[t.status]};"></div>
             <div class="gantt-handle gantt-handle-left" data-project="${project.id}" data-task="${t.id}" data-edge="start"></div>
             <div class="gantt-handle gantt-handle-right" data-project="${project.id}" data-task="${t.id}" data-edge="end"></div>
-          </div>`;
+          </div>
+          <div class="gantt-connector" style="left:${x1+w+9}px;" data-project="${project.id}" data-task="${t.id}" title="Glisser pour créer une dépendance"></div>`;
       }
-      rowsHtml += `<div class="gantt-track">${barHtml}</div>`;
+      rowsHtml += `<div class="gantt-track" data-task-id="${t.id}">${barHtml}</div>`;
     });
   });
 
   const totalHeight = rowCount * 34;
+
+  // Liens de dépendance (FS : fin du prédécesseur -> début du successeur)
+  const depPaths = [];
+  allTasks.forEach(t=>{
+    (t.dependencies || []).forEach(predId=>{
+      const from = taskPos[predId];
+      const to = taskPos[t.id];
+      if(!from || !to) return;
+      depPaths.push(`<path class="gantt-dep-link" data-pred="${predId}" data-succ="${t.id}" data-project="${project.id}"
+        d="${ganttDepPath(from.x2, from.y, to.x1, to.y)}" fill="none" stroke="#9ca3af" stroke-width="1.5" marker-end="url(#ganttArrow)">
+        <title>Dépendance Fin→Début (clic pour supprimer)</title>
+      </path>`);
+    });
+  });
+  const depsSvg = `
+    <svg class="gantt-deps-svg" width="${totalWidth}" height="${totalHeight}">
+      <defs>
+        <marker id="ganttArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#9ca3af"/>
+        </marker>
+      </defs>
+      ${depPaths.join('')}
+    </svg>`;
 
   return `
     <div class="gantt-wrap">
@@ -2085,6 +2133,7 @@ function renderJalonsChrono(project){
           </div>
           <div style="position:relative;">
             ${todayX >= 0 && todayX <= totalWidth ? `<div class="gantt-today" style="left:${todayX}px;height:${totalHeight}px;" title="Aujourd'hui : ${fmt(todayStr())}"></div>` : ''}
+            ${depsSvg}
             ${rowsHtml}
           </div>
         </div>
@@ -2097,14 +2146,22 @@ function renderJalonsChrono(project){
       <span><span class="lg-swatch" style="background:${TASK_STATUS_BAR.TERMINE}"></span>Tâche terminée</span>
       <span><span class="lg-swatch" style="background:${TASK_STATUS_BAR.BLOQUE}"></span>Tâche bloquée</span>
       <span style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-block;width:14px;height:2px;background:var(--boa-red);"></span>Aujourd'hui</span>
+      <span style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-block;width:14px;height:2px;background:#9ca3af;"></span>Dépendance (glisser depuis le point bleu pour en créer une, clic sur le lien pour le supprimer)</span>
     </div>`;
 }
 
 let ganttDrag = null;
+let ganttLink = null;
 
 function initGanttDrag(){
   document.querySelectorAll('.gantt-handle').forEach(handle=>{
     handle.addEventListener('mousedown', startGanttResize);
+  });
+  document.querySelectorAll('.gantt-connector').forEach(connector=>{
+    connector.addEventListener('mousedown', startGanttLink);
+  });
+  document.querySelectorAll('.gantt-dep-link').forEach(link=>{
+    link.addEventListener('click', deleteGanttDependency);
   });
 }
 
@@ -2177,6 +2234,143 @@ function onGanttResizeEnd(ev){
     if(start >= end) start.setTime(end.getTime() - 86400000);
   }
   task.estimatedDays = Math.max(1, Math.round((end - start) / 86400000));
+
+  cascadeGanttDependencies(p, task);
+
+  p.updatedAt = new Date().toISOString();
+  saveProjects(projects);
+  renderProjectDetail();
+}
+
+// Décale les tâches successeurs (lien Fin->Début) si elles démarreraient avant la fin de leur prédécesseur
+function cascadeGanttDependencies(project, changedTask){
+  const tasksById = {};
+  project.milestones.forEach(m=>m.tasks.forEach(t=>{ tasksById[t.id] = t; }));
+
+  const queue = [changedTask.id];
+  const visited = new Set();
+  while(queue.length){
+    const curId = queue.shift();
+    const cur = tasksById[curId];
+    if(!cur || !cur.plannedDate) continue;
+    const curEnd = new Date(cur.plannedDate);
+
+    Object.values(tasksById).forEach(t=>{
+      if(!(t.dependencies || []).includes(curId)) return;
+      if(!t.plannedDate) return;
+      const tEnd = new Date(t.plannedDate);
+      const tStart = new Date(tEnd);
+      tStart.setDate(tStart.getDate() - Math.max(1, t.estimatedDays || 1));
+      if(tStart < curEnd){
+        const shiftDays = Math.round((curEnd - tStart) / 86400000);
+        tEnd.setDate(tEnd.getDate() + shiftDays);
+        t.plannedDate = tEnd.toISOString().slice(0, 10);
+        if(!visited.has(t.id)){
+          visited.add(t.id);
+          queue.push(t.id);
+        }
+      }
+    });
+  }
+}
+
+// Vérifie si taskId dépend (directement ou transitivement) de targetId
+function ganttDependsOn(tasksById, taskId, targetId, seen){
+  seen = seen || new Set();
+  if(seen.has(taskId)) return false;
+  seen.add(taskId);
+  const t = tasksById[taskId];
+  if(!t) return false;
+  for(const depId of (t.dependencies || [])){
+    if(depId === targetId) return true;
+    if(ganttDependsOn(tasksById, depId, targetId, seen)) return true;
+  }
+  return false;
+}
+
+function startGanttLink(ev){
+  ev.preventDefault();
+  ev.stopPropagation();
+  const connector = ev.currentTarget;
+  const track = connector.parentElement;
+  const svg = track.closest('.gantt-inner').querySelector('.gantt-deps-svg');
+  const wrapper = svg.parentElement;
+  const x1 = parseFloat(connector.style.left);
+  const y1 = track.offsetTop + 17;
+
+  const temp = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  temp.setAttribute('class', 'gantt-temp-link');
+  temp.setAttribute('fill', 'none');
+  temp.setAttribute('stroke', '#1B3A6B');
+  temp.setAttribute('stroke-width', '2');
+  temp.setAttribute('stroke-dasharray', '4 3');
+  svg.appendChild(temp);
+
+  ganttLink = {
+    projectId: connector.dataset.project,
+    predTaskId: connector.dataset.task,
+    wrapper, svg, temp, x1, y1,
+  };
+  document.addEventListener('mousemove', onGanttLinkMove);
+  document.addEventListener('mouseup', onGanttLinkEnd);
+}
+
+function onGanttLinkMove(ev){
+  if(!ganttLink) return;
+  const rect = ganttLink.wrapper.getBoundingClientRect();
+  const x2 = ev.clientX - rect.left;
+  const y2 = ev.clientY - rect.top;
+  ganttLink.temp.setAttribute('d', `M${ganttLink.x1},${ganttLink.y1} L${x2},${y2}`);
+}
+
+function onGanttLinkEnd(ev){
+  if(!ganttLink) return;
+  document.removeEventListener('mousemove', onGanttLinkMove);
+  document.removeEventListener('mouseup', onGanttLinkEnd);
+  const { projectId, predTaskId, temp } = ganttLink;
+  temp.remove();
+  ganttLink = null;
+
+  const target = document.elementFromPoint(ev.clientX, ev.clientY);
+  const track = target ? target.closest('.gantt-track[data-task-id]') : null;
+  if(!track) return;
+  const succTaskId = track.dataset.taskId;
+  if(succTaskId === predTaskId) return;
+
+  const projects = loadProjects();
+  const p = projects.find(x=>x.id===projectId);
+  const tasksById = {};
+  p.milestones.forEach(m=>m.tasks.forEach(t=>{ tasksById[t.id] = t; }));
+  const succ = tasksById[succTaskId];
+  if(!succ) return;
+  succ.dependencies = succ.dependencies || [];
+  if(succ.dependencies.includes(predTaskId)) return;
+  if(ganttDependsOn(tasksById, predTaskId, succTaskId)){
+    alert('Impossible de créer cette dépendance : elle créerait une boucle entre les tâches.');
+    return;
+  }
+  succ.dependencies.push(predTaskId);
+
+  cascadeGanttDependencies(p, tasksById[predTaskId]);
+
+  p.updatedAt = new Date().toISOString();
+  saveProjects(projects);
+  renderProjectDetail();
+}
+
+function deleteGanttDependency(ev){
+  ev.preventDefault();
+  ev.stopPropagation();
+  const link = ev.currentTarget;
+  const { project: projectId, pred: predTaskId, succ: succTaskId } = link.dataset;
+  if(!confirm('Supprimer cette dépendance ?')) return;
+
+  const projects = loadProjects();
+  const p = projects.find(x=>x.id===projectId);
+  let succ = null;
+  p.milestones.forEach(m=>m.tasks.forEach(t=>{ if(t.id === succTaskId) succ = t; }));
+  if(!succ) return;
+  succ.dependencies = (succ.dependencies || []).filter(d=>d !== predTaskId);
 
   p.updatedAt = new Date().toISOString();
   saveProjects(projects);
