@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BOA Project Monitoring</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
     --boa-green:#1B7A4B;
@@ -26,7 +29,7 @@
 
   *{box-sizing:border-box;margin:0;padding:0;}
   body{
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     background:var(--boa-gray-bg);
     color:var(--boa-black);
     font-size:14px;
@@ -39,10 +42,12 @@
   /* Sidebar */
   .sidebar{
     width:220px;flex-shrink:0;
-    background:var(--boa-navy);
+    background:linear-gradient(180deg,var(--boa-navy) 0%,var(--boa-navy-dark) 100%);
     color:#fff;
     display:flex;flex-direction:column;
     position:sticky;top:0;height:100vh;
+    box-shadow:2px 0 12px rgba(0,0,0,.18);
+    z-index:10;
   }
   .sidebar-header{
     display:flex;align-items:center;gap:10px;
@@ -51,24 +56,30 @@
   }
   .sidebar-logo{
     width:36px;height:36px;border-radius:10px;
-    background:var(--boa-green);
+    background:linear-gradient(135deg,var(--boa-green) 0%,var(--boa-green-dark) 100%);
+    box-shadow:0 2px 6px rgba(0,0,0,.25);
     display:flex;align-items:center;justify-content:center;
     font-weight:700;font-size:15px;flex-shrink:0;
   }
-  .sidebar-title{font-weight:700;font-size:15px;line-height:1.2;}
+  .sidebar-title{font-weight:700;font-size:15px;line-height:1.2;letter-spacing:.2px;}
   .sidebar-subtitle{font-size:11px;color:rgba(255,255,255,.55);}
 
   .sidebar-nav{flex:1;padding:14px 10px;display:flex;flex-direction:column;gap:2px;}
   .nav-item{
     display:flex;align-items:center;gap:10px;
     padding:10px 12px;border-radius:8px;
-    color:rgba(255,255,255,.75);
+    color:rgba(255,255,255,.7);
     text-decoration:none;font-size:13.5px;font-weight:500;
-    cursor:pointer;border:none;background:none;width:100%;text-align:left;
-    transition:background .15s,color .15s;
+    cursor:pointer;border:none;border-left:3px solid transparent;background:none;width:100%;text-align:left;
+    transition:background .15s,color .15s,border-color .15s;
   }
   .nav-item:hover{background:rgba(255,255,255,.06);color:#fff;}
-  .nav-item.active{background:var(--boa-green);color:#fff;}
+  .nav-item.active{
+    background:rgba(255,255,255,.08);color:#fff;
+    border-left-color:var(--boa-green);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  .nav-item.active svg{filter:drop-shadow(0 0 1px rgba(255,255,255,.3));}
   .nav-item svg{flex-shrink:0;}
 
   .sidebar-footer{
@@ -356,10 +367,14 @@
   .gantt-baseline{position:absolute;top:29px;height:4px;border-radius:2px;background:repeating-linear-gradient(135deg,#cbd5e1,#cbd5e1 4px,#fff 4px,#fff 8px);border:1px solid #9ca3af;box-sizing:border-box;}
   .gantt-diamond{position:absolute;top:9px;width:16px;height:16px;transform:rotate(45deg);border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.08);}
   .gantt-today{position:absolute;top:0;bottom:0;width:2px;background:var(--boa-red);z-index:2;}
+  .gantt-today-label{
+    position:absolute;top:-19px;left:50%;transform:translateX(-50%);
+    background:var(--boa-red);color:#fff;font-size:10px;font-weight:700;
+    padding:1px 6px;border-radius:4px;white-space:nowrap;line-height:1.5;
+  }
   .gantt-deps-svg{position:absolute;top:0;left:0;z-index:1;pointer-events:none;}
   .gantt-nonworking{position:absolute;top:0;z-index:0;}
   .gantt-nonworking.weekend{background:rgba(0,0,0,.035);}
-  .gantt-nonworking.holiday{background:rgba(192,57,43,.08);}
   .gantt-deps-svg path.gantt-dep-link{cursor:pointer;pointer-events:stroke;}
   .gantt-deps-svg path.gantt-dep-link:hover{stroke:var(--boa-red);stroke-width:2.5;}
   .gantt-connector{
@@ -1752,6 +1767,7 @@ function renderProjectDetail(){
 
   if(detailState.tab === 'jalons' && (detailState.jalonsView || 'liste') === 'chrono'){
     initGanttDrag();
+    scrollGanttToToday();
   }
 }
 
@@ -1993,43 +2009,23 @@ function dropMilestone(ev, projectId, newStatus){
 const GANTT_MONTH_WIDTH = 46;
 const MONTH_LABELS_FR = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'];
 
-// Jours fériés fixes au Maroc (date Grégorienne fixe, hors fêtes religieuses mobiles)
-const MOROCCO_HOLIDAYS = {
-  '01-01': "Jour de l'an",
-  '01-11': "Manifeste de l'Indépendance",
-  '05-01': 'Fête du Travail',
-  '07-30': 'Fête du Trône',
-  '08-14': "Allégeance de l'Oued Eddahab",
-  '08-20': 'Révolution du Roi et du Peuple',
-  '08-21': 'Fête de la Jeunesse',
-  '11-06': 'Marche Verte',
-  '11-18': "Fête de l'Indépendance",
-};
-
-function moroccoHolidayName(date){
-  const mmdd = String(date.getMonth()+1).padStart(2,'0') + '-' + String(date.getDate()).padStart(2,'0');
-  return MOROCCO_HOLIDAYS[mmdd] || null;
-}
-
-// Bandes de fond pour les week-ends et jours fériés sur la période [min, max)
+// Bandes de fond pour les week-ends sur la période [min, max)
 function ganttNonWorkingBands(min, max, monthWidth){
   const bands = [];
   let cur = null;
   const d = new Date(min);
   while(d < max){
     const day = d.getDay();
-    const holidayName = moroccoHolidayName(d);
-    const type = holidayName ? 'holiday' : (day === 0 || day === 6) ? 'weekend' : null;
+    const type = (day === 0 || day === 6) ? 'weekend' : null;
     const x = ganttDateToX(d, min, monthWidth);
     const next = new Date(d); next.setDate(next.getDate()+1);
     const xNext = ganttDateToX(next, min, monthWidth);
     if(type){
       if(cur && cur.type === type && Math.abs(cur.x2 - x) < 0.01){
         cur.x2 = xNext;
-        if(holidayName) cur.title = cur.title ? cur.title + ', ' + holidayName : holidayName;
       } else {
         if(cur) bands.push(cur);
-        cur = { type, x1:x, x2:xNext, title: holidayName || '' };
+        cur = { type, x1:x, x2:xNext };
       }
     } else if(cur){
       bands.push(cur);
@@ -2297,8 +2293,8 @@ function renderJalonsChrono(project){
             ${months.map(m=>`<div class="gantt-head-cell" style="width:${mw}px;">${MONTH_LABELS_FR[m.getMonth()]}</div>`).join('')}
           </div>
           <div style="position:relative;">
-            ${nonWorkingBands.map(b=>`<div class="gantt-nonworking ${b.type}" style="left:${b.x1}px;width:${b.x2-b.x1}px;height:${totalHeight}px;" ${b.title ? `title="${escapeHtml(b.title)}"` : ''}></div>`).join('')}
-            ${todayX >= 0 && todayX <= totalWidth ? `<div class="gantt-today" style="left:${todayX}px;height:${totalHeight}px;" title="Aujourd'hui : ${fmt(todayStr())}"></div>` : ''}
+            ${nonWorkingBands.map(b=>`<div class="gantt-nonworking ${b.type}" style="left:${b.x1}px;width:${b.x2-b.x1}px;height:${totalHeight}px;"></div>`).join('')}
+            ${todayX >= 0 && todayX <= totalWidth ? `<div class="gantt-today" style="left:${todayX}px;height:${totalHeight}px;" title="Aujourd'hui : ${fmt(todayStr())}"><span class="gantt-today-label">Aujourd'hui</span></div>` : ''}
             ${depsSvg}
             ${rowsHtml}
           </div>
@@ -2316,13 +2312,20 @@ function renderJalonsChrono(project){
       <span style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:#fff;box-shadow:0 0 0 2px var(--boa-red);"></span>Chemin critique</span>
       <span style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-block;width:14px;height:4px;border-radius:2px;background:repeating-linear-gradient(135deg,#cbd5e1,#cbd5e1 4px,#fff 4px,#fff 8px);border:1px solid #9ca3af;"></span>Référence (baseline) initiale</span>
       <span style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:rgba(0,0,0,.06);"></span>Week-end</span>
-      <span style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:rgba(192,57,43,.12);"></span>Jour férié</span>
       <span style="display:inline-flex;align-items:center;gap:6px;"><span class="avatar-sm" style="position:static;">XX</span>Ressource affectée</span>
     </div>`;
 }
 
 let ganttDrag = null;
 let ganttLink = null;
+
+function scrollGanttToToday(){
+  const scroller = document.querySelector('.gantt-scroll');
+  const todayLine = document.querySelector('.gantt-today');
+  if(!scroller || !todayLine) return;
+  const target = todayLine.offsetLeft - scroller.clientWidth / 2;
+  scroller.scrollLeft = Math.max(0, target);
+}
 
 function initGanttDrag(){
   document.querySelectorAll('.gantt-handle').forEach(handle=>{
