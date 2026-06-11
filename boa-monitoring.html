@@ -184,6 +184,15 @@
   .bar-fill{height:100%;background:var(--boa-green);border-radius:6px;display:flex;align-items:center;justify-content:flex-end;}
   .bar-value{width:28px;flex-shrink:0;font-size:12px;font-weight:600;color:#374151;}
 
+  /* ─── Print ──────────────────────────────────────────────── */
+  @media print{
+    .sidebar, .topbar, .no-print, #modal-root{display:none !important;}
+    .layout, .main, .content{display:block !important;min-height:0;}
+    .content{padding:0;}
+    body{background:#fff;}
+    .card, .section-card, .journal-card{break-inside:avoid;}
+  }
+
   /* ─── Placeholder views ─────────────────────────────────── */
   .placeholder{
     background:#fff;border:1px dashed var(--boa-gray-border);border-radius:12px;
@@ -382,10 +391,25 @@
         <h1 id="page-title">Tableau de bord</h1>
         <p id="page-subtitle">Vue d'ensemble de l'activité projet</p>
       </div>
-      <a href="#" class="btn-primary" id="new-project-btn">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-        Nouveau projet
-      </a>
+      <div style="display:flex;align-items:center;gap:10px;" class="no-print">
+        <button class="btn-secondary" id="export-btn" title="Exporter toutes les données (JSON)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exporter
+        </button>
+        <button class="btn-secondary" id="import-btn" title="Importer des données (JSON)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Importer
+        </button>
+        <input type="file" id="import-file" accept="application/json" style="display:none;">
+        <button class="btn-secondary" id="print-btn" title="Imprimer la vue actuelle">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          Imprimer
+        </button>
+        <a href="#" class="btn-primary" id="new-project-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+          Nouveau projet
+        </a>
+      </div>
     </div>
     <div class="content" id="content"></div>
   </main>
@@ -510,6 +534,20 @@ const COMMENT_TYPE_COLORS = {
 function formatMoney(amount, currency){
   if(amount === undefined || amount === null) return '—';
   return amount.toLocaleString('fr-FR') + ' ' + (currency || '');
+}
+
+const CURRENCIES = ['MAD','XOF','XAF','EUR','USD','GBP','NGN','KES','TZS','UGX','GHS'];
+
+function lineActual(project, lineId){
+  return project.budget.expenses
+    .filter(e=>e.lineId===lineId)
+    .reduce((s,e)=>s+e.amount, 0);
+}
+function budgetTotalActual(project){
+  return project.budget.expenses.reduce((s,e)=>s+e.amount, 0);
+}
+function budgetTotalEstimated(project){
+  return project.budget.lines.reduce((s,l)=>s+l.estimated, 0);
 }
 
 /* ─── ID / code generators & shared computations ─────────────── */
@@ -642,7 +680,7 @@ function getAllOpenActions(projects){
   return projects.flatMap(p=>
     p.journal.flatMap(j=>
       j.actionItems.filter(a=>a.status!=='FERME')
-        .map(a=>({...a, projectId:p.id, projectName:p.name, projectCode:p.code}))
+        .map(a=>({...a, projectId:p.id, projectName:p.name, projectCode:p.code, journalId:j.id, journalTitle:j.title}))
     )
   );
 }
@@ -651,9 +689,30 @@ function getAllOpenActions(projects){
 function loadProjects(){
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
-    if(!raw){ const sample = getSampleData(); saveProjects(sample); return sample; }
-    return JSON.parse(raw);
+    let projects;
+    if(!raw){ projects = getSampleData(); saveProjects(projects); return projects; }
+    projects = JSON.parse(raw);
+    if(migrateBudgets(projects)) saveProjects(projects);
+    return projects;
   }catch(e){ return getSampleData(); }
+}
+
+/* Ajoute le journal des dépenses (expenses) aux anciens projets qui n'en ont pas encore */
+function migrateBudgets(projects){
+  let changed = false;
+  projects.forEach(p=>{
+    if(!p.budget) p.budget = { currency:'MAD', totalEstimated:0, totalActual:0, lines:[] };
+    if(!p.budget.expenses){
+      p.budget.expenses = [];
+      (p.budget.lines||[]).forEach(l=>{
+        if(l.actual){
+          p.budget.expenses.push({ id:newId(), date:p.startDate, lineId:l.id, description:'Solde initial', amount:l.actual });
+        }
+      });
+      changed = true;
+    }
+  });
+  return changed;
 }
 function saveProjects(projects){
   localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
@@ -785,7 +844,7 @@ function getSampleData(){
 const VIEWS = {
   dashboard: { title:'Tableau de bord', subtitle:"Vue d'ensemble de l'activité projet", render: renderDashboard },
   projects:  { title:'Projets', subtitle:'Liste et suivi des projets', render: renderProjects },
-  actions:   { title:'Actions ouvertes', subtitle:"Actions en attente sur l'ensemble des projets", render: renderPlaceholder },
+  actions:   { title:'Actions ouvertes', subtitle:"Actions en attente sur l'ensemble des projets", render: renderActions },
 };
 
 function navigate(view){
@@ -807,12 +866,121 @@ document.getElementById('new-project-btn').addEventListener('click', e=>{
   newProjectForm();
 });
 
+/* ─── Export / Import / Impression ─────────────────────────── */
+document.getElementById('export-btn').addEventListener('click', ()=>{
+  const projects = loadProjects();
+  const data = JSON.stringify(projects, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `boa-monitoring-export-${todayStr()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('import-btn').addEventListener('click', ()=>{
+  document.getElementById('import-file').click();
+});
+
+document.getElementById('import-file').addEventListener('change', e=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const projects = JSON.parse(reader.result);
+      if(!Array.isArray(projects)) throw new Error('Format invalide');
+      if(!confirm(`Importer ${projects.length} projet(s) ? Cela remplacera toutes les données actuelles.`)) return;
+      saveProjects(projects);
+      const view = location.hash.replace('#','') || 'dashboard';
+      if(view.startsWith('project/')) viewProject(view.split('/')[1]);
+      else navigate(view.startsWith('project-form') ? 'projects' : view);
+    }catch(err){
+      alert("Le fichier sélectionné n'est pas un export valide : " + err.message);
+    }finally{
+      e.target.value = '';
+    }
+  };
+  reader.readAsText(file);
+});
+
+document.getElementById('print-btn').addEventListener('click', ()=>{
+  window.print();
+});
+
 /* ─── Vue Placeholder (étapes suivantes) ───────────────────── */
 function renderPlaceholder(){
   document.getElementById('content').innerHTML = `
     <div class="placeholder">
       Cette section sera disponible dans une prochaine étape.
     </div>`;
+}
+
+/* ─── Vue Actions ouvertes ──────────────────────────────────── */
+function actionRow(a){
+  const overdue = isOverdue(a.dueDate);
+  return `
+    <div class="journal-card" style="${overdue ? 'border-color:#f5c4bf;background:var(--boa-red-light);' : ''}margin-bottom:10px;">
+      <div class="journal-card-head">
+        <div>
+          <div class="journal-card-title">${escapeHtml(a.description)}</div>
+          <div class="journal-card-meta">
+            ${escapeHtml(a.projectCode)} · ${escapeHtml(a.projectName)}${a.journalTitle ? ' · ' + escapeHtml(a.journalTitle) : ''}
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+          <span class="badge" style="${ACTION_STATUS_COLORS[a.status]}">${ACTION_STATUS_LABELS[a.status]}</span>
+          ${overdue ? `<span class="badge" style="background:var(--boa-red-light);color:var(--boa-red);">En retard</span>` : ''}
+        </div>
+      </div>
+      <div class="journal-participants">
+        Responsable : ${escapeHtml(a.assignedTo)} · Échéance : ${fmt(a.dueDate)}
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px;">
+        <button class="btn-secondary" onclick="navigate('projects'); viewProject('${a.projectId}')">${icon('Eye')} Voir le projet</button>
+        <button class="btn-primary" onclick="closeAction('${a.projectId}','${a.journalId}','${a.id}')">${icon('CheckCircle2')} Clôturer</button>
+      </div>
+    </div>`;
+}
+
+function renderActions(){
+  const projects = loadProjects();
+  const all = getAllOpenActions(projects);
+  const overdue = all.filter(a=>isOverdue(a.dueDate)).sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
+  const upcoming = all.filter(a=>!isOverdue(a.dueDate)).sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
+
+  document.getElementById('content').innerHTML = `
+    <div class="section-card" style="margin-bottom:20px;">
+      <div class="section-head">
+        <h2>${icon('AlertTriangle','#c0392b')} Actions en retard <span class="count">${overdue.length}</span></h2>
+      </div>
+      <div style="padding:16px;">
+        ${overdue.length ? overdue.map(actionRow).join('') : `<div class="empty">Aucune action en retard.</div>`}
+      </div>
+    </div>
+    <div class="section-card">
+      <div class="section-head">
+        <h2>${icon('Clock','#1B2E5E')} Actions à venir <span class="count">${upcoming.length}</span></h2>
+      </div>
+      <div style="padding:16px;">
+        ${upcoming.length ? upcoming.map(actionRow).join('') : `<div class="empty">Aucune action à venir.</div>`}
+      </div>
+    </div>`;
+}
+
+function closeAction(projectId, journalId, actionId){
+  const projects = loadProjects();
+  const p = projects.find(x=>x.id===projectId);
+  const j = p.journal.find(x=>x.id===journalId);
+  const a = j.actionItems.find(x=>x.id===actionId);
+  a.status = 'FERME';
+  a.closedDate = todayStr();
+  p.updatedAt = new Date().toISOString();
+  saveProjects(projects);
+  renderActions();
 }
 
 /* ─── Vue Tableau de bord ───────────────────────────────────── */
@@ -1024,6 +1192,31 @@ function performDeleteProject(){
 function viewProject(id){ alert('La fiche projet sera disponible à l\'étape 3.'); }
 function editProject(id){ alert('Le formulaire de modification sera disponible à l\'étape 5.'); }
 
+function csvEscape(value){
+  const s = String(value ?? '');
+  if(/[";\n]/.test(s)) return '"' + s.replace(/"/g,'""') + '"';
+  return s;
+}
+function exportProjectsCSV(){
+  const projects = loadProjects();
+  const headers = ['Code','Nom','Catégorie','Statut','Priorité','Santé','Avancement (%)','Chef de projet','Date début','Date fin prévue'];
+  const rows = projects.map(p=>[
+    p.code, p.name, CATEGORY_LABELS[p.category] ?? p.category, STATUS_LABELS[p.status],
+    PRIORITY_LABELS[p.priority], HEALTH_LABELS[p.healthStatus], p.progress,
+    p.projectManager, fmt(p.startDate), fmt(p.plannedEndDate)
+  ]);
+  const csv = [headers, ...rows].map(r=>r.map(csvEscape).join(';')).join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type:'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `boa-monitoring-projets-${todayStr()}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 function renderProjects(){
   const projects = loadProjects();
   const { search, status, priority, category } = projectsFilterState;
@@ -1079,6 +1272,7 @@ function renderProjects(){
         ${icon('ChevronDown','#9ca3af')}
       </div>
       ${hasFilters ? `<button class="clear-link" onclick="clearProjectsFilters()">Effacer</button>` : ''}
+      <button class="btn-secondary" style="margin-left:auto;" onclick="exportProjectsCSV()">${icon('FileDown')} Export CSV</button>
     </div>
   `;
 
@@ -1490,23 +1684,44 @@ function renderRisquesTab(project){
   `;
 }
 
+function setBudgetCurrency(projectId, currency){
+  const projects = loadProjects();
+  const p = projects.find(x=>x.id===projectId);
+  p.budget.currency = currency;
+  p.updatedAt = new Date().toISOString();
+  saveProjects(projects);
+  renderProjectDetail();
+}
+
 function renderBudgetTab(project){
   const b = project.budget;
-  const ecart = b.totalActual - b.totalEstimated;
+  const totalEstimated = budgetTotalEstimated(project);
+  const totalActual = budgetTotalActual(project);
+  const ecart = totalActual - totalEstimated;
   const ecartColor = ecart > 0 ? 'var(--boa-red)' : 'var(--boa-green)';
 
   return `
-    <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
-      <button class="btn-primary" onclick="openBudgetLineModal('${project.id}')">${icon('Plus')} Nouvelle ligne budgétaire</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+      <div class="select-wrap">
+        <select onchange="setBudgetCurrency('${project.id}', this.value)">
+          ${CURRENCIES.map(c=>`<option value="${c}" ${c===b.currency?'selected':''}>${c}</option>`).join('')}
+        </select>
+        ${icon('ChevronDown','#9ca3af')}
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn-secondary" onclick="openExpenseModal('${project.id}')">${icon('Plus')} Enregistrer une dépense</button>
+        <button class="btn-primary" onclick="openBudgetLineModal('${project.id}')">${icon('Plus')} Nouvelle ligne budgétaire</button>
+      </div>
     </div>
+
     <div class="grid grid-3" style="margin-bottom:20px;">
       <div class="card" style="padding:18px;">
         <div class="kpi-label">Budget estimé</div>
-        <div class="kpi-value" style="margin-top:4px;">${formatMoney(b.totalEstimated, b.currency)}</div>
+        <div class="kpi-value" style="margin-top:4px;">${formatMoney(totalEstimated, b.currency)}</div>
       </div>
       <div class="card" style="padding:18px;">
         <div class="kpi-label">Dépensé à ce jour</div>
-        <div class="kpi-value" style="margin-top:4px;">${formatMoney(b.totalActual, b.currency)}</div>
+        <div class="kpi-value" style="margin-top:4px;">${formatMoney(totalActual, b.currency)}</div>
       </div>
       <div class="card" style="padding:18px;">
         <div class="kpi-label">Écart</div>
@@ -1514,8 +1729,9 @@ function renderBudgetTab(project){
       </div>
     </div>
 
+    <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#9ca3af;margin-bottom:8px;font-weight:600;">Lignes budgétaires</h3>
     ${b.lines.length===0 ? `<div class="empty" style="padding:48px;background:#fff;border:1px solid var(--boa-gray-border);border-radius:12px;">Aucune ligne budgétaire renseignée.</div>` : `
-    <div class="table-card">
+    <div class="table-card" style="margin-bottom:24px;">
       <table>
         <thead>
           <tr>
@@ -1528,7 +1744,7 @@ function renderBudgetTab(project){
         </thead>
         <tbody>
           ${b.lines.map(l=>{
-            const actual = l.actual ?? 0;
+            const actual = lineActual(project, l.id);
             const lineEcart = actual - l.estimated;
             const lineEcartColor = lineEcart > 0 ? 'var(--boa-red)' : lineEcart < 0 ? 'var(--boa-green)' : '#9ca3af';
             return `
@@ -1536,8 +1752,35 @@ function renderBudgetTab(project){
               <td><span class="pname">${escapeHtml(l.category)}</span></td>
               <td>${escapeHtml(l.description)}</td>
               <td class="right">${formatMoney(l.estimated, b.currency)}</td>
-              <td class="right">${l.actual !== undefined ? formatMoney(l.actual, b.currency) : '—'}</td>
-              <td class="right" style="color:${lineEcartColor};font-weight:600;">${l.actual !== undefined ? (lineEcart>0?'+':'') + formatMoney(lineEcart, b.currency) : '—'}</td>
+              <td class="right">${formatMoney(actual, b.currency)}</td>
+              <td class="right" style="color:${lineEcartColor};font-weight:600;">${(lineEcart>0?'+':'') + formatMoney(lineEcart, b.currency)}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`}
+
+    <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#9ca3af;margin-bottom:8px;font-weight:600;">Journal comptable (dépenses enregistrées)</h3>
+    ${b.expenses.length===0 ? `<div class="empty" style="padding:48px;background:#fff;border:1px solid var(--boa-gray-border);border-radius:12px;">Aucune dépense enregistrée pour ce projet.</div>` : `
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Ligne budgétaire</th>
+            <th>Description</th>
+            <th class="right">Montant</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${[...b.expenses].sort((a,b2)=>b2.date.localeCompare(a.date)).map(e=>{
+            const line = b.lines.find(l=>l.id===e.lineId);
+            return `
+            <tr>
+              <td>${fmt(e.date)}</td>
+              <td>${line ? escapeHtml(line.category) : '—'}</td>
+              <td>${escapeHtml(e.description)}</td>
+              <td class="right">${formatMoney(e.amount, b.currency)}</td>
             </tr>`;
           }).join('')}
         </tbody>
@@ -1777,16 +2020,40 @@ function openBudgetLineModal(projectId){
       {name:'category', label:'Catégorie', type:'text', required:true},
       {name:'description', label:'Description', type:'text', required:true, full:true},
       {name:'estimated', label:'Montant estimé', type:'number', required:true, value:0},
-      {name:'actual', label:'Montant réel', type:'number', value:0},
     ],
     onSubmit:(v)=>{
       const projects = loadProjects();
       const p = projects.find(x=>x.id===projectId);
-      p.budget.lines.push({id:newId(), category:v.category, description:v.description, estimated:v.estimated, actual:v.actual});
-      p.budget.totalEstimated = p.budget.lines.reduce((s,l)=>s + l.estimated, 0);
-      p.budget.totalActual = p.budget.lines.reduce((s,l)=>s + (l.actual || 0), 0);
+      p.budget.lines.push({id:newId(), category:v.category, description:v.description, estimated:v.estimated});
       p.updatedAt = new Date().toISOString();
       saveProjects(projects);
+      renderProjectDetail();
+    }
+  });
+}
+
+function openExpenseModal(projectId){
+  const projects = loadProjects();
+  const p = projects.find(x=>x.id===projectId);
+  if(p.budget.lines.length === 0){
+    alert("Ajoutez d'abord une ligne budgétaire avant d'enregistrer une dépense.");
+    return;
+  }
+  openModal({
+    title:'Enregistrer une dépense', wide:true,
+    fields:[
+      {name:'date', label:'Date', type:'date', required:true, value:todayStr()},
+      {name:'lineId', label:'Ligne budgétaire', type:'select', required:true,
+        options:p.budget.lines.map(l=>({value:l.id, label:`${l.category} — ${l.description}`}))},
+      {name:'description', label:'Description', type:'text', required:true, full:true},
+      {name:'amount', label:'Montant', type:'number', required:true, value:0},
+    ],
+    onSubmit:(v)=>{
+      const projects2 = loadProjects();
+      const p2 = projects2.find(x=>x.id===projectId);
+      p2.budget.expenses.push({id:newId(), date:v.date, lineId:v.lineId, description:v.description, amount:v.amount});
+      p2.updatedAt = new Date().toISOString();
+      saveProjects(projects2);
       renderProjectDetail();
     }
   });
@@ -1972,6 +2239,7 @@ function icon(name, color){
     Trash2:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>`,
     ArrowLeft:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>`,
     Plus:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>`,
+    FileDown:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>`,
   };
   return icons[name] || '';
 }
