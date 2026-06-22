@@ -290,6 +290,35 @@
   .info-section h3{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#9ca3af;margin-bottom:8px;font-weight:600;}
   .info-section p{font-size:13.5px;color:#374151;line-height:1.6;white-space:pre-line;}
 
+  /* ─── Cahiers de Test ────────────────────────────────────── */
+  .tester-bar{
+    display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--boa-gray-border);
+    border-radius:10px;padding:10px 14px;margin-bottom:18px;font-size:13px;
+  }
+  .tester-bar label{font-weight:600;color:#374151;}
+  .tester-bar select{padding:6px 28px 6px 10px;border:1px solid var(--boa-gray-border);border-radius:7px;font-size:13px;background:#fff;}
+  .tree-row{display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--boa-gray-surf);}
+  .tree-row:last-child{border-bottom:none;}
+  .tree-row .tname{font-weight:600;font-size:13px;color:var(--boa-black);}
+  .tree-row .tactions{margin-left:auto;display:flex;gap:2px;}
+  .col-type-pill{font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:5px;background:var(--boa-navy-light);color:var(--boa-navy);}
+  .img-field{border:1px dashed var(--boa-gray-border);border-radius:8px;padding:10px;}
+  .img-preview{min-height:60px;display:flex;align-items:center;justify-content:center;margin-bottom:8px;color:#9ca3af;font-size:12px;}
+  .img-thumb{max-width:100%;max-height:140px;border-radius:6px;cursor:zoom-in;display:block;}
+  .img-actions{display:flex;gap:8px;}
+  .btn-sm{padding:6px 10px !important;font-size:12px !important;}
+  .img-hint{font-size:11px;color:#9ca3af;margin-top:6px;}
+  .contrib-bar{display:flex;flex-direction:column;gap:10px;}
+  .activity-feed{display:flex;flex-direction:column;}
+  .activity-row{padding:10px 16px;border-bottom:1px solid var(--boa-gray-surf);font-size:12.5px;color:#374151;}
+  .activity-row:last-child{border-bottom:none;}
+  .activity-row .adate{color:#9ca3af;font-size:11px;margin-top:2px;}
+  .testbook-card{padding:18px;display:flex;flex-direction:column;gap:10px;}
+  .testbook-card h3{font-size:14.5px;font-weight:700;color:var(--boa-black);}
+  .testbook-card .tdesc{font-size:12.5px;color:#6b7280;flex:1;}
+  .testbook-card .tstats{display:flex;gap:14px;font-size:11.5px;color:#9ca3af;}
+  .testbook-card .tactions{display:flex;gap:8px;margin-top:6px;}
+
   .team-list{display:flex;flex-direction:column;gap:8px;}
   .team-member{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--boa-gray-surf);border-radius:8px;}
   .avatar{
@@ -498,6 +527,10 @@
       <button class="nav-item" data-view="run">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
         Suivi du Run
+      </button>
+      <button class="nav-item" data-view="tests">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        Cahiers de Test
       </button>
     </nav>
     <div class="sidebar-footer">
@@ -756,6 +789,7 @@ function renderModal(){
       </div>
     </div>
   `;
+  fields.filter(f=>f.type==='image').forEach(f=>renderImagePreview(f.name, f.value||''));
 }
 function renderModalField(f){
   const id = `field-${f.name}`;
@@ -767,6 +801,19 @@ function renderModalField(f){
     input = `<select id="${id}">${f.options.map(o=>`<option value="${escapeHtml(o.value)}" ${o.value===value?'selected':''}>${escapeHtml(o.label)}</option>`).join('')}</select>`;
   } else if(f.type === 'tags'){
     input = `<input id="${id}" type="text" value="${escapeHtml(Array.isArray(value)?value.join(', '):value)}" placeholder="séparés par des virgules">`;
+  } else if(f.type === 'checkbox'){
+    input = `<input id="${id}" type="checkbox" ${value ? 'checked' : ''} style="width:18px;height:18px;align-self:flex-start;">`;
+  } else if(f.type === 'image'){
+    input = `
+      <div class="img-field" tabindex="0" onpaste="handleImagePaste(event,'${f.name}')">
+        <input type="hidden" id="${id}" value="${escapeHtml(value)}">
+        <div class="img-preview" id="imgpreview-${f.name}">Chargement…</div>
+        <div class="img-actions">
+          <label class="btn-outline btn-sm" style="cursor:pointer;">Choisir un fichier<input type="file" accept="image/*" style="display:none" onchange="handleImageFile(event,'${f.name}')"></label>
+          <button type="button" class="btn-outline btn-sm" onclick="clearImageField('${f.name}')">Retirer</button>
+        </div>
+        <div class="img-hint">Coller une capture (Ctrl+V) ou choisir un fichier — compression automatique.</div>
+      </div>`;
   } else {
     input = `<input id="${id}" type="${f.type || 'text'}" value="${escapeHtml(value)}">`;
   }
@@ -779,7 +826,8 @@ function submitModal(){
     let v = el.value;
     if(f.type === 'number') v = v === '' ? undefined : parseFloat(v);
     if(f.type === 'tags') v = v.split(',').map(s=>s.trim()).filter(Boolean);
-    if(f.required && (v === '' || v === undefined || (Array.isArray(v) && v.length===0))){
+    if(f.type === 'checkbox') v = el.checked;
+    if(f.required && f.type !== 'checkbox' && f.type !== 'image' && (v === '' || v === undefined || (Array.isArray(v) && v.length===0))){
       el.style.outline = '2px solid var(--boa-red)';
       el.focus();
       return;
@@ -789,6 +837,141 @@ function submitModal(){
   const onSubmit = activeModal.onSubmit;
   closeModal();
   onSubmit(values);
+}
+
+/* ─── Images (IndexedDB) ───────────────────────────────────────
+   Utilisé par les champs de type 'image' du modal système, pour les
+   captures d'écran des cahiers de test. Les images sont compressées
+   côté client puis stockées en Blob dans IndexedDB (localStorage est
+   trop limité en taille pour ça) ; seule la clé est conservée dans
+   les données JSON exportables.
+   ────────────────────────────────────────────────────────────── */
+const IDB_NAME = 'boa_tests_images';
+const IDB_STORE = 'images';
+let idbPromise = null;
+function idbOpen(){
+  if(idbPromise) return idbPromise;
+  idbPromise = new Promise((resolve, reject)=>{
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = ()=>{ req.result.createObjectStore(IDB_STORE); };
+    req.onsuccess = ()=>resolve(req.result);
+    req.onerror = ()=>reject(req.error);
+  });
+  return idbPromise;
+}
+async function idbPutImage(key, blob){
+  const db = await idbOpen();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).put(blob, key);
+    tx.oncomplete = ()=>resolve();
+    tx.onerror = ()=>reject(tx.error);
+  });
+}
+async function idbGetImage(key){
+  const db = await idbOpen();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(IDB_STORE, 'readonly');
+    const req = tx.objectStore(IDB_STORE).get(key);
+    req.onsuccess = ()=>resolve(req.result);
+    req.onerror = ()=>reject(req.error);
+  });
+}
+async function idbDeleteImage(key){
+  const db = await idbOpen();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).delete(key);
+    tx.oncomplete = ()=>resolve();
+    tx.onerror = ()=>reject(tx.error);
+  });
+}
+function compressImageFile(file, maxW=1200, quality=0.82){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onload = ()=>{
+        const scale = Math.min(1, maxW / img.width);
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Échec de compression')), 'image/jpeg', quality);
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+async function storeImageForField(file, fieldName){
+  if(!file || !file.type || !file.type.startsWith('image/')) return;
+  const preview = document.getElementById(`imgpreview-${fieldName}`);
+  if(preview) preview.innerHTML = 'Compression en cours…';
+  try{
+    const blob = await compressImageFile(file);
+    const key = 'img-' + newId();
+    await idbPutImage(key, blob);
+    const hidden = document.getElementById(`field-${fieldName}`);
+    if(hidden) hidden.value = key;
+    renderImagePreview(fieldName, key);
+  }catch(err){
+    if(preview) preview.innerHTML = "Erreur lors de l'import de l'image.";
+  }
+}
+async function handleImageFile(ev, fieldName){
+  const file = ev.target.files[0];
+  if(file) await storeImageForField(file, fieldName);
+  ev.target.value = '';
+}
+async function handleImagePaste(ev, fieldName){
+  const items = ev.clipboardData && ev.clipboardData.items;
+  if(!items) return;
+  for(const item of items){
+    if(item.type && item.type.startsWith('image/')){
+      ev.preventDefault();
+      await storeImageForField(item.getAsFile(), fieldName);
+      break;
+    }
+  }
+}
+function clearImageField(fieldName){
+  const hidden = document.getElementById(`field-${fieldName}`);
+  if(hidden) hidden.value = '';
+  renderImagePreview(fieldName, '');
+}
+async function renderImagePreview(fieldName, key){
+  const el = document.getElementById(`imgpreview-${fieldName}`);
+  if(!el) return;
+  if(!key){ el.innerHTML = '<span>Aucune image</span>'; return; }
+  try{
+    const blob = await idbGetImage(key);
+    if(!blob){ el.innerHTML = '<span>Image introuvable</span>'; return; }
+    const url = URL.createObjectURL(blob);
+    el.innerHTML = `<img src="${url}" class="img-thumb" onclick="openImageLightbox('${url}')">`;
+  }catch(err){
+    el.innerHTML = '<span>Image introuvable</span>';
+  }
+}
+function openImageLightbox(url){
+  document.getElementById('modal-root').insertAdjacentHTML('beforeend', `<div class="modal-overlay" onclick="this.remove()" style="z-index:60;"><img src="${url}" style="max-width:90vw;max-height:90vh;border-radius:8px;"></div>`);
+}
+/* Affiche les miniatures d'une colonne 'image' dans une table déjà rendue (id="thumb-<rowId>-<colId>" portant data-key) */
+async function hydrateImageThumbs(root){
+  const nodes = (root || document).querySelectorAll('[data-img-key]');
+  for(const node of nodes){
+    const key = node.dataset.imgKey;
+    if(!key){ node.innerHTML = '<span class="img-empty">—</span>'; continue; }
+    try{
+      const blob = await idbGetImage(key);
+      if(!blob){ node.innerHTML = '<span class="img-empty">—</span>'; continue; }
+      const url = URL.createObjectURL(blob);
+      node.innerHTML = `<img src="${url}" class="img-thumb" style="max-height:48px;" onclick="openImageLightbox('${url}')">`;
+    }catch(e){ node.innerHTML = '<span class="img-empty">—</span>'; }
+  }
 }
 
 /* ─── Date helpers ──────────────────────────────────────────── */
@@ -1026,11 +1209,595 @@ function getSampleData(){
   ];
 }
 
+/* ════════════════════════════════════════════════════════════════
+   CAHIERS DE TEST — constructeur générique
+   Un TestBook définit lui-même sa hiérarchie de catégories et ses
+   colonnes (avec leur type) ; les cas de test sont saisis selon ce
+   schéma. Chaque modification de valeur est journalisée (historique)
+   pour permettre le suivi de contribution dans le temps.
+   ════════════════════════════════════════════════════════════════ */
+const STORAGE_KEY_TESTS = 'boa_testbooks_v1';
+const CURRENT_TESTER_KEY = 'boa_current_tester';
+
+const COLUMN_TYPES = [
+  {value:'text', label:'Texte court'},
+  {value:'textarea', label:'Texte long'},
+  {value:'number', label:'Numérique'},
+  {value:'date', label:'Date'},
+  {value:'select', label:'Liste déroulante'},
+  {value:'person', label:'Personne (assigné à)'},
+  {value:'checkbox', label:'Case à cocher'},
+  {value:'image', label:'Image / Capture'},
+];
+const COLUMN_TYPE_LABELS = Object.fromEntries(COLUMN_TYPES.map(t=>[t.value, t.label]));
+const SELECT_PALETTE = [
+  'background:var(--boa-gray-surf);color:#374151;',
+  'background:var(--boa-green-light);color:var(--boa-green-dark);',
+  'background:var(--boa-red-light);color:var(--boa-red);',
+  'background:var(--boa-orange-light);color:var(--boa-orange);',
+  'background:var(--boa-navy-light);color:var(--boa-navy);',
+  'background:#eef2ff;color:#4338ca;',
+  'background:#f3e8ff;color:#7e22ce;',
+  'background:#e0f2fe;color:#0369a1;',
+];
+
+function loadTestBooks(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY_TESTS);
+    if(!raw) return [];
+    const data = JSON.parse(raw);
+    return Array.isArray(data) ? data : [];
+  }catch(e){ return []; }
+}
+function saveTestBooks(books){
+  localStorage.setItem(STORAGE_KEY_TESTS, JSON.stringify(books));
+}
+function getCurrentTester(){ return localStorage.getItem(CURRENT_TESTER_KEY) || ''; }
+function setCurrentTester(name){
+  localStorage.setItem(CURRENT_TESTER_KEY, name);
+}
+
+function newTestBook(name, description){
+  const now = new Date().toISOString();
+  const catId = newId();
+  return {
+    id: newId(), name, description: description || '', createdAt: now, updatedAt: now,
+    team: [],
+    categories: [ { id:catId, name:'Général', parentId:null } ],
+    columns: [
+      { id:newId(), label:'Description', type:'textarea', required:true, options:[] },
+      { id:newId(), label:'Responsable', type:'person', required:false, options:[] },
+      { id:newId(), label:'Statut', type:'select', required:false,
+        options:[
+          {value:'EN_ATTENTE', label:'EN ATTENTE'}, {value:'EN_COURS', label:'EN COURS'},
+          {value:'OK', label:'OK'}, {value:'NOK', label:'NOK'}, {value:'NA', label:'N/A'},
+        ] },
+      { id:newId(), label:'Capture', type:'image', required:false, options:[] },
+    ],
+    testCases: [],
+  };
+}
+function touchTestBook(book){ book.updatedAt = new Date().toISOString(); }
+
+/* ─── Arborescence des catégories ──────────────────────────── */
+function categoryChildren(book, parentId){
+  return book.categories.filter(c => (c.parentId||null) === (parentId||null));
+}
+function categoryDepth(book, catId){
+  let depth = 0, cur = book.categories.find(c=>c.id===catId);
+  while(cur && cur.parentId){
+    depth++;
+    cur = book.categories.find(c=>c.id===cur.parentId);
+    if(depth > 20) break;
+  }
+  return depth;
+}
+function flattenCategories(book, parentId=null, acc=[]){
+  categoryChildren(book, parentId).forEach(c=>{
+    acc.push(c);
+    flattenCategories(book, c.id, acc);
+  });
+  return acc;
+}
+function categoryLabel(book, catId){
+  const c = book.categories.find(x=>x.id===catId);
+  return c ? c.name : '—';
+}
+function categoryDescendantIds(book, catId){
+  const ids = [catId];
+  categoryChildren(book, catId).forEach(c=>{ ids.push(...categoryDescendantIds(book, c.id)); });
+  return ids;
+}
+function categorySelectOptions(book, excludeId){
+  const excluded = excludeId ? categoryDescendantIds(book, excludeId) : [];
+  return flattenCategories(book).filter(c=>!excluded.includes(c.id))
+    .map(c=>({ value:c.id, label: '— '.repeat(categoryDepth(book,c.id)) + c.name }));
+}
+
+/* ─── Liste des cahiers de test ──────────────────────────────── */
+function renderTests(){
+  const books = loadTestBooks().sort((a,b)=> b.updatedAt.localeCompare(a.updatedAt));
+  document.getElementById('page-subtitle').textContent = `${books.length} cahier(s) de test`;
+  let html = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:18px;">
+      <button class="btn-primary" onclick="openNewTestBookModal()">${icon('Plus','#fff')} Nouveau cahier de test</button>
+    </div>`;
+  if(books.length === 0){
+    html += `<div class="placeholder">Aucun cahier de test pour le moment.<br>Créez-en un pour définir vos propres catégories et colonnes.</div>`;
+  } else {
+    html += `<div class="grid grid-3">
+      ${books.map(b=>{
+        const cases = b.testCases.length;
+        const cats = b.categories.length;
+        return `
+        <div class="card testbook-card">
+          <h3>${escapeHtml(b.name)}</h3>
+          <div class="tdesc">${escapeHtml(b.description || 'Pas de description.')}</div>
+          <div class="tstats">
+            <span>${cases} cas de test</span>
+            <span>${cats} catégorie(s)</span>
+            <span>${b.columns.length} colonne(s)</span>
+          </div>
+          <div class="tactions">
+            <button class="btn-primary" style="flex:1;" onclick="viewTestBook('${b.id}')">${icon('Eye','#fff')} Ouvrir</button>
+            <button class="icon-btn" onclick="renameTestBook('${b.id}')" title="Renommer">${icon('Pencil')}</button>
+            <button class="icon-btn danger" onclick="deleteTestBook('${b.id}')" title="Supprimer">${icon('Trash2')}</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+  document.getElementById('content').innerHTML = html;
+}
+function openNewTestBookModal(){
+  openModal({
+    title:'Nouveau cahier de test',
+    fields:[
+      { name:'name', label:'Nom du cahier', type:'text', required:true, full:true },
+      { name:'description', label:'Description', type:'textarea', full:true },
+    ],
+    onSubmit:(values)=>{
+      const books = loadTestBooks();
+      const book = newTestBook(values.name, values.description);
+      books.push(book);
+      saveTestBooks(books);
+      viewTestBook(book.id);
+    }
+  });
+}
+function renameTestBook(id){
+  const books = loadTestBooks();
+  const book = books.find(b=>b.id===id);
+  if(!book) return;
+  openModal({
+    title:'Modifier le cahier de test',
+    fields:[
+      { name:'name', label:'Nom du cahier', type:'text', value:book.name, required:true, full:true },
+      { name:'description', label:'Description', type:'textarea', value:book.description, full:true },
+    ],
+    onSubmit:(values)=>{
+      book.name = values.name; book.description = values.description;
+      touchTestBook(book);
+      saveTestBooks(books);
+      renderTests();
+    }
+  });
+}
+function deleteTestBook(id){
+  if(!confirm('Supprimer ce cahier de test et tous ses cas de test ? Cette action est irréversible.')) return;
+  const books = loadTestBooks().filter(b=>b.id!==id);
+  saveTestBooks(books);
+  renderTests();
+}
+
+/* ─── Détail d'un cahier de test ──────────────────────────────── */
+let testDetailState = { bookId:null, tab:'structure', categoryFilter:'' };
+
+function viewTestBook(id){
+  testDetailState = { bookId:id, tab:'structure', categoryFilter:'' };
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  location.hash = `testbook/${id}`;
+  renderTestBookDetail();
+}
+function setTestTab(tab){ testDetailState.tab = tab; renderTestBookDetail(); }
+function backToTests(){ navigate('tests'); }
+
+function renderTestBookDetail(){
+  const books = loadTestBooks();
+  const book = books.find(b=>b.id===testDetailState.bookId);
+  if(!book){ navigate('tests'); return; }
+
+  document.getElementById('page-title').textContent = book.name;
+  document.getElementById('page-subtitle').textContent = `${book.testCases.length} cas de test · ${book.categories.length} catégorie(s)`;
+
+  const tabs = [
+    { id:'structure', label:'Structure' },
+    { id:'cases', label:`Cas de test (${book.testCases.length})` },
+    { id:'suivi', label:'Suivi & Contribution' },
+  ];
+  let tabContent = '';
+  if(testDetailState.tab === 'structure') tabContent = renderStructureTab(book);
+  else if(testDetailState.tab === 'cases') tabContent = renderCasesTab(book);
+  else if(testDetailState.tab === 'suivi') tabContent = renderSuiviTab(book);
+
+  document.getElementById('content').innerHTML = `
+    <button class="back-link" onclick="backToTests()">${icon('ArrowLeft')} Retour aux cahiers de test</button>
+    <div class="tabs">
+      ${tabs.map(t=>`<button class="tab-btn ${testDetailState.tab===t.id?'active':''}" onclick="setTestTab('${t.id}')">${t.label}</button>`).join('')}
+    </div>
+    ${tabContent}
+  `;
+  hydrateImageThumbs(document.getElementById('content'));
+}
+
+/* ─── Onglet Structure (catégories, colonnes, équipe) ─────────── */
+function renderStructureTab(book){
+  const tree = flattenCategories(book);
+  return `
+    <div class="grid grid-2" style="align-items:start;">
+      <div class="section-card">
+        <div class="section-head">
+          <h2>${icon('GitBranch')} Catégories <span class="count">${tree.length}</span></h2>
+          <button class="btn-secondary" onclick="openCategoryModal('${book.id}')">${icon('Plus')} Ajouter</button>
+        </div>
+        ${tree.length === 0 ? `<div class="empty">Aucune catégorie.</div>` : tree.map(c=>`
+          <div class="tree-row" style="padding-left:${14 + categoryDepth(book,c.id)*20}px;">
+            <span class="tname">${escapeHtml(c.name)}</span>
+            <span class="tactions">
+              <button class="icon-btn" onclick="openCategoryModal('${book.id}','${c.id}')" title="Modifier">${icon('Pencil')}</button>
+              <button class="icon-btn danger" onclick="deleteCategory('${book.id}','${c.id}')" title="Supprimer">${icon('Trash2')}</button>
+            </span>
+          </div>
+        `).join('')}
+      </div>
+
+      <div class="section-card">
+        <div class="section-head">
+          <h2>${icon('LayoutGrid')} Colonnes <span class="count">${book.columns.length}</span></h2>
+          <button class="btn-secondary" onclick="openColumnModal('${book.id}')">${icon('Plus')} Ajouter</button>
+        </div>
+        ${book.columns.length === 0 ? `<div class="empty">Aucune colonne.</div>` : book.columns.map(col=>`
+          <div class="tree-row">
+            <span class="tname">${escapeHtml(col.label)}</span>
+            <span class="col-type-pill">${COLUMN_TYPE_LABELS[col.type]}</span>
+            ${col.required ? `<span class="col-type-pill" style="background:var(--boa-red-light);color:var(--boa-red);">requis</span>` : ''}
+            <span class="tactions">
+              <button class="icon-btn" onclick="openColumnModal('${book.id}','${col.id}')" title="Modifier">${icon('Pencil')}</button>
+              <button class="icon-btn danger" onclick="deleteColumn('${book.id}','${col.id}')" title="Supprimer">${icon('Trash2')}</button>
+            </span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <div class="section-card" style="margin-top:18px;">
+      <div class="section-head"><h2>Équipe</h2></div>
+      <div style="padding:16px;">
+        <p style="font-size:12.5px;color:#6b7280;margin-bottom:10px;">Liste des membres pouvant être assignés (colonnes de type "Personne") ou sélectionnés comme testeur actif.</p>
+        <div class="form-field full" style="max-width:480px;">
+          <input id="team-input" type="text" value="${escapeHtml(book.team.join(', '))}" placeholder="séparés par des virgules">
+        </div>
+        <button class="btn-secondary" style="margin-top:10px;" onclick="saveTeam('${book.id}')">Enregistrer l'équipe</button>
+      </div>
+    </div>
+  `;
+}
+function saveTeam(bookId){
+  const books = loadTestBooks();
+  const book = books.find(b=>b.id===bookId);
+  const raw = document.getElementById('team-input').value;
+  book.team = raw.split(',').map(s=>s.trim()).filter(Boolean);
+  touchTestBook(book);
+  saveTestBooks(books);
+  renderTestBookDetail();
+}
+
+function openCategoryModal(bookId, catId){
+  const books = loadTestBooks();
+  const book = books.find(b=>b.id===bookId);
+  const cat = catId ? book.categories.find(c=>c.id===catId) : null;
+  openModal({
+    title: cat ? 'Modifier la catégorie' : 'Nouvelle catégorie',
+    fields:[
+      { name:'name', label:'Nom', type:'text', value: cat ? cat.name : '', required:true, full:true },
+      { name:'parentId', label:'Catégorie parente', type:'select', value: cat ? (cat.parentId||'') : '',
+        options:[{value:'', label:'(racine)'}, ...categorySelectOptions(book, catId)], full:true },
+    ],
+    onSubmit:(values)=>{
+      if(cat){ cat.name = values.name; cat.parentId = values.parentId || null; }
+      else book.categories.push({ id:newId(), name:values.name, parentId: values.parentId || null });
+      touchTestBook(book);
+      saveTestBooks(books);
+      renderTestBookDetail();
+    }
+  });
+}
+function deleteCategory(bookId, catId){
+  const books = loadTestBooks();
+  const book = books.find(b=>b.id===bookId);
+  const hasChildren = categoryChildren(book, catId).length > 0;
+  const hasCases = book.testCases.some(tc=>tc.categoryId===catId);
+  if(hasChildren || hasCases){
+    alert('Impossible de supprimer : cette catégorie contient des sous-catégories ou des cas de test. Déplacez-les ou supprimez-les avant.');
+    return;
+  }
+  if(!confirm('Supprimer cette catégorie ?')) return;
+  book.categories = book.categories.filter(c=>c.id!==catId);
+  touchTestBook(book);
+  saveTestBooks(books);
+  renderTestBookDetail();
+}
+
+function openColumnModal(bookId, colId){
+  const books = loadTestBooks();
+  const book = books.find(b=>b.id===bookId);
+  const col = colId ? book.columns.find(c=>c.id===colId) : null;
+  openModal({
+    title: col ? 'Modifier la colonne' : 'Nouvelle colonne',
+    wide:true,
+    fields:[
+      { name:'label', label:'Nom de la colonne', type:'text', value: col ? col.label : '', required:true },
+      { name:'type', label:'Type', type:'select', value: col ? col.type : 'text', options: COLUMN_TYPES, required:true },
+      { name:'required', label:'Obligatoire', type:'checkbox', value: col ? col.required : false },
+      { name:'optionsText', label:'Options (une par ligne, pour "Liste déroulante")', type:'textarea', rows:4, full:true,
+        value: col && col.options ? col.options.map(o=>o.label).join('\n') : '' },
+    ],
+    onSubmit:(values)=>{
+      const options = values.optionsText.split('\n').map(s=>s.trim()).filter(Boolean)
+        .map(label=>({ value: label.toUpperCase().replace(/[^A-Z0-9]+/g,'_'), label }));
+      if(col){ col.label=values.label; col.type=values.type; col.required=values.required; col.options=options; }
+      else book.columns.push({ id:newId(), label:values.label, type:values.type, required:values.required, options });
+      touchTestBook(book);
+      saveTestBooks(books);
+      renderTestBookDetail();
+    }
+  });
+}
+function deleteColumn(bookId, colId){
+  if(!confirm("Supprimer cette colonne ? Les valeurs déjà saisies pour cette colonne seront perdues.")) return;
+  const books = loadTestBooks();
+  const book = books.find(b=>b.id===bookId);
+  book.columns = book.columns.filter(c=>c.id!==colId);
+  book.testCases.forEach(tc=>{ delete tc.values[colId]; });
+  touchTestBook(book);
+  saveTestBooks(books);
+  renderTestBookDetail();
+}
+
+/* ─── Onglet Cas de test ───────────────────────────────────────── */
+function setTestCategoryFilter(val){ testDetailState.categoryFilter = val; renderTestBookDetail(); }
+
+function renderCasesTab(book){
+  const tester = getCurrentTester();
+  const catOptions = categorySelectOptions(book, null);
+  const filter = testDetailState.categoryFilter;
+  const filterIds = filter ? categoryDescendantIds(book, filter) : null;
+  const cases = book.testCases.filter(tc => !filterIds || filterIds.includes(tc.categoryId));
+
+  let html = `
+    <div class="tester-bar">
+      ${icon('Eye')}
+      <label>Je suis :</label>
+      <select onchange="setCurrentTester(this.value)">
+        <option value="">— sélectionner —</option>
+        ${book.team.map(name=>`<option value="${escapeHtml(name)}" ${tester===name?'selected':''}>${escapeHtml(name)}</option>`).join('')}
+      </select>
+      <span style="margin-left:auto;color:#9ca3af;">Les changements seront attribués à ce nom.</span>
+    </div>
+    <div class="filters-bar">
+      <div class="select-wrap">
+        <select onchange="setTestCategoryFilter(this.value)">
+          <option value="">Toutes les catégories</option>
+          ${catOptions.map(o=>`<option value="${o.value}" ${filter===o.value?'selected':''}>${escapeHtml(o.label)}</option>`).join('')}
+        </select>
+        ${icon('ChevronDown','#9ca3af')}
+      </div>
+      <button class="btn-primary" style="margin-left:auto;" onclick="openTestCaseModal('${book.id}')">${icon('Plus','#fff')} Nouveau cas de test</button>
+    </div>
+  `;
+
+  if(book.columns.length === 0){
+    html += `<div class="placeholder">Définissez d'abord vos colonnes dans l'onglet "Structure".</div>`;
+    return html;
+  }
+  if(cases.length === 0){
+    html += `<div class="empty" style="padding:50px 18px;">Aucun cas de test.</div>`;
+    return html;
+  }
+
+  html += `<div class="table-card"><table>
+    <thead><tr>
+      <th>Catégorie</th>
+      ${book.columns.map(c=>`<th>${escapeHtml(c.label)}</th>`).join('')}
+      <th class="right">Actions</th>
+    </tr></thead>
+    <tbody>
+      ${cases.map(tc=>`
+        <tr>
+          <td>${escapeHtml(categoryLabel(book, tc.categoryId))}</td>
+          ${book.columns.map(c=>`<td>${renderCellValue(book, c, tc.values[c.id])}</td>`).join('')}
+          <td class="right">
+            <button class="icon-btn" onclick="openTestCaseModal('${book.id}','${tc.id}')" title="Modifier">${icon('Pencil')}</button>
+            <button class="icon-btn danger" onclick="deleteTestCase('${book.id}','${tc.id}')" title="Supprimer">${icon('Trash2')}</button>
+          </td>
+        </tr>
+      `).join('')}
+    </tbody>
+  </table></div>`;
+  return html;
+}
+
+function renderCellValue(book, col, value){
+  if(value === undefined || value === null || value === '') return '<span style="color:#cbd5e1;">—</span>';
+  if(col.type === 'select'){
+    const opt = (col.options||[]).find(o=>o.value===value);
+    const idx = (col.options||[]).findIndex(o=>o.value===value);
+    const style = SELECT_PALETTE[(idx>=0?idx:0) % SELECT_PALETTE.length];
+    return `<span class="badge" style="${style}">${escapeHtml(opt ? opt.label : value)}</span>`;
+  }
+  if(col.type === 'checkbox') return value ? `${icon('CheckCircle2','#1B7A4B')}` : '<span style="color:#cbd5e1;">—</span>';
+  if(col.type === 'date') return fmt(value);
+  if(col.type === 'image') return `<span data-img-key="${escapeHtml(value)}" style="display:inline-block;min-width:40px;">…</span>`;
+  if(col.type === 'textarea') return `<span style="white-space:pre-line;">${escapeHtml(String(value)).slice(0,160)}</span>`;
+  return escapeHtml(String(value));
+}
+
+function columnToField(book, col, currentValue){
+  const base = { name: col.id, label: col.label, required: col.required, value: currentValue };
+  if(col.type === 'select') return { ...base, type:'select', options: col.options, full:true };
+  if(col.type === 'person') return { ...base, type:'select', options: book.team.map(n=>({value:n,label:n})), full:true };
+  if(col.type === 'textarea') return { ...base, type:'textarea', full:true, rows:3 };
+  if(col.type === 'checkbox') return { ...base, type:'checkbox' };
+  if(col.type === 'image') return { ...base, type:'image', full:true };
+  if(col.type === 'number') return { ...base, type:'number' };
+  if(col.type === 'date') return { ...base, type:'date' };
+  return { ...base, type:'text' };
+}
+
+function openTestCaseModal(bookId, caseId){
+  const books = loadTestBooks();
+  const book = books.find(b=>b.id===bookId);
+  const tc = caseId ? book.testCases.find(c=>c.id===caseId) : null;
+  const catOptions = categorySelectOptions(book, null);
+  if(catOptions.length === 0){ alert('Créez au moins une catégorie avant d\'ajouter un cas de test.'); return; }
+
+  const fields = [
+    { name:'categoryId', label:'Catégorie', type:'select', required:true, full:true,
+      value: tc ? tc.categoryId : (catOptions[0] && catOptions[0].value), options: catOptions },
+    ...book.columns.map(col=>columnToField(book, col, tc ? tc.values[col.id] : undefined)),
+  ];
+
+  openModal({
+    title: tc ? 'Modifier le cas de test' : 'Nouveau cas de test',
+    wide:true,
+    fields,
+    onSubmit:(values)=>{
+      const author = getCurrentTester() || 'Anonyme';
+      const now = new Date().toISOString();
+      const { categoryId, ...colValues } = values;
+      if(tc){
+        book.columns.forEach(col=>{
+          const oldV = tc.values[col.id];
+          const newV = colValues[col.id];
+          if(JSON.stringify(oldV) !== JSON.stringify(newV)){
+            tc.history.push({ date:now, author, field:col.id, fieldLabel:col.label, from:formatHistVal(book,col,oldV), to:formatHistVal(book,col,newV) });
+          }
+        });
+        tc.categoryId = categoryId;
+        tc.values = colValues;
+      } else {
+        const newCase = { id:newId(), categoryId, values:colValues, history:[
+          { date:now, author, field:'_create', fieldLabel:'Création', from:'', to:'cas de test créé' }
+        ] };
+        book.testCases.push(newCase);
+      }
+      touchTestBook(book);
+      saveTestBooks(books);
+      renderTestBookDetail();
+    }
+  });
+}
+function formatHistVal(book, col, v){
+  if(v === undefined || v === null || v === '') return '(vide)';
+  if(col.type === 'select'){ const o=(col.options||[]).find(x=>x.value===v); return o?o.label:v; }
+  if(col.type === 'checkbox') return v ? 'Oui' : 'Non';
+  if(col.type === 'image') return 'capture mise à jour';
+  return String(v).slice(0,60);
+}
+function deleteTestCase(bookId, caseId){
+  if(!confirm('Supprimer ce cas de test ?')) return;
+  const books = loadTestBooks();
+  const book = books.find(b=>b.id===bookId);
+  book.testCases = book.testCases.filter(c=>c.id!==caseId);
+  touchTestBook(book);
+  saveTestBooks(books);
+  renderTestBookDetail();
+}
+
+/* ─── Onglet Suivi & Contribution ──────────────────────────────── */
+function renderSuiviTab(book){
+  const total = book.testCases.length;
+  const allHistory = [];
+  book.testCases.forEach(tc=> tc.history.forEach(h=> allHistory.push({ ...h, caseId:tc.id })));
+  allHistory.sort((a,b)=> b.date.localeCompare(a.date));
+
+  const byCategory = {};
+  book.testCases.forEach(tc=>{
+    const label = categoryLabel(book, tc.categoryId);
+    byCategory[label] = (byCategory[label]||0) + 1;
+  });
+  const maxCat = Math.max(1, ...Object.values(byCategory));
+
+  const byAuthor = {};
+  allHistory.forEach(h=>{ byAuthor[h.author] = (byAuthor[h.author]||0) + 1; });
+  const maxAuthor = Math.max(1, ...Object.values(byAuthor));
+
+  return `
+    <div class="grid grid-3" style="margin-bottom:18px;">
+      <div class="card kpi-card">
+        <div class="kpi-icon" style="background:var(--boa-green-light);">${icon('CheckCircle2','#1B7A4B')}</div>
+        <div><div class="kpi-value">${total}</div><div class="kpi-label">Cas de test</div></div>
+      </div>
+      <div class="card kpi-card">
+        <div class="kpi-icon" style="background:var(--boa-navy-light);">${icon('Activity','#1B2E5E')}</div>
+        <div><div class="kpi-value">${allHistory.length}</div><div class="kpi-label">Actions enregistrées</div></div>
+      </div>
+      <div class="card kpi-card">
+        <div class="kpi-icon" style="background:var(--boa-orange-light);">${icon('TrendingUp','#d4830a')}</div>
+        <div><div class="kpi-value">${Object.keys(byAuthor).length}</div><div class="kpi-label">Contributeurs actifs</div></div>
+      </div>
+    </div>
+
+    <div class="grid grid-2" style="align-items:start;">
+      <div class="card chart-card">
+        <h2>Cas de test par catégorie</h2>
+        ${Object.keys(byCategory).length===0 ? `<div class="empty">Aucune donnée.</div>` : `
+        <div class="bars">
+          ${Object.entries(byCategory).map(([label,count])=>`
+            <div class="bar-row">
+              <div class="bar-label" title="${escapeHtml(label)}">${escapeHtml(label.length>16?label.slice(0,15)+'…':label)}</div>
+              <div class="bar-track"><div class="bar-fill" style="width:${count/maxCat*100}%"></div></div>
+              <div class="bar-value">${count}</div>
+            </div>
+          `).join('')}
+        </div>`}
+      </div>
+      <div class="card chart-card">
+        <h2>Contribution par personne</h2>
+        ${Object.keys(byAuthor).length===0 ? `<div class="empty">Aucune donnée.</div>` : `
+        <div class="bars">
+          ${Object.entries(byAuthor).sort((a,b)=>b[1]-a[1]).map(([author,count])=>`
+            <div class="bar-row">
+              <div class="bar-label" title="${escapeHtml(author)}">${escapeHtml(author.length>16?author.slice(0,15)+'…':author)}</div>
+              <div class="bar-track"><div class="bar-fill" style="width:${count/maxAuthor*100}%;background:var(--boa-navy);"></div></div>
+              <div class="bar-value">${count}</div>
+            </div>
+          `).join('')}
+        </div>`}
+      </div>
+    </div>
+
+    <div class="section-card" style="margin-top:18px;">
+      <div class="section-head"><h2>${icon('Clock')} Activité récente</h2></div>
+      <div class="activity-feed">
+        ${allHistory.length === 0 ? `<div class="empty">Aucune activité.</div>` : allHistory.slice(0,40).map(h=>`
+          <div class="activity-row">
+            <strong>${escapeHtml(h.author)}</strong> a modifié <strong>${escapeHtml(h.fieldLabel)}</strong> :
+            ${h.field==='_create' ? escapeHtml(h.to) : `<em>${escapeHtml(h.from)}</em> → <em>${escapeHtml(h.to)}</em>`}
+            <div class="adate">${new Date(h.date).toLocaleString('fr-FR')}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
 /* ─── Routing ───────────────────────────────────────────────── */
 const VIEWS = {
   dashboard: { title:'Tableau de bord', subtitle:"Vue d'ensemble de l'activité projet", render: renderDashboard },
   projects:  { title:'Projets', subtitle:'Liste et suivi des projets', render: renderProjects },
   run:       { title:'Suivi du Run', subtitle:"Sujets, requêtes et incidents traités au quotidien", render: renderRun },
+  tests:     { title:'Cahiers de Test', subtitle:"Créez et suivez vos cahiers de test sur-mesure", render: renderTests },
 };
 
 function navigate(view){
@@ -3493,6 +4260,8 @@ if(initialHash.startsWith('project-form/')){
   navigateToProjectForm(fid === 'new' ? null : fid);
 } else if(initialHash.startsWith('project/')){
   viewProject(initialHash.split('/')[1]);
+} else if(initialHash.startsWith('testbook/')){
+  viewTestBook(initialHash.split('/')[1]);
 } else {
   navigate(initialHash);
 }
