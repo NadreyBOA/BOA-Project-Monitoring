@@ -254,10 +254,11 @@
 
   /* ─── Modal ──────────────────────────────────────────────── */
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px;}
-  .modal-card{background:#fff;border-radius:12px;padding:24px;max-width:380px;width:100%;}
-  .modal-card h3{font-size:15px;font-weight:700;color:var(--boa-black);margin-bottom:8px;}
-  .modal-card p{font-size:13px;color:#6b7280;margin-bottom:20px;}
-  .modal-actions{display:flex;gap:10px;justify-content:flex-end;}
+  .modal-card{background:#fff;border-radius:12px;padding:24px;max-width:380px;width:100%;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;}
+  .modal-card h3{font-size:15px;font-weight:700;color:var(--boa-black);margin-bottom:8px;flex:0 0 auto;}
+  .modal-card p{font-size:13px;color:#6b7280;margin-bottom:20px;flex:0 0 auto;}
+  .modal-card .form-grid{flex:1 1 auto;overflow-y:auto;padding-right:4px;margin-right:-4px;}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;flex:0 0 auto;padding-top:16px;border-top:1px solid var(--boa-gray-border);}
   .btn-outline{padding:8px 16px;border-radius:8px;font-size:13px;border:1px solid var(--boa-gray-border);background:#fff;cursor:pointer;}
   .btn-outline:hover{background:var(--boa-gray-bg);}
   .btn-danger{padding:8px 16px;border-radius:8px;font-size:13px;border:none;background:var(--boa-red);color:#fff;cursor:pointer;}
@@ -1512,10 +1513,10 @@ function saveTeam(bookId){
 }
 
 /* ─── Détail d'une feuille : Structure / Cas de test / Suivi ──── */
-let testDetailState = { bookId:null, sheetId:null, tab:'cases', categoryFilter:'' };
+let testDetailState = { bookId:null, sheetId:null, tab:'cases', categoryFilter:'', selected:new Set() };
 
 function viewSheet(bookId, sheetId){
-  testDetailState = { bookId, sheetId, tab:'cases', categoryFilter:'' };
+  testDetailState = { bookId, sheetId, tab:'cases', categoryFilter:'', selected:new Set() };
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   location.hash = `testbook/${bookId}/sheet/${sheetId}`;
   renderSheetDetail();
@@ -1678,6 +1679,17 @@ function deleteColumn(bookId, sheetId, colId){
 
 /* ─── Onglet Cas de test (vue tableau) ──────────────────────────── */
 function setTestCategoryFilter(val){ testDetailState.categoryFilter = val; renderSheetDetail(); }
+function toggleCaseSelect(caseId, checked){
+  if(checked) testDetailState.selected.add(caseId);
+  else testDetailState.selected.delete(caseId);
+  renderSheetDetail();
+}
+function toggleSelectAll(ids, checked){
+  if(checked) ids.forEach(id=>testDetailState.selected.add(id));
+  else ids.forEach(id=>testDetailState.selected.delete(id));
+  renderSheetDetail();
+}
+function clearSelection(){ testDetailState.selected.clear(); renderSheetDetail(); }
 
 function renderCasesTab(book, sheet){
   const tester = getCurrentTester();
@@ -1685,6 +1697,10 @@ function renderCasesTab(book, sheet){
   const filter = testDetailState.categoryFilter;
   const filterIds = filter ? categoryDescendantIds(sheet, filter) : null;
   const cases = sheet.testCases.filter(tc => !filterIds || filterIds.includes(tc.categoryId));
+  const personColumns = sheet.columns.filter(c=>c.type==='person');
+  const visibleIds = cases.map(tc=>tc.id);
+  const selectedCount = visibleIds.filter(id=>testDetailState.selected.has(id)).length;
+  const allSelected = visibleIds.length>0 && selectedCount===visibleIds.length;
 
   let html = `
     <div class="tester-bar">
@@ -1704,6 +1720,10 @@ function renderCasesTab(book, sheet){
         </select>
         ${icon('ChevronDown','#9ca3af')}
       </div>
+      ${personColumns.length>0 && selectedCount>0 ? `
+        <button class="btn-secondary" onclick="openBulkAssignModal('${book.id}','${sheet.id}')">${icon('ArrowRight')} Affecter la sélection (${selectedCount})</button>
+        <button class="btn-outline" onclick="clearSelection()">Annuler la sélection</button>
+      ` : ''}
       <button class="btn-primary" style="margin-left:auto;" onclick="openTestCaseModal('${book.id}','${sheet.id}')">${icon('Plus','#fff')} Nouveau cas de test</button>
     </div>
   `;
@@ -1719,6 +1739,7 @@ function renderCasesTab(book, sheet){
 
   html += `<div class="table-card" style="overflow-x:auto;"><table>
     <thead><tr>
+      <th style="width:32px;"><input type="checkbox" ${allSelected?'checked':''} onchange="toggleSelectAll(${JSON.stringify(visibleIds)}, this.checked)"></th>
       <th>Catégorie</th>
       ${sheet.columns.map(c=>`<th>${escapeHtml(c.label)}</th>`).join('')}
       <th class="right">Actions</th>
@@ -1726,6 +1747,7 @@ function renderCasesTab(book, sheet){
     <tbody>
       ${cases.map(tc=>`
         <tr>
+          <td><input type="checkbox" ${testDetailState.selected.has(tc.id)?'checked':''} onchange="toggleCaseSelect('${tc.id}', this.checked)"></td>
           <td>${escapeHtml(categoryLabel(sheet, tc.categoryId))}</td>
           ${sheet.columns.map(c=>`<td>${renderCellValue(c, tc.values[c.id])}</td>`).join('')}
           <td class="right">
@@ -1737,6 +1759,47 @@ function renderCasesTab(book, sheet){
     </tbody>
   </table></div>`;
   return html;
+}
+
+/* ─── Affectation (PM crée les cas, puis les affecte à l'équipe) ── */
+function openBulkAssignModal(bookId, sheetId){
+  const books = loadTestBooks();
+  const book = books.find(b=>b.id===bookId);
+  const sheet = book.sheets.find(s=>s.id===sheetId);
+  const ids = Array.from(testDetailState.selected).filter(id=>sheet.testCases.some(tc=>tc.id===id));
+  if(ids.length===0) return;
+  const personColumns = sheet.columns.filter(c=>c.type==='person');
+  if(personColumns.length===0){ alert('Aucune colonne de type "Personne" sur cette feuille.'); return; }
+
+  openModal({
+    title:`Affecter ${ids.length} cas de test`,
+    wide:true,
+    fields: personColumns.map(col=>({
+      name: col.id, label: col.label, type:'select', full:true,
+      options:[{value:'', label:'(ne pas modifier)'}, ...book.team.map(n=>({value:n,label:n}))],
+    })),
+    onSubmit:(values)=>{
+      const author = getCurrentTester() || 'Anonyme';
+      const now = new Date().toISOString();
+      ids.forEach(id=>{
+        const tc = sheet.testCases.find(c=>c.id===id);
+        if(!tc) return;
+        personColumns.forEach(col=>{
+          const v = values[col.id];
+          if(v === '' || v === undefined) return;
+          const oldV = tc.values[col.id];
+          if(oldV !== v){
+            tc.values[col.id] = v;
+            tc.history.push({ date:now, author, field:col.id, fieldLabel:col.label, from:formatHistVal(col,oldV), to:formatHistVal(col,v) });
+          }
+        });
+      });
+      touchTestBook(book);
+      saveTestBooks(books);
+      testDetailState.selected.clear();
+      renderSheetDetail();
+    }
+  });
 }
 
 function renderCellValue(col, value){
