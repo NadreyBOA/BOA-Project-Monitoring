@@ -1739,7 +1739,7 @@ function renderCasesTab(book, sheet){
 
   html += `<div class="table-card" style="overflow-x:auto;"><table>
     <thead><tr>
-      <th style="width:32px;"><input type="checkbox" ${allSelected?'checked':''} onchange="toggleSelectAll(${JSON.stringify(visibleIds)}, this.checked)"></th>
+      <th style="width:32px;"><input type="checkbox" ${allSelected?'checked':''} onchange='toggleSelectAll(${JSON.stringify(visibleIds)}, this.checked)'></th>
       <th>Catégorie</th>
       ${sheet.columns.map(c=>`<th>${escapeHtml(c.label)}</th>`).join('')}
       <th class="right">Actions</th>
