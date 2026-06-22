@@ -6,7 +6,7 @@
 <title>BOA Project Monitoring</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
     --boa-green:#1B7A4B;
@@ -29,7 +29,7 @@
 
   *{box-sizing:border-box;margin:0;padding:0;}
   body{
-    font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     background:var(--boa-gray-bg);
     color:var(--boa-black);
     font-size:14px;
@@ -1211,10 +1211,11 @@ function getSampleData(){
 
 /* ════════════════════════════════════════════════════════════════
    CAHIERS DE TEST — constructeur générique
-   Un TestBook définit lui-même sa hiérarchie de catégories et ses
+   Un TestBook contient plusieurs Feuilles (ex: SVFE, OML...). Chaque
+   feuille définit elle-même sa hiérarchie de catégories et ses
    colonnes (avec leur type) ; les cas de test sont saisis selon ce
-   schéma. Chaque modification de valeur est journalisée (historique)
-   pour permettre le suivi de contribution dans le temps.
+   schéma et affichés en vue tableau. Chaque modification de valeur
+   est journalisée (historique) pour le suivi de contribution.
    ════════════════════════════════════════════════════════════════ */
 const STORAGE_KEY_TESTS = 'boa_testbooks_v1';
 const CURRENT_TESTER_KEY = 'boa_current_tester';
@@ -1246,7 +1247,10 @@ function loadTestBooks(){
     const raw = localStorage.getItem(STORAGE_KEY_TESTS);
     if(!raw) return [];
     const data = JSON.parse(raw);
-    return Array.isArray(data) ? data : [];
+    const books = Array.isArray(data) ? data : [];
+    const changed = migrateTestBooks(books);
+    if(changed) saveTestBooks(books);
+    return books;
   }catch(e){ return []; }
 }
 function saveTestBooks(books){
@@ -1256,14 +1260,33 @@ function getCurrentTester(){ return localStorage.getItem(CURRENT_TESTER_KEY) || 
 function setCurrentTester(name){
   localStorage.setItem(CURRENT_TESTER_KEY, name);
 }
+/* Anciens cahiers (avant l'introduction des feuilles) : on les enveloppe
+   dans une feuille unique "Général" pour ne rien perdre. */
+function migrateTestBooks(books){
+  let changed = false;
+  books.forEach(b=>{
+    if(!Array.isArray(b.sheets)){
+      b.sheets = [ { id:newId(), name:'Feuille 1', categories:b.categories||[], columns:b.columns||[], testCases:b.testCases||[] } ];
+      delete b.categories; delete b.columns; delete b.testCases;
+      changed = true;
+    }
+    if(!Array.isArray(b.team)){ b.team = []; changed = true; }
+  });
+  return changed;
+}
 
 function newTestBook(name, description){
   const now = new Date().toISOString();
-  const catId = newId();
   return {
     id: newId(), name, description: description || '', createdAt: now, updatedAt: now,
     team: [],
-    categories: [ { id:catId, name:'Général', parentId:null } ],
+    sheets: [ newSheet('Feuille 1') ],
+  };
+}
+function newSheet(name){
+  return {
+    id: newId(), name,
+    categories: [ { id:newId(), name:'Général', parentId:null } ],
     columns: [
       { id:newId(), label:'Description', type:'textarea', required:true, options:[] },
       { id:newId(), label:'Responsable', type:'person', required:false, options:[] },
@@ -1278,40 +1301,41 @@ function newTestBook(name, description){
   };
 }
 function touchTestBook(book){ book.updatedAt = new Date().toISOString(); }
+function totalCases(book){ return book.sheets.reduce((n,s)=>n+s.testCases.length, 0); }
 
-/* ─── Arborescence des catégories ──────────────────────────── */
-function categoryChildren(book, parentId){
-  return book.categories.filter(c => (c.parentId||null) === (parentId||null));
+/* ─── Arborescence des catégories (au sein d'une feuille) ──────── */
+function categoryChildren(sheet, parentId){
+  return sheet.categories.filter(c => (c.parentId||null) === (parentId||null));
 }
-function categoryDepth(book, catId){
-  let depth = 0, cur = book.categories.find(c=>c.id===catId);
+function categoryDepth(sheet, catId){
+  let depth = 0, cur = sheet.categories.find(c=>c.id===catId);
   while(cur && cur.parentId){
     depth++;
-    cur = book.categories.find(c=>c.id===cur.parentId);
+    cur = sheet.categories.find(c=>c.id===cur.parentId);
     if(depth > 20) break;
   }
   return depth;
 }
-function flattenCategories(book, parentId=null, acc=[]){
-  categoryChildren(book, parentId).forEach(c=>{
+function flattenCategories(sheet, parentId=null, acc=[]){
+  categoryChildren(sheet, parentId).forEach(c=>{
     acc.push(c);
-    flattenCategories(book, c.id, acc);
+    flattenCategories(sheet, c.id, acc);
   });
   return acc;
 }
-function categoryLabel(book, catId){
-  const c = book.categories.find(x=>x.id===catId);
+function categoryLabel(sheet, catId){
+  const c = sheet.categories.find(x=>x.id===catId);
   return c ? c.name : '—';
 }
-function categoryDescendantIds(book, catId){
+function categoryDescendantIds(sheet, catId){
   const ids = [catId];
-  categoryChildren(book, catId).forEach(c=>{ ids.push(...categoryDescendantIds(book, c.id)); });
+  categoryChildren(sheet, catId).forEach(c=>{ ids.push(...categoryDescendantIds(sheet, c.id)); });
   return ids;
 }
-function categorySelectOptions(book, excludeId){
-  const excluded = excludeId ? categoryDescendantIds(book, excludeId) : [];
-  return flattenCategories(book).filter(c=>!excluded.includes(c.id))
-    .map(c=>({ value:c.id, label: '— '.repeat(categoryDepth(book,c.id)) + c.name }));
+function categorySelectOptions(sheet, excludeId){
+  const excluded = excludeId ? categoryDescendantIds(sheet, excludeId) : [];
+  return flattenCategories(sheet).filter(c=>!excluded.includes(c.id))
+    .map(c=>({ value:c.id, label: '— '.repeat(categoryDepth(sheet,c.id)) + c.name }));
 }
 
 /* ─── Liste des cahiers de test ──────────────────────────────── */
@@ -1323,28 +1347,23 @@ function renderTests(){
       <button class="btn-primary" onclick="openNewTestBookModal()">${icon('Plus','#fff')} Nouveau cahier de test</button>
     </div>`;
   if(books.length === 0){
-    html += `<div class="placeholder">Aucun cahier de test pour le moment.<br>Créez-en un pour définir vos propres catégories et colonnes.</div>`;
+    html += `<div class="placeholder">Aucun cahier de test pour le moment.<br>Créez-en un, puis ajoutez les feuilles (SVFE, OML, ...) qu'il contient.</div>`;
   } else {
     html += `<div class="grid grid-3">
-      ${books.map(b=>{
-        const cases = b.testCases.length;
-        const cats = b.categories.length;
-        return `
+      ${books.map(b=>`
         <div class="card testbook-card">
           <h3>${escapeHtml(b.name)}</h3>
           <div class="tdesc">${escapeHtml(b.description || 'Pas de description.')}</div>
           <div class="tstats">
-            <span>${cases} cas de test</span>
-            <span>${cats} catégorie(s)</span>
-            <span>${b.columns.length} colonne(s)</span>
+            <span>${b.sheets.length} feuille(s)</span>
+            <span>${totalCases(b)} cas de test</span>
           </div>
           <div class="tactions">
             <button class="btn-primary" style="flex:1;" onclick="viewTestBook('${b.id}')">${icon('Eye','#fff')} Ouvrir</button>
             <button class="icon-btn" onclick="renameTestBook('${b.id}')" title="Renommer">${icon('Pencil')}</button>
             <button class="icon-btn danger" onclick="deleteTestBook('${b.id}')" title="Supprimer">${icon('Trash2')}</button>
           </div>
-        </div>`;
-      }).join('')}
+        </div>`).join('')}
     </div>`;
   }
   document.getElementById('content').innerHTML = html;
@@ -1384,103 +1403,103 @@ function renameTestBook(id){
   });
 }
 function deleteTestBook(id){
-  if(!confirm('Supprimer ce cahier de test et tous ses cas de test ? Cette action est irréversible.')) return;
+  if(!confirm('Supprimer ce cahier de test et toutes ses feuilles ? Cette action est irréversible.')) return;
   const books = loadTestBooks().filter(b=>b.id!==id);
   saveTestBooks(books);
   renderTests();
 }
 
-/* ─── Détail d'un cahier de test ──────────────────────────────── */
-let testDetailState = { bookId:null, tab:'structure', categoryFilter:'' };
-
+/* ─── Détail d'un cahier : liste de ses feuilles ──────────────── */
 function viewTestBook(id){
-  testDetailState = { bookId:id, tab:'structure', categoryFilter:'' };
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   location.hash = `testbook/${id}`;
-  renderTestBookDetail();
+  renderTestBookDetail(id);
 }
-function setTestTab(tab){ testDetailState.tab = tab; renderTestBookDetail(); }
 function backToTests(){ navigate('tests'); }
 
-function renderTestBookDetail(){
+function renderTestBookDetail(bookId){
   const books = loadTestBooks();
-  const book = books.find(b=>b.id===testDetailState.bookId);
+  const book = books.find(b=>b.id===bookId);
   if(!book){ navigate('tests'); return; }
 
   document.getElementById('page-title').textContent = book.name;
-  document.getElementById('page-subtitle').textContent = `${book.testCases.length} cas de test · ${book.categories.length} catégorie(s)`;
-
-  const tabs = [
-    { id:'structure', label:'Structure' },
-    { id:'cases', label:`Cas de test (${book.testCases.length})` },
-    { id:'suivi', label:'Suivi & Contribution' },
-  ];
-  let tabContent = '';
-  if(testDetailState.tab === 'structure') tabContent = renderStructureTab(book);
-  else if(testDetailState.tab === 'cases') tabContent = renderCasesTab(book);
-  else if(testDetailState.tab === 'suivi') tabContent = renderSuiviTab(book);
+  document.getElementById('page-subtitle').textContent = `${book.sheets.length} feuille(s) · ${totalCases(book)} cas de test au total`;
 
   document.getElementById('content').innerHTML = `
     <button class="back-link" onclick="backToTests()">${icon('ArrowLeft')} Retour aux cahiers de test</button>
-    <div class="tabs">
-      ${tabs.map(t=>`<button class="tab-btn ${testDetailState.tab===t.id?'active':''}" onclick="setTestTab('${t.id}')">${t.label}</button>`).join('')}
-    </div>
-    ${tabContent}
-  `;
-  hydrateImageThumbs(document.getElementById('content'));
-}
 
-/* ─── Onglet Structure (catégories, colonnes, équipe) ─────────── */
-function renderStructureTab(book){
-  const tree = flattenCategories(book);
-  return `
-    <div class="grid grid-2" style="align-items:start;">
-      <div class="section-card">
-        <div class="section-head">
-          <h2>${icon('GitBranch')} Catégories <span class="count">${tree.length}</span></h2>
-          <button class="btn-secondary" onclick="openCategoryModal('${book.id}')">${icon('Plus')} Ajouter</button>
-        </div>
-        ${tree.length === 0 ? `<div class="empty">Aucune catégorie.</div>` : tree.map(c=>`
-          <div class="tree-row" style="padding-left:${14 + categoryDepth(book,c.id)*20}px;">
-            <span class="tname">${escapeHtml(c.name)}</span>
-            <span class="tactions">
-              <button class="icon-btn" onclick="openCategoryModal('${book.id}','${c.id}')" title="Modifier">${icon('Pencil')}</button>
-              <button class="icon-btn danger" onclick="deleteCategory('${book.id}','${c.id}')" title="Supprimer">${icon('Trash2')}</button>
-            </span>
-          </div>
-        `).join('')}
-      </div>
-
-      <div class="section-card">
-        <div class="section-head">
-          <h2>${icon('LayoutGrid')} Colonnes <span class="count">${book.columns.length}</span></h2>
-          <button class="btn-secondary" onclick="openColumnModal('${book.id}')">${icon('Plus')} Ajouter</button>
-        </div>
-        ${book.columns.length === 0 ? `<div class="empty">Aucune colonne.</div>` : book.columns.map(col=>`
-          <div class="tree-row">
-            <span class="tname">${escapeHtml(col.label)}</span>
-            <span class="col-type-pill">${COLUMN_TYPE_LABELS[col.type]}</span>
-            ${col.required ? `<span class="col-type-pill" style="background:var(--boa-red-light);color:var(--boa-red);">requis</span>` : ''}
-            <span class="tactions">
-              <button class="icon-btn" onclick="openColumnModal('${book.id}','${col.id}')" title="Modifier">${icon('Pencil')}</button>
-              <button class="icon-btn danger" onclick="deleteColumn('${book.id}','${col.id}')" title="Supprimer">${icon('Trash2')}</button>
-            </span>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-
-    <div class="section-card" style="margin-top:18px;">
+    <div class="section-card" style="margin-bottom:18px;">
       <div class="section-head"><h2>Équipe</h2></div>
       <div style="padding:16px;">
-        <p style="font-size:12.5px;color:#6b7280;margin-bottom:10px;">Liste des membres pouvant être assignés (colonnes de type "Personne") ou sélectionnés comme testeur actif.</p>
+        <p style="font-size:12.5px;color:#6b7280;margin-bottom:10px;">Membres pouvant être assignés (colonnes "Personne") ou sélectionnés comme testeur actif, pour toutes les feuilles de ce cahier.</p>
         <div class="form-field full" style="max-width:480px;">
           <input id="team-input" type="text" value="${escapeHtml(book.team.join(', '))}" placeholder="séparés par des virgules">
         </div>
         <button class="btn-secondary" style="margin-top:10px;" onclick="saveTeam('${book.id}')">Enregistrer l'équipe</button>
       </div>
     </div>
+
+    <div class="section-head" style="padding:0 0 14px;">
+      <h2 style="font-size:14px;">${icon('LayoutGrid')} Feuilles de test</h2>
+      <button class="btn-primary" onclick="openNewSheetModal('${book.id}')">${icon('Plus','#fff')} Nouvelle feuille</button>
+    </div>
+    ${book.sheets.length === 0 ? `<div class="placeholder">Aucune feuille. Ajoutez-en une (ex: SVFE, OML...).</div>` : `
+    <div class="grid grid-3">
+      ${book.sheets.map(s=>`
+        <div class="card testbook-card">
+          <h3>${escapeHtml(s.name)}</h3>
+          <div class="tstats">
+            <span>${s.testCases.length} cas de test</span>
+            <span>${s.columns.length} colonne(s)</span>
+            <span>${s.categories.length} catégorie(s)</span>
+          </div>
+          <div class="tactions">
+            <button class="btn-primary" style="flex:1;" onclick="viewSheet('${book.id}','${s.id}')">${icon('Eye','#fff')} Ouvrir</button>
+            <button class="icon-btn" onclick="renameSheet('${book.id}','${s.id}')" title="Renommer">${icon('Pencil')}</button>
+            <button class="icon-btn danger" onclick="deleteSheet('${book.id}','${s.id}')" title="Supprimer">${icon('Trash2')}</button>
+          </div>
+        </div>`).join('')}
+    </div>`}
   `;
+}
+function openNewSheetModal(bookId){
+  openModal({
+    title:'Nouvelle feuille de test',
+    fields:[ { name:'name', label:'Nom de la feuille (ex : SVFE, OML...)', type:'text', required:true, full:true } ],
+    onSubmit:(values)=>{
+      const books = loadTestBooks();
+      const book = books.find(b=>b.id===bookId);
+      const sheet = newSheet(values.name);
+      book.sheets.push(sheet);
+      touchTestBook(book);
+      saveTestBooks(books);
+      viewSheet(bookId, sheet.id);
+    }
+  });
+}
+function renameSheet(bookId, sheetId){
+  const books = loadTestBooks();
+  const book = books.find(b=>b.id===bookId);
+  const sheet = book.sheets.find(s=>s.id===sheetId);
+  openModal({
+    title:'Renommer la feuille',
+    fields:[ { name:'name', label:'Nom de la feuille', type:'text', value:sheet.name, required:true, full:true } ],
+    onSubmit:(values)=>{
+      sheet.name = values.name;
+      touchTestBook(book);
+      saveTestBooks(books);
+      renderTestBookDetail(bookId);
+    }
+  });
+}
+function deleteSheet(bookId, sheetId){
+  if(!confirm('Supprimer cette feuille et tous ses cas de test ?')) return;
+  const books = loadTestBooks();
+  const book = books.find(b=>b.id===bookId);
+  book.sheets = book.sheets.filter(s=>s.id!==sheetId);
+  touchTestBook(book);
+  saveTestBooks(books);
+  renderTestBookDetail(bookId);
 }
 function saveTeam(bookId){
   const books = loadTestBooks();
@@ -1489,49 +1508,141 @@ function saveTeam(bookId){
   book.team = raw.split(',').map(s=>s.trim()).filter(Boolean);
   touchTestBook(book);
   saveTestBooks(books);
-  renderTestBookDetail();
+  renderTestBookDetail(bookId);
 }
 
-function openCategoryModal(bookId, catId){
+/* ─── Détail d'une feuille : Structure / Cas de test / Suivi ──── */
+let testDetailState = { bookId:null, sheetId:null, tab:'cases', categoryFilter:'' };
+
+function viewSheet(bookId, sheetId){
+  testDetailState = { bookId, sheetId, tab:'cases', categoryFilter:'' };
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  location.hash = `testbook/${bookId}/sheet/${sheetId}`;
+  renderSheetDetail();
+}
+function setTestTab(tab){ testDetailState.tab = tab; renderSheetDetail(); }
+function backToBook(){ viewTestBook(testDetailState.bookId); }
+
+function getCurrentSheet(){
+  const books = loadTestBooks();
+  const book = books.find(b=>b.id===testDetailState.bookId);
+  if(!book) return {};
+  const sheet = book.sheets.find(s=>s.id===testDetailState.sheetId);
+  return { books, book, sheet };
+}
+
+function renderSheetDetail(){
+  const { book, sheet } = getCurrentSheet();
+  if(!book || !sheet){ navigate('tests'); return; }
+
+  document.getElementById('page-title').textContent = `${book.name} — ${sheet.name}`;
+  document.getElementById('page-subtitle').textContent = `${sheet.testCases.length} cas de test`;
+
+  const tabs = [
+    { id:'cases', label:`Vue tableau (${sheet.testCases.length})` },
+    { id:'structure', label:'Structure' },
+    { id:'suivi', label:'Suivi & Contribution' },
+  ];
+  let tabContent = '';
+  if(testDetailState.tab === 'structure') tabContent = renderStructureTab(book, sheet);
+  else if(testDetailState.tab === 'cases') tabContent = renderCasesTab(book, sheet);
+  else if(testDetailState.tab === 'suivi') tabContent = renderSuiviTab(sheet);
+
+  document.getElementById('content').innerHTML = `
+    <button class="back-link" onclick="backToBook()">${icon('ArrowLeft')} Retour à « ${escapeHtml(book.name)} »</button>
+    <div class="tabs">
+      ${tabs.map(t=>`<button class="tab-btn ${testDetailState.tab===t.id?'active':''}" onclick="setTestTab('${t.id}')">${t.label}</button>`).join('')}
+    </div>
+    ${tabContent}
+  `;
+  hydrateImageThumbs(document.getElementById('content'));
+}
+
+/* ─── Onglet Structure (catégories, colonnes) ─────────────────── */
+function renderStructureTab(book, sheet){
+  const tree = flattenCategories(sheet);
+  return `
+    <div class="grid grid-2" style="align-items:start;">
+      <div class="section-card">
+        <div class="section-head">
+          <h2>${icon('GitBranch')} Catégories <span class="count">${tree.length}</span></h2>
+          <button class="btn-secondary" onclick="openCategoryModal('${book.id}','${sheet.id}')">${icon('Plus')} Ajouter</button>
+        </div>
+        ${tree.length === 0 ? `<div class="empty">Aucune catégorie.</div>` : tree.map(c=>`
+          <div class="tree-row" style="padding-left:${14 + categoryDepth(sheet,c.id)*20}px;">
+            <span class="tname">${escapeHtml(c.name)}</span>
+            <span class="tactions">
+              <button class="icon-btn" onclick="openCategoryModal('${book.id}','${sheet.id}','${c.id}')" title="Modifier">${icon('Pencil')}</button>
+              <button class="icon-btn danger" onclick="deleteCategory('${book.id}','${sheet.id}','${c.id}')" title="Supprimer">${icon('Trash2')}</button>
+            </span>
+          </div>
+        `).join('')}
+      </div>
+
+      <div class="section-card">
+        <div class="section-head">
+          <h2>${icon('LayoutGrid')} Colonnes <span class="count">${sheet.columns.length}</span></h2>
+          <button class="btn-secondary" onclick="openColumnModal('${book.id}','${sheet.id}')">${icon('Plus')} Ajouter</button>
+        </div>
+        ${sheet.columns.length === 0 ? `<div class="empty">Aucune colonne.</div>` : sheet.columns.map(col=>`
+          <div class="tree-row">
+            <span class="tname">${escapeHtml(col.label)}</span>
+            <span class="col-type-pill">${COLUMN_TYPE_LABELS[col.type]}</span>
+            ${col.required ? `<span class="col-type-pill" style="background:var(--boa-red-light);color:var(--boa-red);">requis</span>` : ''}
+            <span class="tactions">
+              <button class="icon-btn" onclick="openColumnModal('${book.id}','${sheet.id}','${col.id}')" title="Modifier">${icon('Pencil')}</button>
+              <button class="icon-btn danger" onclick="deleteColumn('${book.id}','${sheet.id}','${col.id}')" title="Supprimer">${icon('Trash2')}</button>
+            </span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function openCategoryModal(bookId, sheetId, catId){
   const books = loadTestBooks();
   const book = books.find(b=>b.id===bookId);
-  const cat = catId ? book.categories.find(c=>c.id===catId) : null;
+  const sheet = book.sheets.find(s=>s.id===sheetId);
+  const cat = catId ? sheet.categories.find(c=>c.id===catId) : null;
   openModal({
     title: cat ? 'Modifier la catégorie' : 'Nouvelle catégorie',
     fields:[
       { name:'name', label:'Nom', type:'text', value: cat ? cat.name : '', required:true, full:true },
       { name:'parentId', label:'Catégorie parente', type:'select', value: cat ? (cat.parentId||'') : '',
-        options:[{value:'', label:'(racine)'}, ...categorySelectOptions(book, catId)], full:true },
+        options:[{value:'', label:'(racine)'}, ...categorySelectOptions(sheet, catId)], full:true },
     ],
     onSubmit:(values)=>{
       if(cat){ cat.name = values.name; cat.parentId = values.parentId || null; }
-      else book.categories.push({ id:newId(), name:values.name, parentId: values.parentId || null });
+      else sheet.categories.push({ id:newId(), name:values.name, parentId: values.parentId || null });
       touchTestBook(book);
       saveTestBooks(books);
-      renderTestBookDetail();
+      renderSheetDetail();
     }
   });
 }
-function deleteCategory(bookId, catId){
+function deleteCategory(bookId, sheetId, catId){
   const books = loadTestBooks();
   const book = books.find(b=>b.id===bookId);
-  const hasChildren = categoryChildren(book, catId).length > 0;
-  const hasCases = book.testCases.some(tc=>tc.categoryId===catId);
+  const sheet = book.sheets.find(s=>s.id===sheetId);
+  const hasChildren = categoryChildren(sheet, catId).length > 0;
+  const hasCases = sheet.testCases.some(tc=>tc.categoryId===catId);
   if(hasChildren || hasCases){
     alert('Impossible de supprimer : cette catégorie contient des sous-catégories ou des cas de test. Déplacez-les ou supprimez-les avant.');
     return;
   }
   if(!confirm('Supprimer cette catégorie ?')) return;
-  book.categories = book.categories.filter(c=>c.id!==catId);
+  sheet.categories = sheet.categories.filter(c=>c.id!==catId);
   touchTestBook(book);
   saveTestBooks(books);
-  renderTestBookDetail();
+  renderSheetDetail();
 }
 
-function openColumnModal(bookId, colId){
+function openColumnModal(bookId, sheetId, colId){
   const books = loadTestBooks();
   const book = books.find(b=>b.id===bookId);
-  const col = colId ? book.columns.find(c=>c.id===colId) : null;
+  const sheet = book.sheets.find(s=>s.id===sheetId);
+  const col = colId ? sheet.columns.find(c=>c.id===colId) : null;
   openModal({
     title: col ? 'Modifier la colonne' : 'Nouvelle colonne',
     wide:true,
@@ -1546,33 +1657,34 @@ function openColumnModal(bookId, colId){
       const options = values.optionsText.split('\n').map(s=>s.trim()).filter(Boolean)
         .map(label=>({ value: label.toUpperCase().replace(/[^A-Z0-9]+/g,'_'), label }));
       if(col){ col.label=values.label; col.type=values.type; col.required=values.required; col.options=options; }
-      else book.columns.push({ id:newId(), label:values.label, type:values.type, required:values.required, options });
+      else sheet.columns.push({ id:newId(), label:values.label, type:values.type, required:values.required, options });
       touchTestBook(book);
       saveTestBooks(books);
-      renderTestBookDetail();
+      renderSheetDetail();
     }
   });
 }
-function deleteColumn(bookId, colId){
+function deleteColumn(bookId, sheetId, colId){
   if(!confirm("Supprimer cette colonne ? Les valeurs déjà saisies pour cette colonne seront perdues.")) return;
   const books = loadTestBooks();
   const book = books.find(b=>b.id===bookId);
-  book.columns = book.columns.filter(c=>c.id!==colId);
-  book.testCases.forEach(tc=>{ delete tc.values[colId]; });
+  const sheet = book.sheets.find(s=>s.id===sheetId);
+  sheet.columns = sheet.columns.filter(c=>c.id!==colId);
+  sheet.testCases.forEach(tc=>{ delete tc.values[colId]; });
   touchTestBook(book);
   saveTestBooks(books);
-  renderTestBookDetail();
+  renderSheetDetail();
 }
 
-/* ─── Onglet Cas de test ───────────────────────────────────────── */
-function setTestCategoryFilter(val){ testDetailState.categoryFilter = val; renderTestBookDetail(); }
+/* ─── Onglet Cas de test (vue tableau) ──────────────────────────── */
+function setTestCategoryFilter(val){ testDetailState.categoryFilter = val; renderSheetDetail(); }
 
-function renderCasesTab(book){
+function renderCasesTab(book, sheet){
   const tester = getCurrentTester();
-  const catOptions = categorySelectOptions(book, null);
+  const catOptions = categorySelectOptions(sheet, null);
   const filter = testDetailState.categoryFilter;
-  const filterIds = filter ? categoryDescendantIds(book, filter) : null;
-  const cases = book.testCases.filter(tc => !filterIds || filterIds.includes(tc.categoryId));
+  const filterIds = filter ? categoryDescendantIds(sheet, filter) : null;
+  const cases = sheet.testCases.filter(tc => !filterIds || filterIds.includes(tc.categoryId));
 
   let html = `
     <div class="tester-bar">
@@ -1592,11 +1704,11 @@ function renderCasesTab(book){
         </select>
         ${icon('ChevronDown','#9ca3af')}
       </div>
-      <button class="btn-primary" style="margin-left:auto;" onclick="openTestCaseModal('${book.id}')">${icon('Plus','#fff')} Nouveau cas de test</button>
+      <button class="btn-primary" style="margin-left:auto;" onclick="openTestCaseModal('${book.id}','${sheet.id}')">${icon('Plus','#fff')} Nouveau cas de test</button>
     </div>
   `;
 
-  if(book.columns.length === 0){
+  if(sheet.columns.length === 0){
     html += `<div class="placeholder">Définissez d'abord vos colonnes dans l'onglet "Structure".</div>`;
     return html;
   }
@@ -1605,20 +1717,20 @@ function renderCasesTab(book){
     return html;
   }
 
-  html += `<div class="table-card"><table>
+  html += `<div class="table-card" style="overflow-x:auto;"><table>
     <thead><tr>
       <th>Catégorie</th>
-      ${book.columns.map(c=>`<th>${escapeHtml(c.label)}</th>`).join('')}
+      ${sheet.columns.map(c=>`<th>${escapeHtml(c.label)}</th>`).join('')}
       <th class="right">Actions</th>
     </tr></thead>
     <tbody>
       ${cases.map(tc=>`
         <tr>
-          <td>${escapeHtml(categoryLabel(book, tc.categoryId))}</td>
-          ${book.columns.map(c=>`<td>${renderCellValue(book, c, tc.values[c.id])}</td>`).join('')}
+          <td>${escapeHtml(categoryLabel(sheet, tc.categoryId))}</td>
+          ${sheet.columns.map(c=>`<td>${renderCellValue(c, tc.values[c.id])}</td>`).join('')}
           <td class="right">
-            <button class="icon-btn" onclick="openTestCaseModal('${book.id}','${tc.id}')" title="Modifier">${icon('Pencil')}</button>
-            <button class="icon-btn danger" onclick="deleteTestCase('${book.id}','${tc.id}')" title="Supprimer">${icon('Trash2')}</button>
+            <button class="icon-btn" onclick="openTestCaseModal('${book.id}','${sheet.id}','${tc.id}')" title="Modifier">${icon('Pencil')}</button>
+            <button class="icon-btn danger" onclick="deleteTestCase('${book.id}','${sheet.id}','${tc.id}')" title="Supprimer">${icon('Trash2')}</button>
           </td>
         </tr>
       `).join('')}
@@ -1627,7 +1739,7 @@ function renderCasesTab(book){
   return html;
 }
 
-function renderCellValue(book, col, value){
+function renderCellValue(col, value){
   if(value === undefined || value === null || value === '') return '<span style="color:#cbd5e1;">—</span>';
   if(col.type === 'select'){
     const opt = (col.options||[]).find(o=>o.value===value);
@@ -1654,17 +1766,18 @@ function columnToField(book, col, currentValue){
   return { ...base, type:'text' };
 }
 
-function openTestCaseModal(bookId, caseId){
+function openTestCaseModal(bookId, sheetId, caseId){
   const books = loadTestBooks();
   const book = books.find(b=>b.id===bookId);
-  const tc = caseId ? book.testCases.find(c=>c.id===caseId) : null;
-  const catOptions = categorySelectOptions(book, null);
+  const sheet = book.sheets.find(s=>s.id===sheetId);
+  const tc = caseId ? sheet.testCases.find(c=>c.id===caseId) : null;
+  const catOptions = categorySelectOptions(sheet, null);
   if(catOptions.length === 0){ alert('Créez au moins une catégorie avant d\'ajouter un cas de test.'); return; }
 
   const fields = [
     { name:'categoryId', label:'Catégorie', type:'select', required:true, full:true,
       value: tc ? tc.categoryId : (catOptions[0] && catOptions[0].value), options: catOptions },
-    ...book.columns.map(col=>columnToField(book, col, tc ? tc.values[col.id] : undefined)),
+    ...sheet.columns.map(col=>columnToField(book, col, tc ? tc.values[col.id] : undefined)),
   ];
 
   openModal({
@@ -1676,11 +1789,11 @@ function openTestCaseModal(bookId, caseId){
       const now = new Date().toISOString();
       const { categoryId, ...colValues } = values;
       if(tc){
-        book.columns.forEach(col=>{
+        sheet.columns.forEach(col=>{
           const oldV = tc.values[col.id];
           const newV = colValues[col.id];
           if(JSON.stringify(oldV) !== JSON.stringify(newV)){
-            tc.history.push({ date:now, author, field:col.id, fieldLabel:col.label, from:formatHistVal(book,col,oldV), to:formatHistVal(book,col,newV) });
+            tc.history.push({ date:now, author, field:col.id, fieldLabel:col.label, from:formatHistVal(col,oldV), to:formatHistVal(col,newV) });
           }
         });
         tc.categoryId = categoryId;
@@ -1689,41 +1802,42 @@ function openTestCaseModal(bookId, caseId){
         const newCase = { id:newId(), categoryId, values:colValues, history:[
           { date:now, author, field:'_create', fieldLabel:'Création', from:'', to:'cas de test créé' }
         ] };
-        book.testCases.push(newCase);
+        sheet.testCases.push(newCase);
       }
       touchTestBook(book);
       saveTestBooks(books);
-      renderTestBookDetail();
+      renderSheetDetail();
     }
   });
 }
-function formatHistVal(book, col, v){
+function formatHistVal(col, v){
   if(v === undefined || v === null || v === '') return '(vide)';
   if(col.type === 'select'){ const o=(col.options||[]).find(x=>x.value===v); return o?o.label:v; }
   if(col.type === 'checkbox') return v ? 'Oui' : 'Non';
   if(col.type === 'image') return 'capture mise à jour';
   return String(v).slice(0,60);
 }
-function deleteTestCase(bookId, caseId){
+function deleteTestCase(bookId, sheetId, caseId){
   if(!confirm('Supprimer ce cas de test ?')) return;
   const books = loadTestBooks();
   const book = books.find(b=>b.id===bookId);
-  book.testCases = book.testCases.filter(c=>c.id!==caseId);
+  const sheet = book.sheets.find(s=>s.id===sheetId);
+  sheet.testCases = sheet.testCases.filter(c=>c.id!==caseId);
   touchTestBook(book);
   saveTestBooks(books);
-  renderTestBookDetail();
+  renderSheetDetail();
 }
 
 /* ─── Onglet Suivi & Contribution ──────────────────────────────── */
-function renderSuiviTab(book){
-  const total = book.testCases.length;
+function renderSuiviTab(sheet){
+  const total = sheet.testCases.length;
   const allHistory = [];
-  book.testCases.forEach(tc=> tc.history.forEach(h=> allHistory.push({ ...h, caseId:tc.id })));
+  sheet.testCases.forEach(tc=> tc.history.forEach(h=> allHistory.push({ ...h, caseId:tc.id })));
   allHistory.sort((a,b)=> b.date.localeCompare(a.date));
 
   const byCategory = {};
-  book.testCases.forEach(tc=>{
-    const label = categoryLabel(book, tc.categoryId);
+  sheet.testCases.forEach(tc=>{
+    const label = categoryLabel(sheet, tc.categoryId);
     byCategory[label] = (byCategory[label]||0) + 1;
   });
   const maxCat = Math.max(1, ...Object.values(byCategory));
@@ -4261,7 +4375,12 @@ if(initialHash.startsWith('project-form/')){
 } else if(initialHash.startsWith('project/')){
   viewProject(initialHash.split('/')[1]);
 } else if(initialHash.startsWith('testbook/')){
-  viewTestBook(initialHash.split('/')[1]);
+  const hParts = initialHash.split('/');
+  if(hParts[2]==='sheet' && hParts[3]){
+    viewSheet(hParts[1], hParts[3]);
+  } else {
+    viewTestBook(hParts[1]);
+  }
 } else {
   navigate(initialHash);
 }
