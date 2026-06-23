@@ -1229,29 +1229,36 @@ function getSampleData(){
 
 /* ════════════════════════════════════════════════════════════════
    CAHIERS DE TEST — constructeur générique
-   Un TestBook contient plusieurs Feuilles (ex: SVFE, OML...). Chaque
-   feuille définit elle-même sa hiérarchie de catégories/sous-catégories
-   et ses colonnes (avec leur type, réordonnables par glisser-déposer) ;
-   les cas de test sont saisis selon ce schéma et affichés en vue
-   tableau. Chaque modification de valeur est journalisée (historique)
-   pour le suivi de contribution. Les membres de l'équipe sont gérés
-   séparément (registre global) puis affectés aux cahiers.
+   Trois phases bien séparées :
+   1. CRÉATION : le créateur définit la catégorie/sous-catégorie, la
+      description, la criticité, et le schéma des justificatifs requis
+      à l'exécution (ID de transaction, payload, capture, ...). L'ID du
+      cas (ex: OML001) est généré automatiquement selon la nomenclature
+      définie sur la catégorie — il sert lui-même d'identifiant, pas
+      besoin de colonne ID séparée.
+   2. AFFECTATION : une fois les cas créés, on les affecte (un par un,
+      par catégorie/sous-catégorie, par feuille ou par cahier entier) à
+      un membre de l'équipe.
+   3. EXÉCUTION : la personne affectée renseigne le statut et les
+      justificatifs définis à la création (capture, payload, ID de
+      transaction...) ainsi qu'un commentaire.
+   Les membres de l'équipe sont gérés séparément (registre global) puis
+   affectés aux cahiers.
    ════════════════════════════════════════════════════════════════ */
 const STORAGE_KEY_TESTS = 'boa_testbooks_v1';
 const STORAGE_KEY_MEMBERS = 'boa_members_v1';
 const CURRENT_TESTER_KEY = 'boa_current_tester';
 
-const COLUMN_TYPES = [
-  {value:'text', label:'Texte court'},
-  {value:'textarea', label:'Texte long'},
+const EVIDENCE_TYPES = [
+  {value:'text', label:'Texte court (ex: ID de transaction)'},
+  {value:'textarea', label:'Texte long (ex: Payload de sortie)'},
   {value:'number', label:'Numérique'},
   {value:'date', label:'Date'},
   {value:'select', label:'Liste déroulante'},
-  {value:'person', label:'Personne (assigné à)'},
   {value:'checkbox', label:'Case à cocher'},
   {value:'image', label:'Image / Capture'},
 ];
-const COLUMN_TYPE_LABELS = Object.fromEntries(COLUMN_TYPES.map(t=>[t.value, t.label]));
+const EVIDENCE_TYPE_LABELS = Object.fromEntries(EVIDENCE_TYPES.map(t=>[t.value, t.label]));
 const SELECT_PALETTE = [
   'background:var(--boa-gray-surf);color:#374151;',
   'background:var(--boa-green-light);color:var(--boa-green-dark);',
@@ -1262,6 +1269,20 @@ const SELECT_PALETTE = [
   'background:#f3e8ff;color:#7e22ce;',
   'background:#e0f2fe;color:#0369a1;',
 ];
+const CRITICALITY_LEVELS = [
+  { value:'CRITIQUE', label:'Critique', style:'background:var(--boa-red-light);color:var(--boa-red);' },
+  { value:'MAJEURE', label:'Majeure', style:'background:var(--boa-orange-light);color:var(--boa-orange);' },
+  { value:'MINEURE', label:'Mineure', style:'background:var(--boa-gray-surf);color:#374151;' },
+];
+const STATUS_LEVELS = [
+  { value:'NON_DEMARRE', label:'Non démarré', style:'background:var(--boa-gray-surf);color:#6b7280;' },
+  { value:'EN_COURS', label:'En cours', style:'background:var(--boa-orange-light);color:var(--boa-orange);' },
+  { value:'OK', label:'OK', style:'background:var(--boa-green-light);color:var(--boa-green-dark);' },
+  { value:'NOK', label:'NOK', style:'background:var(--boa-red-light);color:var(--boa-red);' },
+  { value:'NA', label:'N/A', style:'background:var(--boa-navy-light);color:var(--boa-navy);' },
+];
+function criticalityInfo(v){ return CRITICALITY_LEVELS.find(c=>c.value===v) || CRITICALITY_LEVELS[2]; }
+function statusInfo(v){ return STATUS_LEVELS.find(s=>s.value===v) || STATUS_LEVELS[0]; }
 
 /* ─── Membres (registre global, indépendant des cahiers) ───────── */
 function loadMembers(){
@@ -1352,7 +1373,10 @@ function deleteMember(id){
   const members = loadMembers().filter(m=>m.id!==id);
   saveMembers(members);
   const books = loadTestBooks();
-  books.forEach(b=>{ b.memberIds = b.memberIds.filter(mid=>mid!==id); });
+  books.forEach(b=>{
+    b.memberIds = b.memberIds.filter(mid=>mid!==id);
+    b.sheets.forEach(s=> s.testCases.forEach(tc=>{ if(tc.assigneeId===id) tc.assigneeId = null; }));
+  });
   saveTestBooks(books);
   openMembersModal();
 }
@@ -1385,12 +1409,16 @@ function setCurrentTester(name){
   localStorage.setItem(CURRENT_TESTER_KEY, name);
 }
 /* Anciens cahiers : on enveloppe la structure plate dans une feuille
-   unique "Général", et on convertit l'ancienne liste libre "team"
-   (simples noms) en membres globaux référencés par id. */
+   unique "Général", on convertit l'ancienne liste libre "team" en
+   membres globaux référencés par id, et on sépare les anciennes
+   "colonnes" génériques en champs fixes (description / criticité /
+   statut / assigné à) + schéma de justificatifs (le reste), pour
+   coller aux trois phases création / affectation / exécution. */
 function migrateTestBooks(books){
   let changed = false;
   let members = null;
   books.forEach(b=>{
+    if(typeof b.deadline === 'undefined'){ b.deadline = ''; changed = true; }
     if(!Array.isArray(b.sheets)){
       b.sheets = [ { id:newId(), name:'Feuille 1', categories:b.categories||[], columns:b.columns||[], testCases:b.testCases||[] } ];
       delete b.categories; delete b.columns; delete b.testCases;
@@ -1403,6 +1431,40 @@ function migrateTestBooks(books){
       changed = true;
     }
     if(!Array.isArray(b.memberIds)){ b.memberIds = []; changed = true; }
+    b.sheets.forEach(s=>{
+      s.categories.forEach(c=>{
+        if(typeof c.idPrefix === 'undefined'){ c.idPrefix=''; c.idDigits=3; changed = true; }
+      });
+      if(!Array.isArray(s.evidenceFields)){
+        const oldCols = s.columns || [];
+        const descCol = oldCols.find(c=>/description/i.test(c.label));
+        const personCol = oldCols.find(c=>c.type==='person');
+        const statusCol = oldCols.find(c=>c.type==='select' && /statut|status/i.test(c.label));
+        const evidenceCols = oldCols.filter(c=> c!==descCol && c!==personCol && c!==statusCol);
+        s.evidenceFields = evidenceCols.map(c=>({ id:c.id, label:c.label, type:c.type==='person'?'text':c.type, required:!!c.required, options:c.options||[] }));
+        s.testCases.forEach(tc=>{
+          const vals = tc.values || {};
+          tc.description = tc.description || (descCol ? (vals[descCol.id]||'') : '');
+          tc.criticality = tc.criticality || 'MINEURE';
+          if(typeof tc.assigneeId === 'undefined') tc.assigneeId = personCol ? (vals[personCol.id]||null) : null;
+          if(!tc.status){
+            let status = 'NON_DEMARRE';
+            if(statusCol){
+              const v = vals[statusCol.id];
+              const found = STATUS_LEVELS.find(s2=>s2.value===v);
+              if(found) status = found.value; else if(v) status = 'EN_COURS';
+            }
+            tc.status = status;
+          }
+          tc.comment = tc.comment || '';
+          tc.evidence = tc.evidence || {};
+          evidenceCols.forEach(c=>{ if(vals[c.id]!==undefined) tc.evidence[c.id] = vals[c.id]; });
+          delete tc.values;
+        });
+        delete s.columns;
+        changed = true;
+      }
+    });
   });
   if(members) saveMembers(members);
   return changed;
@@ -1412,7 +1474,7 @@ function newTestBook(name, description){
   const now = new Date().toISOString();
   return {
     id: newId(), name, description: description || '', createdAt: now, updatedAt: now,
-    memberIds: [],
+    deadline: '', memberIds: [],
     sheets: [ newSheet('Feuille 1') ],
   };
 }
@@ -1420,21 +1482,17 @@ function newSheet(name){
   return {
     id: newId(), name,
     categories: [ { id:newId(), name:'Général', parentId:null, idPrefix:'', idDigits:3 } ],
-    columns: [
-      { id:newId(), label:'Description', type:'textarea', required:true, options:[] },
-      { id:newId(), label:'Responsable', type:'person', required:false, options:[] },
-      { id:newId(), label:'Statut', type:'select', required:false,
-        options:[
-          {value:'EN_ATTENTE', label:'EN ATTENTE'}, {value:'EN_COURS', label:'EN COURS'},
-          {value:'OK', label:'OK'}, {value:'NOK', label:'NOK'}, {value:'NA', label:'N/A'},
-        ] },
-      { id:newId(), label:'Capture', type:'image', required:false, options:[] },
+    evidenceFields: [
+      { id:newId(), label:'ID de la transaction', type:'text', required:false, options:[] },
+      { id:newId(), label:'Payload de sortie', type:'textarea', required:false, options:[] },
+      { id:newId(), label:'Capture écran', type:'image', required:false, options:[] },
     ],
     testCases: [],
   };
 }
 function touchTestBook(book){ book.updatedAt = new Date().toISOString(); }
 function totalCases(book){ return book.sheets.reduce((n,s)=>n+s.testCases.length, 0); }
+function allCasesOf(book){ const out=[]; book.sheets.forEach(s=> s.testCases.forEach(tc=> out.push({ tc, sheet:s }))); return out; }
 
 /* ─── Arborescence des catégories (au sein d'une feuille) ──────── */
 function categoryChildren(sheet, parentId){
@@ -1466,25 +1524,8 @@ function categoryLabel(sheet, catId){
   return c ? c.name : '—';
 }
 function categoryPath(sheet, catId){
-  const chain = [];
-  let cur = sheet.categories.find(c=>c.id===catId);
-  let guard = 0;
-  while(cur){
-    chain.unshift(cur.name);
-    cur = cur.parentId ? sheet.categories.find(c=>c.id===cur.parentId) : null;
-    if(++guard > 20) break;
-  }
+  const chain = categoryPathArray(sheet, catId);
   return chain.length ? chain.join(' > ') : '—';
-}
-function categoryDescendantIds(sheet, catId){
-  const ids = [catId];
-  categoryChildren(sheet, catId).forEach(c=>{ ids.push(...categoryDescendantIds(sheet, c.id)); });
-  return ids;
-}
-function categorySelectOptions(sheet, excludeId){
-  const excluded = excludeId ? categoryDescendantIds(sheet, excludeId) : [];
-  return flattenCategories(sheet).filter(c=>!excluded.includes(c.id))
-    .map(c=>({ value:c.id, label: '— '.repeat(categoryDepth(sheet,c.id)) + c.name }));
 }
 function categoryPathArray(sheet, catId){
   const chain = [];
@@ -1500,6 +1541,16 @@ function categoryPathArray(sheet, catId){
 function sheetMaxDepth(sheet){
   if(sheet.categories.length===0) return 1;
   return Math.max(...sheet.categories.map(c=>categoryDepth(sheet,c.id))) + 1;
+}
+function categoryDescendantIds(sheet, catId){
+  const ids = [catId];
+  categoryChildren(sheet, catId).forEach(c=>{ ids.push(...categoryDescendantIds(sheet, c.id)); });
+  return ids;
+}
+function categorySelectOptions(sheet, excludeId){
+  const excluded = excludeId ? categoryDescendantIds(sheet, excludeId) : [];
+  return flattenCategories(sheet).filter(c=>!excluded.includes(c.id))
+    .map(c=>({ value:c.id, label: '— '.repeat(categoryDepth(sheet,c.id)) + c.name }));
 }
 /* L'ID affiché (ex: OML001) dépend du préfixe défini sur la catégorie
    du cas de test et de sa position parmi les cas du même "bloc"
@@ -1536,6 +1587,7 @@ function renderTests(){
           <div class="tstats">
             <span>${b.sheets.length} feuille(s)</span>
             <span>${totalCases(b)} cas de test</span>
+            ${b.deadline ? `<span>${icon('CalendarRange','#9ca3af')} ${fmt(b.deadline)}</span>` : ''}
           </div>
           <div class="tactions">
             <button class="btn-primary" style="flex:1;" onclick="viewTestBook('${b.id}')">${icon('Eye','#fff')} Ouvrir</button>
@@ -1554,10 +1606,12 @@ function openNewTestBookModal(){
     fields:[
       { name:'name', label:'Nom du cahier', type:'text', required:true, full:true },
       { name:'description', label:'Description', type:'textarea', full:true },
+      { name:'deadline', label:'Échéance (deadline)', type:'date' },
     ],
     onSubmit:(values)=>{
       const books = loadTestBooks();
       const book = newTestBook(values.name, values.description);
+      book.deadline = values.deadline || '';
       books.push(book);
       saveTestBooks(books);
       viewTestBook(book.id);
@@ -1573,9 +1627,10 @@ function renameTestBook(id){
     fields:[
       { name:'name', label:'Nom du cahier', type:'text', value:book.name, required:true, full:true },
       { name:'description', label:'Description', type:'textarea', value:book.description, full:true },
+      { name:'deadline', label:'Échéance (deadline)', type:'date', value:book.deadline },
     ],
     onSubmit:(values)=>{
-      book.name = values.name; book.description = values.description;
+      book.name = values.name; book.description = values.description; book.deadline = values.deadline || '';
       touchTestBook(book);
       saveTestBooks(books);
       renderTests();
@@ -1588,31 +1643,32 @@ function deleteTestBook(id){
   saveTestBooks(books);
   renderTests();
 }
-/* Duplication d'une feuille : tous les id (catégories, colonnes, cas)
-   sont régénérés et les références internes (parentId, values par
-   colonne) sont remappées pour rester cohérentes dans la copie. */
+/* Duplication d'une feuille : tous les id (catégories, justificatifs,
+   cas) sont régénérés et les références internes (parentId, valeurs
+   de justificatifs par champ) sont remappées pour rester cohérentes
+   dans la copie. Le statut/l'affectation/les justificatifs déjà
+   saisis ne sont pas repris (on duplique la définition, pas l'avancement). */
 function cloneSheetForDuplication(s){
-  const catMap = {}, colMap = {};
+  const catMap = {}, fieldMap = {};
   const categories = s.categories.map(c=>{ const nid=newId(); catMap[c.id]=nid; return { id:nid, name:c.name, parentId:c.parentId, idPrefix:c.idPrefix||'', idDigits:c.idDigits||3 }; });
   categories.forEach(c=>{ c.parentId = c.parentId ? (catMap[c.parentId]||null) : null; });
-  const columns = s.columns.map(c=>{ const nid=newId(); colMap[c.id]=nid; return { ...c, id:nid, options:(c.options||[]).map(o=>({...o})) }; });
+  const evidenceFields = s.evidenceFields.map(f=>{ const nid=newId(); fieldMap[f.id]=nid; return { ...f, id:nid, options:(f.options||[]).map(o=>({...o})) }; });
   const now = new Date().toISOString();
   const testCases = s.testCases.map(tc=>{
-    const newValues = {};
-    Object.entries(tc.values||{}).forEach(([colId,v])=>{ if(colMap[colId]) newValues[colMap[colId]] = v; });
-    return { id:newId(), categoryId: catMap[tc.categoryId] || null, values:newValues,
+    return { id:newId(), categoryId: catMap[tc.categoryId] || null, description: tc.description, criticality: tc.criticality,
+      status:'NON_DEMARRE', assigneeId:null, evidence:{}, comment:'',
       history:[ { date:now, author:'Administrateur', field:'_create', fieldLabel:'Création', from:'', to:'dupliqué' } ] };
   });
-  return { id:newId(), name:s.name, categories, columns, testCases };
+  return { id:newId(), name:s.name, categories, evidenceFields, testCases };
 }
 function duplicateTestBook(id){
-  if(!confirm('Dupliquer ce cahier de test (feuilles, catégories, colonnes et cas de test) ?')) return;
+  if(!confirm('Dupliquer ce cahier de test (feuilles, catégories, schéma de justificatifs et cas de test) ? L\'affectation et les justificatifs déjà saisis ne sont pas repris.')) return;
   const books = loadTestBooks();
   const book = books.find(b=>b.id===id);
   if(!book) return;
   const now = new Date().toISOString();
   const copy = {
-    id:newId(), name: book.name + ' (copie)', description: book.description,
+    id:newId(), name: book.name + ' (copie)', description: book.description, deadline: book.deadline,
     createdAt: now, updatedAt: now, memberIds: [...book.memberIds],
     sheets: book.sheets.map(cloneSheetForDuplication),
   };
@@ -1621,14 +1677,31 @@ function duplicateTestBook(id){
   renderTests();
 }
 
+/* ─── Statistiques globales d'un cahier ─────────────────────────── */
+function bookStats(book){
+  const all = allCasesOf(book).map(x=>x.tc);
+  const total = all.length;
+  const byStatus = {};
+  STATUS_LEVELS.forEach(s=> byStatus[s.value] = 0);
+  all.forEach(tc=> byStatus[tc.status||'NON_DEMARRE'] = (byStatus[tc.status||'NON_DEMARRE']||0) + 1);
+  const executed = (byStatus.OK||0) + (byStatus.NOK||0) + (byStatus.NA||0);
+  const pctRealise = total>0 ? Math.round(executed/total*100) : 0;
+  const byCriticality = {};
+  CRITICALITY_LEVELS.forEach(c=> byCriticality[c.value] = 0);
+  all.forEach(tc=> byCriticality[tc.criticality||'MINEURE'] = (byCriticality[tc.criticality||'MINEURE']||0) + 1);
+  const assignedCount = all.filter(tc=>tc.assigneeId).length;
+  const byAssignee = {};
+  all.forEach(tc=>{ if(tc.assigneeId) byAssignee[tc.assigneeId] = (byAssignee[tc.assigneeId]||0) + 1; });
+  return { total, byStatus, executed, pctRealise, byCriticality, assignedCount, unassignedCount: total-assignedCount, byAssignee };
+}
+
 /* ─── Export du cahier en classeur Excel (une feuille par Feuille) ── */
-function exportCellValue(col, v){
+function exportCellValue(field, v){
   if(v === undefined || v === null || v === '') return '';
-  if(col.type === 'select'){ const o=(col.options||[]).find(x=>x.value===v); return o?o.label:v; }
-  if(col.type === 'person') return memberName(v);
-  if(col.type === 'checkbox') return v ? 'Oui' : 'Non';
-  if(col.type === 'date') return fmt(v);
-  if(col.type === 'image') return 'Capture (voir application)';
+  if(field.type === 'select'){ const o=(field.options||[]).find(x=>x.value===v); return o?o.label:v; }
+  if(field.type === 'checkbox') return v ? 'Oui' : 'Non';
+  if(field.type === 'date') return fmt(v);
+  if(field.type === 'image') return 'Capture (voir application)';
   return String(v);
 }
 function exportTestBookXlsx(bookId){
@@ -1639,15 +1712,20 @@ function exportTestBookXlsx(bookId){
   const wb = XLSX.utils.book_new();
   book.sheets.forEach(sheet=>{
     const maxDepth = sheetMaxDepth(sheet);
-    const levelHeaders = Array.from({length:maxDepth}, (_,i)=> i===0 ? 'Catégorie' : 'Sous-'.repeat(i-1>0?i-1:0) + (i===1?'Sous-catégorie':'sous-catégorie'));
-    const header = ['ID', ...levelHeaders, ...sheet.columns.map(c=>c.label)];
+    const levelHeaders = Array.from({length:maxDepth}, (_,i)=> i===0 ? 'Catégorie' : (i===1 ? 'Sous-catégorie' : 'Sous-'.repeat(i-1) + 'sous-catégorie'));
+    const header = ['ID', ...levelHeaders, 'Description', 'Criticité', 'Statut', 'Assigné à', ...sheet.evidenceFields.map(f=>f.label), 'Commentaire'];
     const rows = sheet.testCases.map(tc=>{
       const path = categoryPathArray(sheet, tc.categoryId);
       const padded = [...path, ...Array(Math.max(0, maxDepth - path.length)).fill('')];
       return [
         caseDisplayId(sheet, tc),
         ...padded,
-        ...sheet.columns.map(col=>exportCellValue(col, tc.values[col.id])),
+        tc.description || '',
+        criticalityInfo(tc.criticality).label,
+        statusInfo(tc.status).label,
+        tc.assigneeId ? memberName(tc.assigneeId) : '',
+        ...sheet.evidenceFields.map(f=>exportCellValue(f, tc.evidence[f.id])),
+        tc.comment || '',
       ];
     });
     const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
@@ -1662,7 +1740,7 @@ function exportTestBookXlsx(bookId){
   XLSX.writeFile(wb, `${(book.name||'Cahier_de_test').replace(/[^a-z0-9]+/gi,'_')}.xlsx`);
 }
 
-/* ─── Détail d'un cahier : équipe affectée + liste de ses feuilles ── */
+/* ─── Détail d'un cahier : stats globales + équipe + liste de feuilles ── */
 function viewTestBook(id){
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   location.hash = `testbook/${id}`;
@@ -1676,11 +1754,12 @@ function renderTestBookDetail(bookId){
   if(!book){ navigate('tests'); return; }
 
   const allMembers = loadMembers().sort((a,b)=>a.name.localeCompare(b.name));
-  const tester = getCurrentTester();
-  const assigned = bookMembers(book);
+  const stats = bookStats(book);
+  const maxStatus = Math.max(1, ...Object.values(stats.byStatus));
+  const maxCrit = Math.max(1, ...Object.values(stats.byCriticality));
 
   document.getElementById('page-title').textContent = book.name;
-  document.getElementById('page-subtitle').textContent = `${book.sheets.length} feuille(s) · ${totalCases(book)} cas de test au total`;
+  document.getElementById('page-subtitle').textContent = `${book.sheets.length} feuille(s) · ${stats.total} cas de test au total`;
 
   document.getElementById('content').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
@@ -1689,28 +1768,79 @@ function renderTestBookDetail(bookId){
     </div>
 
     <div class="section-card" style="margin:18px 0;">
+      <div class="section-head"><h2>${icon('TrendingUp')} Statistiques globales du cahier</h2></div>
+      <div style="padding:14px 16px;">
+        <div class="grid grid-3" style="margin-bottom:14px;">
+          <div class="card kpi-card">
+            <div class="kpi-icon" style="background:var(--boa-navy-light);">${icon('LayoutGrid','#1B2E5E')}</div>
+            <div><div class="kpi-value">${book.sheets.length}</div><div class="kpi-label">Feuilles de test</div></div>
+          </div>
+          <div class="card kpi-card">
+            <div class="kpi-icon" style="background:var(--boa-green-light);">${icon('CheckCircle2','#1B7A4B')}</div>
+            <div><div class="kpi-value">${stats.total}</div><div class="kpi-label">Cas de test au total</div></div>
+          </div>
+          <div class="card kpi-card">
+            <div class="kpi-icon" style="background:var(--boa-orange-light);">${icon('TrendingUp','#d4830a')}</div>
+            <div><div class="kpi-value">${stats.pctRealise}%</div><div class="kpi-label">Taux de réalisation</div></div>
+          </div>
+          <div class="card kpi-card">
+            <div class="kpi-icon" style="background:var(--boa-green-light);">${icon('CheckCircle2','#1B7A4B')}</div>
+            <div><div class="kpi-value">${stats.assignedCount}</div><div class="kpi-label">Cas affectés</div></div>
+          </div>
+          <div class="card kpi-card">
+            <div class="kpi-icon" style="background:var(--boa-red-light);">${icon('AlertCircle','#D14343')}</div>
+            <div><div class="kpi-value">${stats.unassignedCount}</div><div class="kpi-label">Cas non affectés</div></div>
+          </div>
+          <div class="card kpi-card">
+            <div class="kpi-icon" style="background:var(--boa-navy-light);">${icon('CalendarRange','#1B2E5E')}</div>
+            <div><div class="kpi-value" style="font-size:16px;">${book.deadline ? fmt(book.deadline) : '—'}</div><div class="kpi-label">Échéance</div></div>
+          </div>
+        </div>
+        <div class="grid grid-2" style="align-items:start;">
+          <div class="card chart-card">
+            <h2>Cas de test par statut</h2>
+            <div class="bars">
+              ${STATUS_LEVELS.map(s=>`
+                <div class="bar-row">
+                  <div class="bar-label">${escapeHtml(s.label)}</div>
+                  <div class="bar-track"><div class="bar-fill" style="width:${stats.byStatus[s.value]/maxStatus*100}%"></div></div>
+                  <div class="bar-value">${stats.byStatus[s.value]}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          <div class="card chart-card">
+            <h2>Cas de test par criticité</h2>
+            <div class="bars">
+              ${CRITICALITY_LEVELS.map(c=>`
+                <div class="bar-row">
+                  <div class="bar-label">${escapeHtml(c.label)}</div>
+                  <div class="bar-track"><div class="bar-fill" style="width:${stats.byCriticality[c.value]/maxCrit*100}%;background:var(--boa-navy);"></div></div>
+                  <div class="bar-value">${stats.byCriticality[c.value]}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-card" style="margin:18px 0;">
       <div class="section-head">
         <h2>Équipe affectée à ce cahier</h2>
         <button class="btn-secondary" onclick="openMembersModal()">${icon('Pencil')} Gérer les membres</button>
       </div>
       <div style="padding:14px 16px;">
-        <p style="font-size:12.5px;color:#6b7280;margin-bottom:10px;">Les membres sont créés une seule fois (registre global), puis cochés ici pour pouvoir être affectés aux cas de test de ce cahier (colonnes "Personne").</p>
+        <p style="font-size:12.5px;color:#6b7280;margin-bottom:10px;">Les membres sont créés une seule fois (registre global), puis cochés ici pour pouvoir être affectés aux cas de test de ce cahier.</p>
         ${allMembers.length===0 ? `<div class="empty">Aucun membre créé pour l'instant. Cliquez sur "Gérer les membres" pour en ajouter.</div>` : `
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
           ${allMembers.map(m=>`
             <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;border:1px solid var(--boa-gray-border);border-radius:8px;padding:6px 10px;cursor:pointer;">
               <input type="checkbox" ${book.memberIds.includes(m.id)?'checked':''} onchange="toggleBookMember('${book.id}','${m.id}', this.checked)">
-              ${escapeHtml(m.name)}
+              ${escapeHtml(m.name)} ${stats.byAssignee[m.id] ? `<span class="col-type-pill">${stats.byAssignee[m.id]}</span>` : ''}
             </label>
           `).join('')}
         </div>`}
-        <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;">
-          <label style="color:#6b7280;">Connecté en tant que (optionnel, pour l'historique) :</label>
-          <select onchange="setCurrentTester(this.value)" style="padding:6px 10px;border:1px solid var(--boa-gray-border);border-radius:7px;font-size:12.5px;">
-            <option value="">—</option>
-            ${assigned.map(m=>`<option value="${escapeHtml(m.name)}" ${tester===m.name?'selected':''}>${escapeHtml(m.name)}</option>`).join('')}
-          </select>
-        </div>
       </div>
     </div>
 
@@ -1725,7 +1855,7 @@ function renderTestBookDetail(bookId){
           <h3>${escapeHtml(s.name)}</h3>
           <div class="tstats">
             <span>${s.testCases.length} cas de test</span>
-            <span>${s.columns.length} colonne(s)</span>
+            <span>${s.evidenceFields.length} justificatif(s)</span>
             <span>${s.categories.length} catégorie(s)</span>
           </div>
           <div class="tactions">
@@ -1778,11 +1908,11 @@ function deleteSheet(bookId, sheetId){
 }
 
 /* ─── Détail d'une feuille : Structure / Cas de test / Suivi ──── */
-let testDetailState = { bookId:null, sheetId:null, tab:'cases', categoryFilter:'', selected:new Set() };
+let testDetailState = { bookId:null, sheetId:null, tab:'cases', categoryFilter:'', selected:new Set(), assignMode:false };
 let draggedColId = null;
 
 function viewSheet(bookId, sheetId){
-  testDetailState = { bookId, sheetId, tab:'cases', categoryFilter:'', selected:new Set() };
+  testDetailState = { bookId, sheetId, tab:'cases', categoryFilter:'', selected:new Set(), assignMode:false };
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   location.hash = `testbook/${bookId}/sheet/${sheetId}`;
   renderSheetDetail();
@@ -1806,8 +1936,8 @@ function renderSheetDetail(){
   document.getElementById('page-subtitle').textContent = `${sheet.name} · ${sheet.testCases.length} cas de test`;
 
   const tabs = [
-    { id:'cases', label:`Vue tableau (${sheet.testCases.length})` },
-    { id:'structure', label:'Structure' },
+    { id:'cases', label:`Cas de test (${sheet.testCases.length})` },
+    { id:'structure', label:'Structure (création)' },
     { id:'suivi', label:'Suivi & Contribution' },
   ];
   let tabContent = '';
@@ -1829,7 +1959,8 @@ function renderSheetDetail(){
   hydrateImageThumbs(document.getElementById('content'));
 }
 
-/* ─── Onglet Structure (catégories imbriquées, colonnes réordonnables) ── */
+/* ─── Onglet Structure (phase CRÉATION) : catégories imbriquées avec
+   nomenclature d'ID, et schéma des justificatifs requis à l'exécution ── */
 function renderStructureTab(book, sheet){
   const roots = categoryChildren(sheet, null);
   function renderCatRow(c){
@@ -1850,6 +1981,7 @@ function renderStructureTab(book, sheet){
     `;
   }
   return `
+    <p style="font-size:12px;color:#6b7280;margin:4px 0 14px;">Cette étape ne concerne que la <strong>création</strong> du cahier : catégories, nomenclature des ID, et schéma des justificatifs qui seront demandés à l'exécution. L'affectation et l'exécution se font depuis l'onglet "Cas de test".</p>
     <div class="grid grid-2" style="align-items:start;">
       <div class="section-card">
         <div class="section-head">
@@ -1861,22 +1993,22 @@ function renderStructureTab(book, sheet){
 
       <div class="section-card">
         <div class="section-head">
-          <h2>${icon('LayoutGrid')} Colonnes <span class="count">${sheet.columns.length}</span></h2>
-          <button class="btn-secondary" onclick="openColumnModal('${book.id}','${sheet.id}')">${icon('Plus')} Ajouter</button>
+          <h2>${icon('LayoutGrid')} Justificatifs requis à l'exécution <span class="count">${sheet.evidenceFields.length}</span></h2>
+          <button class="btn-secondary" onclick="openEvidenceFieldModal('${book.id}','${sheet.id}')">${icon('Plus')} Ajouter</button>
         </div>
-        ${sheet.columns.length === 0 ? `<div class="empty">Aucune colonne.</div>` : `
-        <p style="font-size:11.5px;color:#9ca3af;padding:8px 14px 0;">Glissez-déposez pour réordonner les colonnes du tableau.</p>
-        ${sheet.columns.map(col=>`
+        ${sheet.evidenceFields.length === 0 ? `<div class="empty">Aucun justificatif défini.</div>` : `
+        <p style="font-size:11.5px;color:#9ca3af;padding:8px 14px 0;">Glissez-déposez pour réordonner. Ce sont les éléments que la personne affectée devra fournir pour justifier l'exécution (ID de transaction, payload, capture écran, commentaire...).</p>
+        ${sheet.evidenceFields.map(col=>`
           <div class="tree-row col-row" draggable="true"
             ondragstart="colDragStart('${col.id}')" ondragover="colDragOver(event)"
             ondrop="colDrop('${book.id}','${sheet.id}','${col.id}')">
             ${icon('List','#9ca3af')}
             <span class="tname">${escapeHtml(col.label)}</span>
-            <span class="col-type-pill">${COLUMN_TYPE_LABELS[col.type]}</span>
-            ${col.required ? `<span class="col-type-pill" style="background:var(--boa-red-light);color:var(--boa-red);">requis</span>` : ''}
+            <span class="col-type-pill">${EVIDENCE_TYPE_LABELS[col.type]}</span>
+            ${col.required ? `<span class="col-type-pill" style="background:var(--boa-red-light);color:var(--boa-red);">obligatoire</span>` : ''}
             <span class="tactions">
-              <button class="icon-btn" onclick="openColumnModal('${book.id}','${sheet.id}','${col.id}')" title="Modifier">${icon('Pencil')}</button>
-              <button class="icon-btn danger" onclick="deleteColumn('${book.id}','${sheet.id}','${col.id}')" title="Supprimer">${icon('Trash2')}</button>
+              <button class="icon-btn" onclick="openEvidenceFieldModal('${book.id}','${sheet.id}','${col.id}')" title="Modifier">${icon('Pencil')}</button>
+              <button class="icon-btn danger" onclick="deleteEvidenceField('${book.id}','${sheet.id}','${col.id}')" title="Supprimer">${icon('Trash2')}</button>
             </span>
           </div>
         `).join('')}`}
@@ -1892,12 +2024,12 @@ function colDrop(bookId, sheetId, targetColId){
   const books = loadTestBooks();
   const book = books.find(b=>b.id===bookId);
   const sheet = book.sheets.find(s=>s.id===sheetId);
-  const fromIdx = sheet.columns.findIndex(c=>c.id===draggedColId);
-  const toIdx = sheet.columns.findIndex(c=>c.id===targetColId);
+  const fromIdx = sheet.evidenceFields.findIndex(c=>c.id===draggedColId);
+  const toIdx = sheet.evidenceFields.findIndex(c=>c.id===targetColId);
   draggedColId = null;
   if(fromIdx < 0 || toIdx < 0) return;
-  const [moved] = sheet.columns.splice(fromIdx, 1);
-  sheet.columns.splice(toIdx, 0, moved);
+  const [moved] = sheet.evidenceFields.splice(fromIdx, 1);
+  sheet.evidenceFields.splice(toIdx, 0, moved);
   touchTestBook(book);
   saveTestBooks(books);
   renderSheetDetail();
@@ -1946,18 +2078,18 @@ function deleteCategory(bookId, sheetId, catId){
   renderSheetDetail();
 }
 
-function openColumnModal(bookId, sheetId, colId){
+function openEvidenceFieldModal(bookId, sheetId, colId){
   const books = loadTestBooks();
   const book = books.find(b=>b.id===bookId);
   const sheet = book.sheets.find(s=>s.id===sheetId);
-  const col = colId ? sheet.columns.find(c=>c.id===colId) : null;
+  const col = colId ? sheet.evidenceFields.find(c=>c.id===colId) : null;
   openModal({
-    title: col ? 'Modifier la colonne' : 'Nouvelle colonne',
+    title: col ? 'Modifier le justificatif' : 'Nouveau justificatif',
     wide:true,
     fields:[
-      { name:'label', label:'Nom de la colonne', type:'text', value: col ? col.label : '', required:true },
-      { name:'type', label:'Type', type:'select', value: col ? col.type : 'text', options: COLUMN_TYPES, required:true },
-      { name:'required', label:'Obligatoire', type:'checkbox', value: col ? col.required : false },
+      { name:'label', label:'Nom du justificatif (ex : ID de transaction)', type:'text', value: col ? col.label : '', required:true },
+      { name:'type', label:'Type', type:'select', value: col ? col.type : 'text', options: EVIDENCE_TYPES, required:true },
+      { name:'required', label:'Obligatoire à l\'exécution', type:'checkbox', value: col ? col.required : false },
       { name:'optionsText', label:'Options (une par ligne, pour "Liste déroulante")', type:'textarea', rows:4, full:true,
         value: col && col.options ? col.options.map(o=>o.label).join('\n') : '' },
     ],
@@ -1965,26 +2097,26 @@ function openColumnModal(bookId, sheetId, colId){
       const options = values.optionsText.split('\n').map(s=>s.trim()).filter(Boolean)
         .map(label=>({ value: label.toUpperCase().replace(/[^A-Z0-9]+/g,'_'), label }));
       if(col){ col.label=values.label; col.type=values.type; col.required=values.required; col.options=options; }
-      else sheet.columns.push({ id:newId(), label:values.label, type:values.type, required:values.required, options });
+      else sheet.evidenceFields.push({ id:newId(), label:values.label, type:values.type, required:values.required, options });
       touchTestBook(book);
       saveTestBooks(books);
       renderSheetDetail();
     }
   });
 }
-function deleteColumn(bookId, sheetId, colId){
-  if(!confirm("Supprimer cette colonne ? Les valeurs déjà saisies pour cette colonne seront perdues.")) return;
+function deleteEvidenceField(bookId, sheetId, colId){
+  if(!confirm("Supprimer ce justificatif ? Les éléments déjà saisis pour ce champ seront perdus.")) return;
   const books = loadTestBooks();
   const book = books.find(b=>b.id===bookId);
   const sheet = book.sheets.find(s=>s.id===sheetId);
-  sheet.columns = sheet.columns.filter(c=>c.id!==colId);
-  sheet.testCases.forEach(tc=>{ delete tc.values[colId]; });
+  sheet.evidenceFields = sheet.evidenceFields.filter(c=>c.id!==colId);
+  sheet.testCases.forEach(tc=>{ delete tc.evidence[colId]; });
   touchTestBook(book);
   saveTestBooks(books);
   renderSheetDetail();
 }
 
-/* ─── Onglet Cas de test (vue tableau) ──────────────────────────── */
+/* ─── Onglet Cas de test : création / affectation / exécution ──── */
 function setTestCategoryFilter(val){ testDetailState.categoryFilter = val; renderSheetDetail(); }
 function toggleCaseSelect(caseId, checked){
   if(checked) testDetailState.selected.add(caseId);
@@ -1997,13 +2129,25 @@ function toggleSelectAll(ids, checked){
   renderSheetDetail();
 }
 function clearSelection(){ testDetailState.selected.clear(); renderSheetDetail(); }
+function toggleAssignMode(){
+  testDetailState.assignMode = !testDetailState.assignMode;
+  if(!testDetailState.assignMode) testDetailState.selected.clear();
+  renderSheetDetail();
+}
+
+function evidenceProgress(sheet, tc){
+  const fields = sheet.evidenceFields;
+  if(fields.length===0) return '—';
+  const filled = fields.filter(f=> tc.evidence[f.id] !== undefined && tc.evidence[f.id] !== '').length;
+  return `${filled}/${fields.length}`;
+}
 
 function renderCasesTab(book, sheet){
   const catOptions = categorySelectOptions(sheet, null);
   const filter = testDetailState.categoryFilter;
   const filterIds = filter ? categoryDescendantIds(sheet, filter) : null;
   const cases = sheet.testCases.filter(tc => !filterIds || filterIds.includes(tc.categoryId));
-  const personColumns = sheet.columns.filter(c=>c.type==='person');
+  const assignMode = testDetailState.assignMode;
   const visibleIds = cases.map(tc=>tc.id);
   const selectedCount = visibleIds.filter(id=>testDetailState.selected.has(id)).length;
   const allSelected = visibleIds.length>0 && selectedCount===visibleIds.length;
@@ -2017,19 +2161,17 @@ function renderCasesTab(book, sheet){
         </select>
         ${icon('ChevronDown','#9ca3af')}
       </div>
-      ${personColumns.length>0 ? `<button class="btn-secondary" onclick="openBlockAssignModal('${book.id}','${sheet.id}')">${icon('ArrowRight')} Affecter un bloc (catégorie / feuille / cahier)</button>` : ''}
-      ${personColumns.length>0 && selectedCount>0 ? `
-        <button class="btn-secondary" onclick="openBulkAssignModal('${book.id}','${sheet.id}')">${icon('ArrowRight')} Affecter la sélection (${selectedCount})</button>
-        <button class="btn-outline" onclick="clearSelection()">Annuler la sélection</button>
-      ` : ''}
+      ${!assignMode ? `
+        <button class="btn-secondary" onclick="toggleAssignMode()">${icon('ArrowRight')} Affecter</button>
+        <button class="btn-outline" onclick="openBlockAssignModal('${book.id}','${sheet.id}')">${icon('ArrowRight')} Affecter par catégorie / feuille / cahier</button>
+      ` : `
+        <button class="btn-primary" onclick="openBulkAssignModal('${book.id}','${sheet.id}')" ${selectedCount===0?'disabled':''}>${icon('ArrowRight','#fff')} Affecter la sélection (${selectedCount})</button>
+        <button class="btn-outline" onclick="toggleAssignMode()">Quitter le mode affectation</button>
+      `}
       <button class="btn-primary" style="margin-left:auto;" onclick="openTestCaseModal('${book.id}','${sheet.id}')">${icon('Plus','#fff')} Nouveau cas de test</button>
     </div>
   `;
 
-  if(sheet.columns.length === 0){
-    html += `<div class="placeholder">Définissez d'abord vos colonnes dans l'onglet "Structure".</div>`;
-    return html;
-  }
   if(cases.length === 0){
     html += `<div class="empty" style="padding:50px 18px;">Aucun cas de test.</div>`;
     return html;
@@ -2037,82 +2179,85 @@ function renderCasesTab(book, sheet){
 
   html += `<div class="table-card" style="overflow-x:auto;"><table class="test-cases-table">
     <thead><tr>
-      <th style="width:28px;"><input type="checkbox" ${allSelected?'checked':''} onchange='toggleSelectAll(${JSON.stringify(visibleIds)}, this.checked)'></th>
+      ${assignMode ? `<th style="width:28px;"><input type="checkbox" ${allSelected?'checked':''} onchange='toggleSelectAll(${JSON.stringify(visibleIds)}, this.checked)'></th>` : ''}
       <th>ID</th>
       <th>Catégorie</th>
-      ${sheet.columns.map(c=>`<th>${escapeHtml(c.label)}</th>`).join('')}
+      <th>Description</th>
+      <th>Criticité</th>
+      <th>Statut</th>
+      <th>Assigné à</th>
+      <th>Justificatifs</th>
       <th class="right">Actions</th>
     </tr></thead>
     <tbody>
-      ${cases.map(tc=>`
+      ${cases.map(tc=>{
+        const crit = criticalityInfo(tc.criticality);
+        const stat = statusInfo(tc.status);
+        return `
         <tr>
-          <td><input type="checkbox" ${testDetailState.selected.has(tc.id)?'checked':''} onchange="toggleCaseSelect('${tc.id}', this.checked)"></td>
+          ${assignMode ? `<td><input type="checkbox" ${testDetailState.selected.has(tc.id)?'checked':''} onchange="toggleCaseSelect('${tc.id}', this.checked)"></td>` : ''}
           <td><strong>${escapeHtml(caseDisplayId(sheet, tc))}</strong></td>
           <td>${escapeHtml(categoryPath(sheet, tc.categoryId))}</td>
-          ${sheet.columns.map(c=>`<td>${renderCellValue(c, tc.values[c.id])}</td>`).join('')}
+          <td><span style="white-space:pre-line;">${escapeHtml((tc.description||'').slice(0,140))}</span></td>
+          <td><span class="badge" style="${crit.style}">${crit.label}</span></td>
+          <td><span class="badge" style="${stat.style}">${stat.label}</span></td>
+          <td>${tc.assigneeId ? escapeHtml(memberName(tc.assigneeId)) : '<span style="color:#cbd5e1;">Non affecté</span>'}</td>
+          <td>${evidenceProgress(sheet, tc)}</td>
           <td class="right">
-            <button class="icon-btn" onclick="openTestCaseModal('${book.id}','${sheet.id}','${tc.id}')" title="Modifier">${icon('Pencil')}</button>
+            <button class="icon-btn" onclick="openTestCaseModal('${book.id}','${sheet.id}','${tc.id}')" title="Modifier la définition">${icon('Pencil')}</button>
+            <button class="icon-btn" onclick="openExecutionModal('${book.id}','${sheet.id}','${tc.id}')" title="Exécuter / saisir les justificatifs">${icon('CheckCircle2')}</button>
             <button class="icon-btn" onclick="duplicateTestCase('${book.id}','${sheet.id}','${tc.id}')" title="Dupliquer">${icon('Copy')}</button>
             <button class="icon-btn danger" onclick="deleteTestCase('${book.id}','${sheet.id}','${tc.id}')" title="Supprimer">${icon('Trash2')}</button>
           </td>
         </tr>
-      `).join('')}
+      `;}).join('')}
     </tbody>
   </table></div>`;
   return html;
 }
 
-/* ─── Affectation (l'administrateur crée les cas, puis les affecte) ── */
+/* ─── Phase AFFECTATION ──────────────────────────────────────────
+   Sélection manuelle (case à cocher par ligne, activée par "Affecter")
+   ou par bloc entier (catégorie/sous-catégorie, feuille, cahier). ── */
 function openBulkAssignModal(bookId, sheetId){
   const books = loadTestBooks();
   const book = books.find(b=>b.id===bookId);
   const sheet = book.sheets.find(s=>s.id===sheetId);
   const ids = Array.from(testDetailState.selected).filter(id=>sheet.testCases.some(tc=>tc.id===id));
   if(ids.length===0) return;
-  const personColumns = sheet.columns.filter(c=>c.type==='person');
-  if(personColumns.length===0){ alert('Aucune colonne de type "Personne" sur cette feuille.'); return; }
   const members = bookMembers(book);
+  if(members.length===0){ alert('Affectez d\'abord des membres à ce cahier.'); return; }
 
   openModal({
     title:`Affecter ${ids.length} cas de test`,
-    wide:true,
-    fields: personColumns.map(col=>({
-      name: col.id, label: col.label, type:'select', full:true,
-      options:[{value:'', label:'(ne pas modifier)'}, ...members.map(m=>({value:m.id,label:m.name}))],
-    })),
+    fields:[
+      { name:'memberId', label:'Affecter à', type:'select', required:true, full:true,
+        options: members.map(m=>({value:m.id,label:m.name})) },
+    ],
     onSubmit:(values)=>{
       const author = getCurrentTester() || 'Administrateur';
       const now = new Date().toISOString();
       ids.forEach(id=>{
         const tc = sheet.testCases.find(c=>c.id===id);
         if(!tc) return;
-        personColumns.forEach(col=>{
-          const v = values[col.id];
-          if(v === '' || v === undefined) return;
-          const oldV = tc.values[col.id];
-          if(oldV !== v){
-            tc.values[col.id] = v;
-            tc.history.push({ date:now, author, field:col.id, fieldLabel:col.label, from:formatHistVal(col,oldV), to:formatHistVal(col,v) });
-          }
-        });
+        const oldV = tc.assigneeId;
+        if(oldV !== values.memberId){
+          tc.assigneeId = values.memberId;
+          tc.history.push({ date:now, author, field:'_assignee', fieldLabel:'Affectation', from: oldV?memberName(oldV):'(non affecté)', to:memberName(values.memberId) });
+        }
       });
       touchTestBook(book);
       saveTestBooks(books);
       testDetailState.selected.clear();
+      testDetailState.assignMode = false;
       renderSheetDetail();
     }
   });
 }
-
-/* ─── Affectation par bloc (catégorie/sous-catégorie, feuille entière
-   ou cahier entier) — évite de devoir sélectionner cas par cas quand
-   une même personne doit gérer tout un bloc ── */
 function openBlockAssignModal(bookId, sheetId){
   const books = loadTestBooks();
   const book = books.find(b=>b.id===bookId);
   const sheet = book.sheets.find(s=>s.id===sheetId);
-  const personLabels = [...new Set(sheet.columns.filter(c=>c.type==='person').map(c=>c.label))];
-  if(personLabels.length===0){ alert('Aucune colonne de type "Personne" sur cette feuille.'); return; }
   const members = bookMembers(book);
   if(members.length===0){ alert('Affectez d\'abord des membres à ce cahier.'); return; }
 
@@ -2128,8 +2273,6 @@ function openBlockAssignModal(bookId, sheetId){
         ] },
       { name:'categoryId', label:'Catégorie concernée (si portée = catégorie)', type:'select', full:true,
         options: categorySelectOptions(sheet, null) },
-      { name:'colLabel', label:'Colonne "Personne" à affecter', type:'select', required:true, full:true,
-        options: personLabels.map(l=>({value:l,label:l})) },
       { name:'memberId', label:'Affecter à', type:'select', required:true, full:true,
         options: members.map(m=>({value:m.id,label:m.name})) },
     ],
@@ -2139,20 +2282,19 @@ function openBlockAssignModal(bookId, sheetId){
       let count = 0;
       const sheetsToScan = values.scope==='book' ? book.sheets : [sheet];
       sheetsToScan.forEach(s=>{
-        const col = s.columns.find(c=>c.type==='person' && c.label===values.colLabel);
-        if(!col) return;
         let targetCases = s.testCases;
-        if(values.scope==='category' && s.id===sheet.id && values.categoryId){
-          const ids = categoryDescendantIds(s, values.categoryId);
-          targetCases = s.testCases.filter(tc=>ids.includes(tc.categoryId));
-        } else if(values.scope==='category' && s.id!==sheet.id){
-          targetCases = [];
+        if(values.scope==='category'){
+          if(s.id!==sheet.id || !values.categoryId){ targetCases = []; }
+          else{
+            const ids = categoryDescendantIds(s, values.categoryId);
+            targetCases = s.testCases.filter(tc=>ids.includes(tc.categoryId));
+          }
         }
         targetCases.forEach(tc=>{
-          const oldV = tc.values[col.id];
+          const oldV = tc.assigneeId;
           if(oldV !== values.memberId){
-            tc.values[col.id] = values.memberId;
-            tc.history.push({ date:now, author, field:col.id, fieldLabel:col.label, from:formatHistVal(col,oldV), to:formatHistVal(col,values.memberId) });
+            tc.assigneeId = values.memberId;
+            tc.history.push({ date:now, author, field:'_assignee', fieldLabel:'Affectation', from: oldV?memberName(oldV):'(non affecté)', to:memberName(values.memberId) });
             count++;
           }
         });
@@ -2165,34 +2307,9 @@ function openBlockAssignModal(bookId, sheetId){
   });
 }
 
-function renderCellValue(col, value){
-  if(value === undefined || value === null || value === '') return '<span style="color:#cbd5e1;">—</span>';
-  if(col.type === 'select'){
-    const opt = (col.options||[]).find(o=>o.value===value);
-    const idx = (col.options||[]).findIndex(o=>o.value===value);
-    const style = SELECT_PALETTE[(idx>=0?idx:0) % SELECT_PALETTE.length];
-    return `<span class="badge" style="${style}">${escapeHtml(opt ? opt.label : value)}</span>`;
-  }
-  if(col.type === 'person') return escapeHtml(memberName(value));
-  if(col.type === 'checkbox') return value ? `${icon('CheckCircle2','#1B7A4B')}` : '<span style="color:#cbd5e1;">—</span>';
-  if(col.type === 'date') return fmt(value);
-  if(col.type === 'image') return `<span data-img-key="${escapeHtml(value)}" style="display:inline-block;min-width:40px;">…</span>`;
-  if(col.type === 'textarea') return `<span style="white-space:pre-line;">${escapeHtml(String(value)).slice(0,160)}</span>`;
-  return escapeHtml(String(value));
-}
-
-function columnToField(book, col, currentValue){
-  const base = { name: col.id, label: col.label, required: col.required, value: currentValue };
-  if(col.type === 'select') return { ...base, type:'select', options: col.options, full:true };
-  if(col.type === 'person') return { ...base, type:'select', options: bookMembers(book).map(m=>({value:m.id,label:m.name})), full:true };
-  if(col.type === 'textarea') return { ...base, type:'textarea', full:true, rows:3 };
-  if(col.type === 'checkbox') return { ...base, type:'checkbox' };
-  if(col.type === 'image') return { ...base, type:'image', full:true };
-  if(col.type === 'number') return { ...base, type:'number' };
-  if(col.type === 'date') return { ...base, type:'date' };
-  return { ...base, type:'text' };
-}
-
+/* ─── Phase CRÉATION : créer/modifier la définition d'un cas de test
+   (catégorie, description, criticité) — pas d'affectation, pas de
+   justificatifs ici, pour ne pas mélanger les phases. ── */
 function openTestCaseModal(bookId, sheetId, caseId){
   const books = loadTestBooks();
   const book = books.find(b=>b.id===bookId);
@@ -2204,36 +2321,35 @@ function openTestCaseModal(bookId, sheetId, caseId){
   const fields = [
     { name:'categoryId', label:'Catégorie', type:'select', required:true, full:true,
       value: tc ? tc.categoryId : (catOptions[0] && catOptions[0].value), options: catOptions },
+    { name:'description', label:'Description du cas de test', type:'textarea', required:true, full:true, value: tc ? tc.description : '' },
+    { name:'criticality', label:'Niveau de criticité', type:'select', required:true, full:true,
+      value: tc ? (tc.criticality||'MINEURE') : 'MINEURE', options: CRITICALITY_LEVELS },
     ...(!tc ? [{ name:'insertBeforeId', label:'Position dans le bloc (ID)', type:'select', full:true,
       value:'', options:[{value:'', label:'(à la fin du bloc)'},
         ...sheet.testCases.map(c=>({ value:c.id, label:`Avant ${caseDisplayId(sheet,c)} — ${categoryLabel(sheet,c.categoryId)}` }))] }] : []),
-    ...sheet.columns.map(col=>columnToField(book, col, tc ? tc.values[col.id] : undefined)),
   ];
 
   openModal({
-    title: tc ? 'Modifier le cas de test' : 'Nouveau cas de test',
+    title: tc ? 'Modifier le cas de test (définition)' : 'Nouveau cas de test',
     wide:true,
     fields,
     onSubmit:(values)=>{
       const author = getCurrentTester() || 'Administrateur';
       const now = new Date().toISOString();
-      const { categoryId, insertBeforeId, ...colValues } = values;
       if(tc){
-        sheet.columns.forEach(col=>{
-          const oldV = tc.values[col.id];
-          const newV = colValues[col.id];
-          if(JSON.stringify(oldV) !== JSON.stringify(newV)){
-            tc.history.push({ date:now, author, field:col.id, fieldLabel:col.label, from:formatHistVal(col,oldV), to:formatHistVal(col,newV) });
-          }
-        });
-        tc.categoryId = categoryId;
-        tc.values = colValues;
+        if(tc.description !== values.description){ tc.history.push({ date:now, author, field:'description', fieldLabel:'Description', from:(tc.description||'').slice(0,60), to:values.description.slice(0,60) }); }
+        if(tc.criticality !== values.criticality){ tc.history.push({ date:now, author, field:'criticality', fieldLabel:'Criticité', from:criticalityInfo(tc.criticality).label, to:criticalityInfo(values.criticality).label }); }
+        tc.categoryId = values.categoryId;
+        tc.description = values.description;
+        tc.criticality = values.criticality;
       } else {
-        const newCase = { id:newId(), categoryId, values:colValues, history:[
-          { date:now, author, field:'_create', fieldLabel:'Création', from:'', to:'cas de test créé' }
-        ] };
-        const beforeIdx = insertBeforeId ? sheet.testCases.findIndex(c=>c.id===insertBeforeId) : -1;
-        if(beforeIdx >= 0 && sheet.testCases[beforeIdx].categoryId === categoryId) sheet.testCases.splice(beforeIdx, 0, newCase);
+        const newCase = {
+          id:newId(), categoryId: values.categoryId, description: values.description, criticality: values.criticality,
+          status:'NON_DEMARRE', assigneeId:null, evidence:{}, comment:'',
+          history:[ { date:now, author, field:'_create', fieldLabel:'Création', from:'', to:'cas de test créé' } ],
+        };
+        const beforeIdx = values.insertBeforeId ? sheet.testCases.findIndex(c=>c.id===values.insertBeforeId) : -1;
+        if(beforeIdx >= 0 && sheet.testCases[beforeIdx].categoryId === values.categoryId) sheet.testCases.splice(beforeIdx, 0, newCase);
         else sheet.testCases.push(newCase);
       }
       touchTestBook(book);
@@ -2242,13 +2358,23 @@ function openTestCaseModal(bookId, sheetId, caseId){
     }
   });
 }
-function formatHistVal(col, v){
-  if(v === undefined || v === null || v === '') return '(vide)';
-  if(col.type === 'select'){ const o=(col.options||[]).find(x=>x.value===v); return o?o.label:v; }
-  if(col.type === 'person') return memberName(v);
-  if(col.type === 'checkbox') return v ? 'Oui' : 'Non';
-  if(col.type === 'image') return 'capture mise à jour';
-  return String(v).slice(0,60);
+function duplicateTestCase(bookId, sheetId, caseId){
+  const books = loadTestBooks();
+  const book = books.find(b=>b.id===bookId);
+  const sheet = book.sheets.find(s=>s.id===sheetId);
+  const idx = sheet.testCases.findIndex(c=>c.id===caseId);
+  if(idx < 0) return;
+  const original = sheet.testCases[idx];
+  const now = new Date().toISOString();
+  const copy = {
+    id:newId(), categoryId: original.categoryId, description: original.description, criticality: original.criticality,
+    status:'NON_DEMARRE', assigneeId:null, evidence:{}, comment:'',
+    history:[ { date:now, author:getCurrentTester()||'Administrateur', field:'_create', fieldLabel:'Création', from:'', to:'dupliqué depuis '+caseDisplayId(sheet, original) } ],
+  };
+  sheet.testCases.splice(idx+1, 0, copy);
+  touchTestBook(book);
+  saveTestBooks(books);
+  renderSheetDetail();
 }
 function deleteTestCase(bookId, sheetId, caseId){
   if(!confirm('Supprimer ce cas de test ?')) return;
@@ -2260,100 +2386,122 @@ function deleteTestCase(bookId, sheetId, caseId){
   saveTestBooks(books);
   renderSheetDetail();
 }
-/* Dupliquer un cas de test : la copie est insérée juste après
-   l'original dans son bloc (catégorie), ce qui décale automatiquement
-   la numérotation de tous les ID suivants du même bloc. */
-function duplicateTestCase(bookId, sheetId, caseId){
+
+/* ─── Phase EXÉCUTION : statut + justificatifs définis à la création
+   + commentaire. C'est ici, et seulement ici, qu'on capture l'ID de
+   transaction, le payload, la capture écran, etc. ── */
+function evidenceFieldToFormField(field, currentValue){
+  const base = { name: field.id, label: field.label, required: field.required, value: currentValue };
+  if(field.type === 'select') return { ...base, type:'select', options: field.options, full:true };
+  if(field.type === 'textarea') return { ...base, type:'textarea', full:true, rows:3 };
+  if(field.type === 'checkbox') return { ...base, type:'checkbox' };
+  if(field.type === 'image') return { ...base, type:'image', full:true };
+  if(field.type === 'number') return { ...base, type:'number' };
+  if(field.type === 'date') return { ...base, type:'date' };
+  return { ...base, type:'text' };
+}
+function openExecutionModal(bookId, sheetId, caseId){
   const books = loadTestBooks();
   const book = books.find(b=>b.id===bookId);
   const sheet = book.sheets.find(s=>s.id===sheetId);
-  const idx = sheet.testCases.findIndex(c=>c.id===caseId);
-  if(idx < 0) return;
-  const original = sheet.testCases[idx];
-  const now = new Date().toISOString();
-  const copy = {
-    id:newId(), categoryId: original.categoryId, values:{ ...original.values },
-    history:[ { date:now, author:getCurrentTester()||'Administrateur', field:'_create', fieldLabel:'Création', from:'', to:'dupliqué depuis '+caseDisplayId(sheet, original) } ],
-  };
-  sheet.testCases.splice(idx+1, 0, copy);
-  touchTestBook(book);
-  saveTestBooks(books);
-  renderSheetDetail();
+  const tc = sheet.testCases.find(c=>c.id===caseId);
+  if(!tc) return;
+  if(!tc.assigneeId){ if(!confirm("Ce cas de test n'est pas encore affecté. Exécuter quand même ?")) return; }
+
+  const fields = [
+    { name:'status', label:'Statut', type:'select', required:true, full:true, value: tc.status||'NON_DEMARRE', options: STATUS_LEVELS },
+    ...sheet.evidenceFields.map(f=>evidenceFieldToFormField(f, tc.evidence[f.id])),
+    { name:'comment', label:'Commentaire', type:'textarea', full:true, value: tc.comment||'' },
+  ];
+
+  openModal({
+    title: `Exécuter ${caseDisplayId(sheet, tc)} — justificatifs`,
+    wide:true,
+    fields,
+    onSubmit:(values)=>{
+      const author = getCurrentTester() || 'Administrateur';
+      const now = new Date().toISOString();
+      const { status, comment, ...evidenceValues } = values;
+      if(tc.status !== status){
+        tc.history.push({ date:now, author, field:'_status', fieldLabel:'Statut', from:statusInfo(tc.status).label, to:statusInfo(status).label });
+        tc.status = status;
+      }
+      sheet.evidenceFields.forEach(f=>{
+        const oldV = tc.evidence[f.id];
+        const newV = evidenceValues[f.id];
+        if(JSON.stringify(oldV) !== JSON.stringify(newV)){
+          tc.history.push({ date:now, author, field:f.id, fieldLabel:f.label, from:formatEvidenceVal(f,oldV), to:formatEvidenceVal(f,newV) });
+        }
+      });
+      tc.evidence = evidenceValues;
+      if(tc.comment !== comment){
+        tc.history.push({ date:now, author, field:'_comment', fieldLabel:'Commentaire', from:(tc.comment||'').slice(0,60), to:(comment||'').slice(0,60) });
+        tc.comment = comment;
+      }
+      touchTestBook(book);
+      saveTestBooks(books);
+      renderSheetDetail();
+    }
+  });
+}
+function formatEvidenceVal(field, v){
+  if(v === undefined || v === null || v === '') return '(vide)';
+  if(field.type === 'select'){ const o=(field.options||[]).find(x=>x.value===v); return o?o.label:v; }
+  if(field.type === 'checkbox') return v ? 'Oui' : 'Non';
+  if(field.type === 'image') return 'capture mise à jour';
+  return String(v).slice(0,60);
 }
 
 /* ─── Onglet Suivi & Contribution ──────────────────────────────── */
-function statusColumnOf(sheet){ return sheet.columns.find(c=>c.type==='select' && /statut|status/i.test(c.label)); }
-function personColumnsOf(sheet){ return sheet.columns.filter(c=>c.type==='person'); }
 function renderRealisationSection(book, sheet){
   const total = sheet.testCases.length;
-  const statusCol = statusColumnOf(sheet);
-  const personCols = personColumnsOf(sheet);
+  const byStatus = {};
+  STATUS_LEVELS.forEach(s=> byStatus[s.value] = 0);
+  sheet.testCases.forEach(tc=> byStatus[tc.status||'NON_DEMARRE'] = (byStatus[tc.status||'NON_DEMARRE']||0) + 1);
+  const maxStatus = Math.max(1, ...Object.values(byStatus));
+  const assignedCount = sheet.testCases.filter(tc=>tc.assigneeId).length;
+  const unassignedCount = total - assignedCount;
 
-  let statusBars = '';
-  if(statusCol){
-    const byStatus = {};
-    (statusCol.options||[]).forEach(o=> byStatus[o.label] = 0);
-    byStatus['Non défini'] = 0;
-    sheet.testCases.forEach(tc=>{
-      const v = tc.values[statusCol.id];
-      const opt = (statusCol.options||[]).find(o=>o.value===v);
-      const label = opt ? opt.label : 'Non défini';
-      byStatus[label] = (byStatus[label]||0) + 1;
-    });
-    const maxStatus = Math.max(1, ...Object.values(byStatus));
-    statusBars = `
-      <div class="card chart-card">
-        <h2>Avancement par statut</h2>
-        <div class="bars">
-          ${Object.entries(byStatus).filter(([,c])=>c>0 || total===0).map(([label,count])=>`
-            <div class="bar-row">
-              <div class="bar-label" title="${escapeHtml(label)}">${escapeHtml(label)}</div>
-              <div class="bar-track"><div class="bar-fill" style="width:${count/maxStatus*100}%"></div></div>
-              <div class="bar-value">${count}</div>
-            </div>
-          `).join('')}
-        </div>
-      </div>`;
-  }
+  const statusBars = `
+    <div class="card chart-card">
+      <h2>Avancement par statut</h2>
+      <div class="bars">
+        ${STATUS_LEVELS.map(s=>`
+          <div class="bar-row">
+            <div class="bar-label">${escapeHtml(s.label)}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${byStatus[s.value]/maxStatus*100}%"></div></div>
+            <div class="bar-value">${byStatus[s.value]}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
 
-  let assignedCount = 0, unassignedCount = 0;
-  if(personCols.length>0){
-    sheet.testCases.forEach(tc=>{
-      const hasAny = personCols.some(pc=> tc.values[pc.id]);
-      if(hasAny) assignedCount++; else unassignedCount++;
-    });
-  } else { unassignedCount = total; }
-
-  let memberTable = '';
-  if(personCols.length>0){
-    const members = bookMembers(book);
-    const statusOptions = statusCol ? (statusCol.options||[]) : [];
-    memberTable = `
-      <div class="table-card" style="overflow-x:auto;margin-top:14px;">
-        <table class="test-cases-table">
-          <thead><tr>
-            <th>Membre</th>
-            <th>Cas affectés</th>
-            ${statusOptions.map(o=>`<th>${escapeHtml(o.label)}</th>`).join('')}
-          </tr></thead>
-          <tbody>
-            ${members.map(m=>{
-              const mine = sheet.testCases.filter(tc=> personCols.some(pc=> tc.values[pc.id]===m.id));
-              return `<tr>
-                <td><strong>${escapeHtml(m.name)}</strong></td>
-                <td>${mine.length}</td>
-                ${statusOptions.map(o=>`<td>${mine.filter(tc=> statusCol && tc.values[statusCol.id]===o.value).length}</td>`).join('')}
-              </tr>`;
-            }).join('')}
-            <tr>
-              <td><strong>Non affectés</strong></td>
-              <td>${unassignedCount}</td>
-              ${statusOptions.map(()=>`<td>—</td>`).join('')}
-            </tr>
-          </tbody>
-        </table>
-      </div>`;
-  }
+  const members = bookMembers(book);
+  const memberTable = `
+    <div class="table-card" style="overflow-x:auto;margin-top:14px;">
+      <table class="test-cases-table">
+        <thead><tr>
+          <th>Membre</th>
+          <th>Cas affectés</th>
+          ${STATUS_LEVELS.map(s=>`<th>${escapeHtml(s.label)}</th>`).join('')}
+        </tr></thead>
+        <tbody>
+          ${members.map(m=>{
+            const mine = sheet.testCases.filter(tc=>tc.assigneeId===m.id);
+            return `<tr>
+              <td><strong>${escapeHtml(m.name)}</strong></td>
+              <td>${mine.length}</td>
+              ${STATUS_LEVELS.map(s=>`<td>${mine.filter(tc=>tc.status===s.value).length}</td>`).join('')}
+            </tr>`;
+          }).join('')}
+          <tr>
+            <td><strong>Non affectés</strong></td>
+            <td>${unassignedCount}</td>
+            ${STATUS_LEVELS.map(()=>`<td>—</td>`).join('')}
+          </tr>
+        </tbody>
+      </table>
+    </div>`;
 
   return `
     <div class="section-card" style="margin-bottom:18px;">
@@ -2397,21 +2545,6 @@ function renderSuiviTab(book, sheet){
 
   return `
     ${renderRealisationSection(book, sheet)}
-    <div class="grid grid-3" style="margin-bottom:18px;">
-      <div class="card kpi-card">
-        <div class="kpi-icon" style="background:var(--boa-green-light);">${icon('CheckCircle2','#1B7A4B')}</div>
-        <div><div class="kpi-value">${total}</div><div class="kpi-label">Cas de test</div></div>
-      </div>
-      <div class="card kpi-card">
-        <div class="kpi-icon" style="background:var(--boa-navy-light);">${icon('Activity','#1B2E5E')}</div>
-        <div><div class="kpi-value">${allHistory.length}</div><div class="kpi-label">Actions enregistrées</div></div>
-      </div>
-      <div class="card kpi-card">
-        <div class="kpi-icon" style="background:var(--boa-orange-light);">${icon('TrendingUp','#d4830a')}</div>
-        <div><div class="kpi-value">${Object.keys(byAuthor).length}</div><div class="kpi-label">Contributeurs actifs</div></div>
-      </div>
-    </div>
-
     <div class="grid grid-2" style="align-items:start;">
       <div class="card chart-card">
         <h2>Cas de test par catégorie</h2>
