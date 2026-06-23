@@ -1324,6 +1324,61 @@ function bookMembers(book){
   const members = loadMembers();
   return members.filter(m=>book.memberIds.includes(m.id));
 }
+/* Historique de contribution d'un membre, tous cahiers confondus :
+   utile au fil du temps pour de futures affectations ou pour répondre
+   "qui a déjà fait ce type de test" en cas de blocage. */
+function memberContributionRows(memberId){
+  const rows = [];
+  loadTestBooks().forEach(book=>{
+    book.sheets.forEach(sheet=>{
+      sheet.testCases.forEach(tc=>{
+        if(tc.assigneeId !== memberId) return;
+        const lastStatusChange = tc.history.filter(h=>h.field==='_status').slice(-1)[0];
+        rows.push({
+          bookName: book.name, sheetName: sheet.name,
+          category: categoryLabel(sheet, tc.categoryId),
+          description: tc.description, status: tc.status,
+          date: lastStatusChange ? lastStatusChange.date : tc.history[0] ? tc.history[0].date : '',
+        });
+      });
+    });
+  });
+  rows.sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+  return rows;
+}
+function memberHistoryModal(memberId){
+  const m = loadMembers().find(x=>x.id===memberId);
+  if(!m) return;
+  const rows = memberContributionRows(memberId);
+  const done = rows.filter(r=>['OK','NOK','NA'].includes(r.status));
+  document.getElementById('modal-root').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this) openMembersModal()">
+      <div class="modal-card modal-wide">
+        <h3>Historique de contribution — ${escapeHtml(m.name)}</h3>
+        <p style="font-size:12.5px;color:#6b7280;">${rows.length} cas affecté(s) au total, dont ${done.length} déjà exécuté(s) (tous cahiers confondus). Utile pour orienter les futures affectations ou savoir qui a déjà traité ce type de test.</p>
+        <div style="max-height:380px;overflow-y:auto;border:1px solid var(--boa-gray-border);border-radius:8px;">
+          ${rows.length===0 ? `<div class="empty">Aucun cas affecté pour l'instant.</div>` : `
+          <table class="test-cases-table">
+            <thead><tr><th>Date</th><th>Cahier</th><th>Feuille</th><th>Catégorie</th><th>Description</th><th>Statut</th></tr></thead>
+            <tbody>
+              ${rows.map(r=>`<tr>
+                <td>${r.date ? new Date(r.date).toLocaleDateString('fr-FR') : '—'}</td>
+                <td>${escapeHtml(r.bookName)}</td>
+                <td>${escapeHtml(r.sheetName)}</td>
+                <td>${escapeHtml(r.category)}</td>
+                <td>${escapeHtml((r.description||'').slice(0,60))}</td>
+                <td><span class="badge" style="${statusInfo(r.status).style}">${statusInfo(r.status).label}</span></td>
+              </tr>`).join('')}
+            </tbody>
+          </table>`}
+        </div>
+        <div class="modal-actions" style="margin-top:18px;">
+          <button class="btn-primary" onclick="openMembersModal()">Retour</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
 
 function openMembersModal(){
   document.getElementById('modal-root').innerHTML = membersModalHtml();
@@ -1345,6 +1400,7 @@ function membersModalHtml(){
             ${members.length===0 ? `<div class="empty">Aucun membre. Ajoutez-en un ci-dessus.</div>` : members.map(m=>`
               <div class="member-row">
                 <span class="mname">${escapeHtml(m.name)}</span>
+                <button class="icon-btn" onclick="memberHistoryModal('${m.id}')" title="Historique de contribution">${icon('TrendingUp')}</button>
                 <button class="icon-btn" onclick="renameMember('${m.id}')" title="Modifier">${icon('Pencil')}</button>
                 <button class="icon-btn danger" onclick="deleteMember('${m.id}')" title="Supprimer">${icon('Trash2')}</button>
               </div>
@@ -1432,9 +1488,14 @@ function migrateTestBooks(books){
     }
     if(!Array.isArray(b.memberIds)){ b.memberIds = []; changed = true; }
     b.sheets.forEach(s=>{
-      s.categories.forEach(c=>{
-        if(typeof c.idPrefix === 'undefined'){ c.idPrefix=''; c.idDigits=3; changed = true; }
-      });
+      if(typeof s.idPrefix === 'undefined'){
+        const legacy = s.categories.find(c=>c.idPrefix);
+        s.idPrefix = legacy ? legacy.idPrefix : '';
+        s.idDigits = legacy ? (legacy.idDigits||3) : 3;
+        s.categories.forEach(c=>{ delete c.idPrefix; delete c.idDigits; });
+        changed = true;
+      }
+      if(!Array.isArray(s.levelLabels)){ s.levelLabels = []; changed = true; }
       if(!Array.isArray(s.evidenceFields)){
         const oldCols = s.columns || [];
         const descCol = oldCols.find(c=>/description/i.test(c.label));
@@ -1478,10 +1539,12 @@ function newTestBook(name, description){
     sheets: [ newSheet('Feuille 1') ],
   };
 }
-function newSheet(name){
+function newSheet(name, idPrefix, idDigits){
   return {
     id: newId(), name,
-    categories: [ { id:newId(), name:'Général', parentId:null, idPrefix:'', idDigits:3 } ],
+    idPrefix: idPrefix || '', idDigits: idDigits || 3,
+    levelLabels: [],
+    categories: [ { id:newId(), name:'Général', parentId:null } ],
     evidenceFields: [
       { id:newId(), label:'ID de la transaction', type:'text', required:false, options:[] },
       { id:newId(), label:'Payload de sortie', type:'textarea', required:false, options:[] },
@@ -1507,7 +1570,8 @@ function categoryDepth(sheet, catId){
   }
   return depth;
 }
-function categoryDepthLabel(depth){
+function categoryDepthLabel(depth, sheet){
+  if(sheet && Array.isArray(sheet.levelLabels) && sheet.levelLabels[depth]) return sheet.levelLabels[depth];
   if(depth === 0) return 'Catégorie';
   if(depth === 1) return 'Sous-catégorie';
   return 'Sous-'.repeat(depth-1) + 'sous-catégorie';
@@ -1552,17 +1616,16 @@ function categorySelectOptions(sheet, excludeId){
   return flattenCategories(sheet).filter(c=>!excluded.includes(c.id))
     .map(c=>({ value:c.id, label: '— '.repeat(categoryDepth(sheet,c.id)) + c.name }));
 }
-/* L'ID affiché (ex: OML001) dépend du préfixe défini sur la catégorie
-   du cas de test et de sa position parmi les cas du même "bloc"
-   (même catégorie exacte) dans l'ordre du tableau ; insérer un cas au
-   milieu d'un bloc décale donc automatiquement la numérotation de
-   tous ceux qui suivent dans ce bloc, sans rien stocker en dur. */
+/* La structure de l'ID (préfixe + nombre de chiffres) est définie une
+   seule fois, à la création de la feuille, et s'applique à tous les cas
+   de test de la feuille. L'ID affiché (ex: OML001) dépend de la position
+   du cas dans l'ordre du tableau de la feuille entière ; insérer un cas
+   au milieu décale donc automatiquement la numérotation de tous ceux
+   qui suivent, sans rien stocker en dur. */
 function caseDisplayId(sheet, tc){
-  const cat = sheet.categories.find(c=>c.id===tc.categoryId);
-  const prefix = cat && cat.idPrefix ? cat.idPrefix : '';
-  const digits = cat && cat.idDigits ? cat.idDigits : 3;
-  const siblings = sheet.testCases.filter(c=>c.categoryId===tc.categoryId);
-  const idx = siblings.indexOf(tc);
+  const prefix = sheet.idPrefix || '';
+  const digits = sheet.idDigits || 3;
+  const idx = sheet.testCases.indexOf(tc);
   const num = String(idx+1).padStart(digits,'0');
   return prefix ? `${prefix}${num}` : `#${idx+1}`;
 }
@@ -1650,7 +1713,7 @@ function deleteTestBook(id){
    saisis ne sont pas repris (on duplique la définition, pas l'avancement). */
 function cloneSheetForDuplication(s){
   const catMap = {}, fieldMap = {};
-  const categories = s.categories.map(c=>{ const nid=newId(); catMap[c.id]=nid; return { id:nid, name:c.name, parentId:c.parentId, idPrefix:c.idPrefix||'', idDigits:c.idDigits||3 }; });
+  const categories = s.categories.map(c=>{ const nid=newId(); catMap[c.id]=nid; return { id:nid, name:c.name, parentId:c.parentId }; });
   categories.forEach(c=>{ c.parentId = c.parentId ? (catMap[c.parentId]||null) : null; });
   const evidenceFields = s.evidenceFields.map(f=>{ const nid=newId(); fieldMap[f.id]=nid; return { ...f, id:nid, options:(f.options||[]).map(o=>({...o})) }; });
   const now = new Date().toISOString();
@@ -1659,7 +1722,7 @@ function cloneSheetForDuplication(s){
       status:'NON_DEMARRE', assigneeId:null, evidence:{}, comment:'',
       history:[ { date:now, author:'Administrateur', field:'_create', fieldLabel:'Création', from:'', to:'dupliqué' } ] };
   });
-  return { id:newId(), name:s.name, categories, evidenceFields, testCases };
+  return { id:newId(), name:s.name, idPrefix:s.idPrefix||'', idDigits:s.idDigits||3, levelLabels:[...(s.levelLabels||[])], categories, evidenceFields, testCases };
 }
 function duplicateTestBook(id){
   if(!confirm('Dupliquer ce cahier de test (feuilles, catégories, schéma de justificatifs et cas de test) ? L\'affectation et les justificatifs déjà saisis ne sont pas repris.')) return;
@@ -1678,8 +1741,8 @@ function duplicateTestBook(id){
 }
 
 /* ─── Statistiques globales d'un cahier ─────────────────────────── */
-function bookStats(book){
-  const all = allCasesOf(book).map(x=>x.tc);
+function bookStats(book, sheetId){
+  const all = allCasesOf(book).filter(x=> !sheetId || x.sheet.id===sheetId).map(x=>x.tc);
   const total = all.length;
   const byStatus = {};
   STATUS_LEVELS.forEach(s=> byStatus[s.value] = 0);
@@ -1691,8 +1754,14 @@ function bookStats(book){
   all.forEach(tc=> byCriticality[tc.criticality||'MINEURE'] = (byCriticality[tc.criticality||'MINEURE']||0) + 1);
   const assignedCount = all.filter(tc=>tc.assigneeId).length;
   const byAssignee = {};
-  all.forEach(tc=>{ if(tc.assigneeId) byAssignee[tc.assigneeId] = (byAssignee[tc.assigneeId]||0) + 1; });
-  return { total, byStatus, executed, pctRealise, byCriticality, assignedCount, unassignedCount: total-assignedCount, byAssignee };
+  const byAssigneeStatus = {};
+  all.forEach(tc=>{
+    if(!tc.assigneeId) return;
+    byAssignee[tc.assigneeId] = (byAssignee[tc.assigneeId]||0) + 1;
+    byAssigneeStatus[tc.assigneeId] = byAssigneeStatus[tc.assigneeId] || {};
+    byAssigneeStatus[tc.assigneeId][tc.status] = (byAssigneeStatus[tc.assigneeId][tc.status]||0) + 1;
+  });
+  return { total, byStatus, executed, pctRealise, byCriticality, assignedCount, unassignedCount: total-assignedCount, byAssignee, byAssigneeStatus };
 }
 
 /* ─── Export du cahier en classeur Excel (une feuille par Feuille) ── */
@@ -1712,7 +1781,7 @@ function exportTestBookXlsx(bookId){
   const wb = XLSX.utils.book_new();
   book.sheets.forEach(sheet=>{
     const maxDepth = sheetMaxDepth(sheet);
-    const levelHeaders = Array.from({length:maxDepth}, (_,i)=> i===0 ? 'Catégorie' : (i===1 ? 'Sous-catégorie' : 'Sous-'.repeat(i-1) + 'sous-catégorie'));
+    const levelHeaders = Array.from({length:maxDepth}, (_,i)=> categoryDepthLabel(i, sheet));
     const header = ['ID', ...levelHeaders, 'Description', 'Criticité', 'Statut', 'Assigné à', ...sheet.evidenceFields.map(f=>f.label), 'Commentaire'];
     const rows = sheet.testCases.map(tc=>{
       const path = categoryPathArray(sheet, tc.categoryId);
@@ -1728,7 +1797,17 @@ function exportTestBookXlsx(bookId){
         tc.comment || '',
       ];
     });
-    const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+    const total = sheet.testCases.length;
+    const executedCount = sheet.testCases.filter(tc=>['OK','NOK','NA'].includes(tc.status)).length;
+    const pct = total>0 ? Math.round(executedCount/total*100) : 0;
+    const blankRow = Array(header.length).fill('');
+    const footerRows = [
+      blankRow,
+      [`Taux de réalisation : ${pct}%  (${executedCount}/${total} cas exécutés)`, ...Array(header.length-1).fill('')],
+      ['Statut', ...STATUS_LEVELS.map(s=>s.label), ...Array(Math.max(0,header.length-1-STATUS_LEVELS.length)).fill('')].slice(0,header.length),
+      ['Nombre', ...STATUS_LEVELS.map(s=>sheet.testCases.filter(tc=>tc.status===s.value).length), ...Array(Math.max(0,header.length-1-STATUS_LEVELS.length)).fill('')].slice(0,header.length),
+    ];
+    const ws = XLSX.utils.aoa_to_sheet([header, ...rows, ...footerRows]);
     let base = (sheet.name || 'Feuille').replace(/[\\/?*[\]:]/g,' ').trim().slice(0,31) || 'Feuille';
     let name = base, i = 1;
     while(wb.SheetNames.includes(name)){ name = (base.slice(0,28) + '_' + (++i)).slice(0,31); }
@@ -1740,6 +1819,87 @@ function exportTestBookXlsx(bookId){
   XLSX.writeFile(wb, `${(book.name||'Cahier_de_test').replace(/[^a-z0-9]+/gi,'_')}.xlsx`);
 }
 
+/* ─── Import du classeur Excel modifié (exécution via Teams) ──────
+   On relit chaque feuille du classeur, on retrouve les cas de test par
+   leur ID structuré (colonne "ID"), et on met à jour Statut, les
+   justificatifs (colonnes correspondant aux libellés définis) et le
+   Commentaire. La définition (description/criticité) et l'affectation
+   ne sont pas modifiées par l'import. */
+function importTestBookXlsxInputChange(bookId, inputEl){
+  const file = inputEl.files && inputEl.files[0];
+  if(!file) return;
+  if(typeof XLSX === 'undefined'){ alert("La librairie d'import Excel n'a pas pu être chargée (connexion internet requise)."); return; }
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    try{
+      const wb = XLSX.read(e.target.result, { type:'array' });
+      const books = loadTestBooks();
+      const book = books.find(b=>b.id===bookId);
+      if(!book) return;
+      const author = getCurrentTester() || 'Import Excel';
+      const now = new Date().toISOString();
+      let updated = 0, notFound = 0;
+      book.sheets.forEach(sheet=>{
+        const wsName = wb.SheetNames.find(n=> n===sheet.name || n.startsWith(sheet.name.slice(0,28)));
+        if(!wsName) return;
+        const ws = wb.Sheets[wsName];
+        const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+        if(rows.length===0) return;
+        const header = rows[0].map(h=>String(h||'').trim());
+        const idCol = header.indexOf('ID');
+        const statutCol = header.indexOf('Statut');
+        const commentCol = header.lastIndexOf('Commentaire');
+        if(idCol < 0) return;
+        const evidenceCols = sheet.evidenceFields.map(f=>({ field:f, col: header.indexOf(f.label) }));
+        const byId = {};
+        sheet.testCases.forEach(tc=> byId[caseDisplayId(sheet, tc)] = tc);
+        for(let r=1; r<rows.length; r++){
+          const row = rows[r];
+          const id = String(row[idCol]||'').trim();
+          if(!id) continue;
+          const tc = byId[id];
+          if(!tc){ notFound++; continue; }
+          let changedHere = false;
+          if(statutCol >= 0){
+            const label = String(row[statutCol]||'').trim();
+            const found = STATUS_LEVELS.find(s=>s.label.toLowerCase()===label.toLowerCase());
+            if(found && found.value !== tc.status){
+              tc.history.push({ date:now, author, field:'_status', fieldLabel:'Statut', from:statusInfo(tc.status).label, to:found.label });
+              tc.status = found.value; changedHere = true;
+            }
+          }
+          evidenceCols.forEach(({field,col})=>{
+            if(col < 0) return;
+            let v = row[col];
+            if(field.type==='checkbox') v = /^oui$/i.test(String(v||''));
+            else if(v === '') v = undefined;
+            if(field.type==='select'){
+              const opt = (field.options||[]).find(o=>o.label.toLowerCase()===String(v||'').toLowerCase());
+              v = opt ? opt.value : v;
+            }
+            if(v !== undefined && JSON.stringify(tc.evidence[field.id]) !== JSON.stringify(v)){
+              tc.evidence[field.id] = v; changedHere = true;
+            }
+          });
+          if(commentCol >= 0){
+            const c = String(row[commentCol]||'');
+            if(c && c !== tc.comment){ tc.comment = c; changedHere = true; }
+          }
+          if(changedHere) updated++;
+        }
+      });
+      touchTestBook(book);
+      saveTestBooks(books);
+      renderTestBookDetail(bookId);
+      alert(`Import terminé : ${updated} cas de test mis à jour.${notFound>0 ? ` ${notFound} ligne(s) avec un ID inconnu ont été ignorées.` : ''}`);
+    }catch(err){
+      alert("Échec de l'import : le fichier n'a pas le format attendu.");
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  inputEl.value = '';
+}
+
 /* ─── Détail d'un cahier : stats globales + équipe + liste de feuilles ── */
 function viewTestBook(id){
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
@@ -1747,6 +1907,28 @@ function viewTestBook(id){
   renderTestBookDetail(id);
 }
 function backToTests(){ navigate('tests'); }
+let bookDashSheetFilter = '';
+function setBookDashSheetFilter(bookId, val){ bookDashSheetFilter = val; renderTestBookDetail(bookId); }
+function gaugeHtml(pct, color, centerText, label){
+  const p = Math.max(0, Math.min(100, pct));
+  return `
+    <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+      <div style="width:96px;height:96px;border-radius:50%;background:conic-gradient(${color} ${p*3.6}deg, var(--boa-gray-surf) 0deg);display:flex;align-items:center;justify-content:center;">
+        <div style="width:74px;height:74px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;color:#1f2937;">${escapeHtml(centerText)}</div>
+      </div>
+      <div style="font-size:11.5px;color:#6b7280;text-align:center;">${escapeHtml(label)}</div>
+    </div>`;
+}
+function deadlineGauge(book){
+  if(!book.deadline) return gaugeHtml(0, '#cbd5e1', '—', 'Pas d\'échéance définie');
+  const left = daysLeft(book.deadline);
+  const totalSpan = Math.max(1, Math.round((new Date(book.deadline) - new Date(book.createdAt)) / 86400000));
+  const elapsedPct = Math.round((1 - Math.max(0,left)/totalSpan) * 100);
+  const color = left < 0 ? 'var(--boa-red)' : (left <= 7 ? 'var(--boa-orange)' : 'var(--boa-green-dark)');
+  const centerText = left < 0 ? `+${Math.abs(left)}j` : `${left}j`;
+  const label = left < 0 ? `Échéance dépassée de ${Math.abs(left)} jour(s)` : `${left} jour(s) restant(s) avant le ${fmt(book.deadline)}`;
+  return gaugeHtml(elapsedPct, color, centerText, label);
+}
 
 function renderTestBookDetail(bookId){
   const books = loadTestBooks();
@@ -1754,9 +1936,15 @@ function renderTestBookDetail(bookId){
   if(!book){ navigate('tests'); return; }
 
   const allMembers = loadMembers().sort((a,b)=>a.name.localeCompare(b.name));
-  const stats = bookStats(book);
+  if(bookDashSheetFilter && !book.sheets.some(s=>s.id===bookDashSheetFilter)) bookDashSheetFilter = '';
+  const stats = bookStats(book, bookDashSheetFilter || null);
   const maxStatus = Math.max(1, ...Object.values(stats.byStatus));
   const maxCrit = Math.max(1, ...Object.values(stats.byCriticality));
+  const sheetCompare = book.sheets.map(s=>{
+    const ss = bookStats(book, s.id);
+    return { sheet:s, ...ss };
+  }).sort((a,b)=> b.total - a.total);
+  const maxSheetTotal = Math.max(1, ...sheetCompare.map(s=>s.total));
 
   document.getElementById('page-title').textContent = book.name;
   document.getElementById('page-subtitle').textContent = `${book.sheets.length} feuille(s) · ${stats.total} cas de test au total`;
@@ -1764,12 +1952,29 @@ function renderTestBookDetail(bookId){
   document.getElementById('content').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
       <button class="back-link" onclick="backToTests()">${icon('ArrowLeft')} Retour aux cahiers de test</button>
-      <button class="btn-outline" onclick="exportTestBookXlsx('${book.id}')">${icon('FileDown')} Télécharger le classeur Excel (.xlsx)</button>
+      <div style="display:flex;gap:10px;">
+        <button class="btn-outline" onclick="exportTestBookXlsx('${book.id}')">${icon('FileDown')} Télécharger le classeur Excel (.xlsx)</button>
+        <button class="btn-outline" onclick="document.getElementById('import-xlsx-input').click()">${icon('ArrowRight')} Importer un classeur mis à jour</button>
+        <input type="file" id="import-xlsx-input" accept=".xlsx" style="display:none;" onchange="importTestBookXlsxInputChange('${book.id}', this)">
+      </div>
     </div>
 
     <div class="section-card" style="margin:18px 0;">
-      <div class="section-head"><h2>${icon('TrendingUp')} Statistiques globales du cahier</h2></div>
+      <div class="section-head">
+        <h2>${icon('TrendingUp')} Statistiques globales du cahier</h2>
+        <div class="select-wrap">
+          <select onchange="setBookDashSheetFilter('${book.id}', this.value)">
+            <option value="" ${!bookDashSheetFilter?'selected':''}>Toutes les feuilles</option>
+            ${book.sheets.map(s=>`<option value="${s.id}" ${bookDashSheetFilter===s.id?'selected':''}>${escapeHtml(s.name)}</option>`).join('')}
+          </select>
+          ${icon('ChevronDown','#9ca3af')}
+        </div>
+      </div>
       <div style="padding:14px 16px;">
+        <div style="display:flex;gap:24px;justify-content:center;flex-wrap:wrap;padding:6px 0 18px;border-bottom:1px solid var(--boa-gray-border);margin-bottom:14px;">
+          ${gaugeHtml(stats.pctRealise, 'var(--boa-green-dark)', stats.pctRealise+'%', 'Taux de réalisation')}
+          ${deadlineGauge(book)}
+        </div>
         <div class="grid grid-3" style="margin-bottom:14px;">
           <div class="card kpi-card">
             <div class="kpi-icon" style="background:var(--boa-navy-light);">${icon('LayoutGrid','#1B2E5E')}</div>
@@ -1777,11 +1982,7 @@ function renderTestBookDetail(bookId){
           </div>
           <div class="card kpi-card">
             <div class="kpi-icon" style="background:var(--boa-green-light);">${icon('CheckCircle2','#1B7A4B')}</div>
-            <div><div class="kpi-value">${stats.total}</div><div class="kpi-label">Cas de test au total</div></div>
-          </div>
-          <div class="card kpi-card">
-            <div class="kpi-icon" style="background:var(--boa-orange-light);">${icon('TrendingUp','#d4830a')}</div>
-            <div><div class="kpi-value">${stats.pctRealise}%</div><div class="kpi-label">Taux de réalisation</div></div>
+            <div><div class="kpi-value">${stats.total}</div><div class="kpi-label">Cas de test ${bookDashSheetFilter?'(feuille)':'au total'}</div></div>
           </div>
           <div class="card kpi-card">
             <div class="kpi-icon" style="background:var(--boa-green-light);">${icon('CheckCircle2','#1B7A4B')}</div>
@@ -1794,6 +1995,10 @@ function renderTestBookDetail(bookId){
           <div class="card kpi-card">
             <div class="kpi-icon" style="background:var(--boa-navy-light);">${icon('CalendarRange','#1B2E5E')}</div>
             <div><div class="kpi-value" style="font-size:16px;">${book.deadline ? fmt(book.deadline) : '—'}</div><div class="kpi-label">Échéance</div></div>
+          </div>
+          <div class="card kpi-card">
+            <div class="kpi-icon" style="background:var(--boa-navy-light);">${icon('CheckCircle2','#1B2E5E')}</div>
+            <div><div class="kpi-value">${bookMembers(book).length}</div><div class="kpi-label">Personnes affectées au cahier</div></div>
           </div>
         </div>
         <div class="grid grid-2" style="align-items:start;">
@@ -1826,20 +2031,62 @@ function renderTestBookDetail(bookId){
     </div>
 
     <div class="section-card" style="margin:18px 0;">
+      <div class="section-head"><h2>${icon('GitBranch')} Comparaison des feuilles</h2></div>
+      <div style="padding:0 16px 14px;">
+        <p style="font-size:12px;color:#6b7280;margin:10px 0;">Permet de voir quelles feuilles sont les plus chargées ou les plus critiques, pour prioriser l'affectation dans le temps.</p>
+        <div class="table-card" style="overflow-x:auto;">
+          <table class="test-cases-table">
+            <thead><tr><th>Feuille</th><th>Cas de test</th><th>Charge</th><th>% réalisé</th><th>Cas critiques</th><th>Affectés</th><th>Non affectés</th></tr></thead>
+            <tbody>
+              ${sheetCompare.map(sc=>`
+                <tr>
+                  <td><strong>${escapeHtml(sc.sheet.name)}</strong></td>
+                  <td>${sc.total}</td>
+                  <td style="min-width:120px;"><div class="bar-track" style="display:inline-block;width:90px;vertical-align:middle;"><div class="bar-fill" style="width:${sc.total/maxSheetTotal*100}%;"></div></div></td>
+                  <td>${sc.pctRealise}%</td>
+                  <td><span class="badge" style="${criticalityInfo('CRITIQUE').style}">${sc.byCriticality.CRITIQUE||0}</span></td>
+                  <td>${sc.assignedCount}</td>
+                  <td>${sc.unassignedCount}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-card" style="margin:18px 0;">
       <div class="section-head">
-        <h2>Équipe affectée à ce cahier</h2>
+        <h2>${icon('FolderOpen')} Qui s'occupe de quoi</h2>
         <button class="btn-secondary" onclick="openMembersModal()">${icon('Pencil')} Gérer les membres</button>
       </div>
       <div style="padding:14px 16px;">
-        <p style="font-size:12.5px;color:#6b7280;margin-bottom:10px;">Les membres sont créés une seule fois (registre global), puis cochés ici pour pouvoir être affectés aux cas de test de ce cahier.</p>
+        <p style="font-size:12px;color:#6b7280;margin-bottom:10px;">Vue utile pour le reporting et les points d'équipe : qui est affecté à quoi dans ce cahier, et à quel niveau d'avancement.</p>
         ${allMembers.length===0 ? `<div class="empty">Aucun membre créé pour l'instant. Cliquez sur "Gérer les membres" pour en ajouter.</div>` : `
-        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
           ${allMembers.map(m=>`
             <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;border:1px solid var(--boa-gray-border);border-radius:8px;padding:6px 10px;cursor:pointer;">
               <input type="checkbox" ${book.memberIds.includes(m.id)?'checked':''} onchange="toggleBookMember('${book.id}','${m.id}', this.checked)">
               ${escapeHtml(m.name)} ${stats.byAssignee[m.id] ? `<span class="col-type-pill">${stats.byAssignee[m.id]}</span>` : ''}
             </label>
           `).join('')}
+        </div>`}
+        ${bookMembers(book).length===0 ? '' : `
+        <div class="table-card" style="overflow-x:auto;">
+          <table class="test-cases-table">
+            <thead><tr><th>Membre</th><th>Cas affectés</th>${STATUS_LEVELS.map(s=>`<th>${escapeHtml(s.label)}</th>`).join('')}</tr></thead>
+            <tbody>
+              ${bookMembers(book).map(m=>{
+                const byS = stats.byAssigneeStatus[m.id] || {};
+                return `<tr>
+                  <td><strong>${escapeHtml(m.name)}</strong></td>
+                  <td>${stats.byAssignee[m.id]||0}</td>
+                  ${STATUS_LEVELS.map(s=>`<td>${byS[s.value]||0}</td>`).join('')}
+                </tr>`;
+              }).join('')}
+              <tr><td><strong>Non affectés</strong></td><td>${stats.unassignedCount}</td>${STATUS_LEVELS.map(()=>'<td>—</td>').join('')}</tr>
+            </tbody>
+          </table>
         </div>`}
       </div>
     </div>
@@ -1870,11 +2117,16 @@ function renderTestBookDetail(bookId){
 function openNewSheetModal(bookId){
   openModal({
     title:'Nouvelle feuille de test',
-    fields:[ { name:'name', label:'Nom de la feuille (ex : SVFE, OML...)', type:'text', required:true, full:true } ],
+    wide:true,
+    fields:[
+      { name:'name', label:'Nom de la feuille (ex : SVFE, OML...)', type:'text', required:true, full:true },
+      { name:'idPrefix', label:'Préfixe des ID des cas de test (ex : OML)', type:'text' },
+      { name:'idDigits', label:'Nombre de chiffres (ex : 3 → 001)', type:'number', value:3 },
+    ],
     onSubmit:(values)=>{
       const books = loadTestBooks();
       const book = books.find(b=>b.id===bookId);
-      const sheet = newSheet(values.name);
+      const sheet = newSheet(values.name, (values.idPrefix||'').trim().toUpperCase(), values.idDigits||3);
       book.sheets.push(sheet);
       touchTestBook(book);
       saveTestBooks(books);
@@ -1887,13 +2139,40 @@ function renameSheet(bookId, sheetId){
   const book = books.find(b=>b.id===bookId);
   const sheet = book.sheets.find(s=>s.id===sheetId);
   openModal({
-    title:'Renommer la feuille',
-    fields:[ { name:'name', label:'Nom de la feuille', type:'text', value:sheet.name, required:true, full:true } ],
+    title:'Modifier la feuille',
+    wide:true,
+    fields:[
+      { name:'name', label:'Nom de la feuille', type:'text', value:sheet.name, required:true, full:true },
+      { name:'idPrefix', label:'Préfixe des ID des cas de test (ex : OML)', type:'text', value: sheet.idPrefix||'' },
+      { name:'idDigits', label:'Nombre de chiffres (ex : 3 → 001)', type:'number', value: sheet.idDigits||3 },
+    ],
     onSubmit:(values)=>{
       sheet.name = values.name;
+      sheet.idPrefix = (values.idPrefix||'').trim().toUpperCase();
+      sheet.idDigits = values.idDigits || 3;
       touchTestBook(book);
       saveTestBooks(books);
       renderTestBookDetail(bookId);
+    }
+  });
+}
+function openLevelLabelsModal(bookId, sheetId){
+  const books = loadTestBooks();
+  const book = books.find(b=>b.id===bookId);
+  const sheet = book.sheets.find(s=>s.id===sheetId);
+  const maxDepth = Math.max(1, sheetMaxDepth(sheet));
+  openModal({
+    title:'Renommer les niveaux de la hiérarchie',
+    wide:true,
+    fields: Array.from({length:maxDepth}, (_,i)=>({
+      name:'level'+i, label:`Nom du niveau ${i+1} (ex: ${i===0?'Onglet':i===1?'Menu':'Sous-menu'})`,
+      type:'text', value: sheet.levelLabels[i] || categoryDepthLabel(i),
+    })),
+    onSubmit:(values)=>{
+      sheet.levelLabels = Array.from({length:maxDepth}, (_,i)=> (values['level'+i]||'').trim());
+      touchTestBook(book);
+      saveTestBooks(books);
+      renderSheetDetail();
     }
   });
 }
@@ -1912,7 +2191,7 @@ let testDetailState = { bookId:null, sheetId:null, tab:'cases', categoryFilter:'
 let draggedColId = null;
 
 function viewSheet(bookId, sheetId){
-  testDetailState = { bookId, sheetId, tab:'cases', categoryFilter:'', selected:new Set(), assignMode:false };
+  testDetailState = { bookId, sheetId, tab:'cases', categoryFilter:'', selected:new Set(), assignMode:false, collapsedCats:new Set() };
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   location.hash = `testbook/${bookId}/sheet/${sheetId}`;
   renderSheetDetail();
@@ -1961,49 +2240,69 @@ function renderSheetDetail(){
 
 /* ─── Onglet Structure (phase CRÉATION) : catégories imbriquées avec
    nomenclature d'ID, et schéma des justificatifs requis à l'exécution ── */
+function toggleCatCollapse(catId){
+  if(testDetailState.collapsedCats.has(catId)) testDetailState.collapsedCats.delete(catId);
+  else testDetailState.collapsedCats.add(catId);
+  renderSheetDetail();
+}
 function renderStructureTab(book, sheet){
   const roots = categoryChildren(sheet, null);
   function renderCatRow(c){
     const depth = categoryDepth(sheet, c.id);
     const children = categoryChildren(sheet, c.id);
+    const collapsed = testDetailState.collapsedCats.has(c.id);
     return `
-      <div class="cat-row" style="padding-left:${14 + depth*22}px;">
-        <span class="cat-pill">${categoryDepthLabel(depth)}</span>
-        <span class="tname">${escapeHtml(c.name)}</span>
-        ${c.idPrefix ? `<span class="col-type-pill">${escapeHtml(c.idPrefix)}${'0'.repeat(c.idDigits||3)}</span>` : ''}
+      <div class="cat-row" style="padding-left:${10 + depth*18}px;font-size:12px;">
+        ${children.length>0 ? `<button class="icon-btn" style="width:18px;height:18px;" onclick="toggleCatCollapse('${c.id}')" title="${collapsed?'Développer':'Réduire'}">${icon(collapsed?'ChevronRight':'ChevronDown','#6b7280')}</button>` : `<span style="width:18px;display:inline-block;"></span>`}
+        <span class="cat-pill" style="font-size:10px;padding:1px 6px;">${escapeHtml(categoryDepthLabel(depth, sheet))}</span>
+        <span class="tname" style="font-size:12px;">${escapeHtml(c.name)}</span>
         <span class="tactions">
           <button class="icon-btn" onclick="openCategoryModal('${book.id}','${sheet.id}',null,'${c.id}')" title="Ajouter une sous-catégorie ici">${icon('Plus')}</button>
-          <button class="icon-btn" onclick="openCategoryModal('${book.id}','${sheet.id}','${c.id}')" title="Modifier">${icon('Pencil')}</button>
+          <button class="icon-btn" onclick="openCategoryModal('${book.id}','${sheet.id}','${c.id}')" title="Renommer / déplacer">${icon('Pencil')}</button>
           <button class="icon-btn danger" onclick="deleteCategory('${book.id}','${sheet.id}','${c.id}')" title="Supprimer">${icon('Trash2')}</button>
         </span>
       </div>
-      ${children.map(renderCatRow).join('')}
+      ${!collapsed ? children.map(renderCatRow).join('') : ''}
     `;
   }
   return `
-    <p style="font-size:12px;color:#6b7280;margin:4px 0 14px;">Cette étape ne concerne que la <strong>création</strong> du cahier : catégories, nomenclature des ID, et schéma des justificatifs qui seront demandés à l'exécution. L'affectation et l'exécution se font depuis l'onglet "Cas de test".</p>
+    <p style="font-size:11.5px;color:#6b7280;margin:4px 0 14px;">Cette étape ne concerne que la <strong>création</strong> du cahier : catégories, schéma des justificatifs qui seront demandés à l'exécution. L'ID des cas (ex: ${escapeHtml(sheet.idPrefix||'#')}${'0'.repeat(sheet.idDigits||3)}) est défini une seule fois pour toute la feuille. L'affectation et l'exécution se font depuis l'onglet "Cas de test".</p>
+    <div class="section-card" style="margin-bottom:14px;">
+      <div class="section-head" style="padding:8px 14px;">
+        <h2 style="font-size:12.5px;">${icon('List')} Nomenclature des ID de cette feuille</h2>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-secondary" style="font-size:11.5px;padding:5px 10px;" onclick="renameSheet('${book.id}','${sheet.id}')">${icon('Pencil')} Modifier le préfixe / chiffres</button>
+          <button class="btn-secondary" style="font-size:11.5px;padding:5px 10px;" onclick="openLevelLabelsModal('${book.id}','${sheet.id}')">${icon('Pencil')} Renommer les niveaux</button>
+        </div>
+      </div>
+      <div style="padding:8px 14px 12px;font-size:12px;color:#374151;">
+        Préfixe : <strong>${sheet.idPrefix ? escapeHtml(sheet.idPrefix) : '(aucun)'}</strong> ·
+        Chiffres : <strong>${sheet.idDigits||3}</strong> ·
+        Exemple : <span class="col-type-pill">${escapeHtml(sheet.idPrefix||'#')}${'1'.padStart(sheet.idDigits||3,'0')}</span>
+      </div>
+    </div>
     <div class="grid grid-2" style="align-items:start;">
       <div class="section-card">
-        <div class="section-head">
-          <h2>${icon('GitBranch')} Catégories <span class="count">${flattenCategories(sheet).length}</span></h2>
-          <button class="btn-secondary" onclick="openCategoryModal('${book.id}','${sheet.id}')">${icon('Plus')} Nouvelle catégorie</button>
+        <div class="section-head" style="padding:8px 14px;">
+          <h2 style="font-size:12.5px;">${icon('GitBranch')} Catégories <span class="count">${flattenCategories(sheet).length}</span></h2>
+          <button class="btn-secondary" style="font-size:11.5px;padding:5px 10px;" onclick="openCategoryModal('${book.id}','${sheet.id}')">${icon('Plus')} Nouvelle catégorie</button>
         </div>
         ${roots.length === 0 ? `<div class="empty">Aucune catégorie.</div>` : roots.map(renderCatRow).join('')}
       </div>
 
       <div class="section-card">
-        <div class="section-head">
-          <h2>${icon('LayoutGrid')} Justificatifs requis à l'exécution <span class="count">${sheet.evidenceFields.length}</span></h2>
-          <button class="btn-secondary" onclick="openEvidenceFieldModal('${book.id}','${sheet.id}')">${icon('Plus')} Ajouter</button>
+        <div class="section-head" style="padding:8px 14px;">
+          <h2 style="font-size:12.5px;">${icon('LayoutGrid')} Justificatifs requis à l'exécution <span class="count">${sheet.evidenceFields.length}</span></h2>
+          <button class="btn-secondary" style="font-size:11.5px;padding:5px 10px;" onclick="openEvidenceFieldModal('${book.id}','${sheet.id}')">${icon('Plus')} Ajouter</button>
         </div>
         ${sheet.evidenceFields.length === 0 ? `<div class="empty">Aucun justificatif défini.</div>` : `
-        <p style="font-size:11.5px;color:#9ca3af;padding:8px 14px 0;">Glissez-déposez pour réordonner. Ce sont les éléments que la personne affectée devra fournir pour justifier l'exécution (ID de transaction, payload, capture écran, commentaire...).</p>
+        <p style="font-size:11px;color:#9ca3af;padding:6px 14px 0;">Glissez-déposez pour réordonner. Ce sont les éléments que la personne affectée devra fournir pour justifier l'exécution (ID de transaction, payload, capture écran, commentaire...).</p>
         ${sheet.evidenceFields.map(col=>`
-          <div class="tree-row col-row" draggable="true"
+          <div class="tree-row col-row" style="font-size:12px;" draggable="true"
             ondragstart="colDragStart('${col.id}')" ondragover="colDragOver(event)"
             ondrop="colDrop('${book.id}','${sheet.id}','${col.id}')">
             ${icon('List','#9ca3af')}
-            <span class="tname">${escapeHtml(col.label)}</span>
+            <span class="tname" style="font-size:12px;">${escapeHtml(col.label)}</span>
             <span class="col-type-pill">${EVIDENCE_TYPE_LABELS[col.type]}</span>
             ${col.required ? `<span class="col-type-pill" style="background:var(--boa-red-light);color:var(--boa-red);">obligatoire</span>` : ''}
             <span class="tactions">
@@ -2047,14 +2346,10 @@ function openCategoryModal(bookId, sheetId, catId, presetParentId){
       { name:'parentId', label:'Catégorie parente', type:'select',
         value: cat ? (cat.parentId||'') : (presetParentId||''),
         options:[{value:'', label:'(catégorie racine)'}, ...categorySelectOptions(sheet, catId)], full:true },
-      { name:'idPrefix', label:'Préfixe des ID de ce bloc (ex : OML)', type:'text', value: cat ? (cat.idPrefix||'') : '' },
-      { name:'idDigits', label:'Nombre de chiffres (ex : 3 → 001)', type:'number', value: cat ? (cat.idDigits||3) : 3 },
     ],
     onSubmit:(values)=>{
-      const idPrefix = (values.idPrefix||'').trim().toUpperCase();
-      const idDigits = values.idDigits || 3;
-      if(cat){ cat.name = values.name; cat.parentId = values.parentId || null; cat.idPrefix = idPrefix; cat.idDigits = idDigits; }
-      else sheet.categories.push({ id:newId(), name:values.name, parentId: values.parentId || null, idPrefix, idDigits });
+      if(cat){ cat.name = values.name; cat.parentId = values.parentId || null; }
+      else sheet.categories.push({ id:newId(), name:values.name, parentId: values.parentId || null });
       touchTestBook(book);
       saveTestBooks(books);
       renderSheetDetail();
@@ -2527,11 +2822,6 @@ function renderRealisationSection(book, sheet){
     </div>`;
 }
 function renderSuiviTab(book, sheet){
-  const total = sheet.testCases.length;
-  const allHistory = [];
-  sheet.testCases.forEach(tc=> tc.history.forEach(h=> allHistory.push({ ...h, caseId:tc.id })));
-  allHistory.sort((a,b)=> b.date.localeCompare(a.date));
-
   const byCategory = {};
   sheet.testCases.forEach(tc=>{
     const label = categoryLabel(sheet, tc.categoryId);
@@ -2539,52 +2829,20 @@ function renderSuiviTab(book, sheet){
   });
   const maxCat = Math.max(1, ...Object.values(byCategory));
 
-  const byAuthor = {};
-  allHistory.forEach(h=>{ byAuthor[h.author] = (byAuthor[h.author]||0) + 1; });
-  const maxAuthor = Math.max(1, ...Object.values(byAuthor));
-
   return `
     ${renderRealisationSection(book, sheet)}
-    <div class="grid grid-2" style="align-items:start;">
-      <div class="card chart-card">
-        <h2>Cas de test par catégorie</h2>
-        ${Object.keys(byCategory).length===0 ? `<div class="empty">Aucune donnée.</div>` : `
-        <div class="bars">
-          ${Object.entries(byCategory).map(([label,count])=>`
-            <div class="bar-row">
-              <div class="bar-label" title="${escapeHtml(label)}">${escapeHtml(label.length>16?label.slice(0,15)+'…':label)}</div>
-              <div class="bar-track"><div class="bar-fill" style="width:${count/maxCat*100}%"></div></div>
-              <div class="bar-value">${count}</div>
-            </div>
-          `).join('')}
-        </div>`}
-      </div>
-      <div class="card chart-card">
-        <h2>Contribution par personne</h2>
-        ${Object.keys(byAuthor).length===0 ? `<div class="empty">Aucune donnée.</div>` : `
-        <div class="bars">
-          ${Object.entries(byAuthor).sort((a,b)=>b[1]-a[1]).map(([author,count])=>`
-            <div class="bar-row">
-              <div class="bar-label" title="${escapeHtml(author)}">${escapeHtml(author.length>16?author.slice(0,15)+'…':author)}</div>
-              <div class="bar-track"><div class="bar-fill" style="width:${count/maxAuthor*100}%;background:var(--boa-navy);"></div></div>
-              <div class="bar-value">${count}</div>
-            </div>
-          `).join('')}
-        </div>`}
-      </div>
-    </div>
-
-    <div class="section-card" style="margin-top:18px;">
-      <div class="section-head"><h2>${icon('Clock')} Activité récente</h2></div>
-      <div class="activity-feed">
-        ${allHistory.length === 0 ? `<div class="empty">Aucune activité.</div>` : allHistory.slice(0,40).map(h=>`
-          <div class="activity-row">
-            <strong>${escapeHtml(h.author)}</strong> a modifié <strong>${escapeHtml(h.fieldLabel)}</strong> :
-            ${h.field==='_create' ? escapeHtml(h.to) : `<em>${escapeHtml(h.from)}</em> → <em>${escapeHtml(h.to)}</em>`}
-            <div class="adate">${new Date(h.date).toLocaleString('fr-FR')}</div>
+    <div class="card chart-card">
+      <h2>Cas de test par catégorie</h2>
+      ${Object.keys(byCategory).length===0 ? `<div class="empty">Aucune donnée.</div>` : `
+      <div class="bars">
+        ${Object.entries(byCategory).map(([label,count])=>`
+          <div class="bar-row">
+            <div class="bar-label" title="${escapeHtml(label)}">${escapeHtml(label.length>16?label.slice(0,15)+'…':label)}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${count/maxCat*100}%"></div></div>
+            <div class="bar-value">${count}</div>
           </div>
         `).join('')}
-      </div>
+      </div>`}
     </div>
   `;
 }
