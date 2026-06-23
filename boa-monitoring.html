@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   :root{
     --boa-green:#1B7A4B;
@@ -28,6 +29,8 @@
   }
 
   *{box-sizing:border-box;margin:0;padding:0;}
+  button,input,select,textarea{font-family:inherit;}
+  h1,h2,h3,h4,h5,h6{font-family:inherit;}
   body{
     font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     background:var(--boa-gray-bg);
@@ -319,6 +322,20 @@
   .testbook-card .tdesc{font-size:12.5px;color:#6b7280;flex:1;}
   .testbook-card .tstats{display:flex;gap:14px;font-size:11.5px;color:#9ca3af;}
   .testbook-card .tactions{display:flex;gap:8px;margin-top:6px;}
+  .sheet-tabstrip{display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-bottom:10px;}
+  .sheet-tab{padding:7px 14px;font-size:12px;font-weight:600;border-radius:8px 8px 0 0;border:1px solid var(--boa-gray-border);border-bottom:none;background:var(--boa-gray-bg);color:#6b7280;cursor:pointer;}
+  .sheet-tab.active{background:#fff;color:var(--boa-navy);}
+  .sheet-tab-add{padding:7px 10px;border-radius:8px;border:1px dashed var(--boa-gray-border);background:none;color:#9ca3af;cursor:pointer;font-size:12px;}
+  .cat-row{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--boa-gray-surf);}
+  .cat-row:last-child{border-bottom:none;}
+  .cat-pill{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:2px 6px;border-radius:4px;background:var(--boa-gray-surf);color:#6b7280;flex-shrink:0;}
+  .col-row{cursor:grab;}
+  .col-row.dragging{opacity:.35;}
+  table.test-cases-table{font-size:11px;}
+  table.test-cases-table th, table.test-cases-table td{padding:5px 8px;}
+  .member-row{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--boa-gray-surf);font-size:12.5px;}
+  .member-row:last-child{border-bottom:none;}
+  .member-row .mname{font-weight:600;flex:1;}
 
   .team-list{display:flex;flex-direction:column;gap:8px;}
   .team-member{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--boa-gray-surf);border-radius:8px;}
@@ -1213,12 +1230,15 @@ function getSampleData(){
 /* ════════════════════════════════════════════════════════════════
    CAHIERS DE TEST — constructeur générique
    Un TestBook contient plusieurs Feuilles (ex: SVFE, OML...). Chaque
-   feuille définit elle-même sa hiérarchie de catégories et ses
-   colonnes (avec leur type) ; les cas de test sont saisis selon ce
-   schéma et affichés en vue tableau. Chaque modification de valeur
-   est journalisée (historique) pour le suivi de contribution.
+   feuille définit elle-même sa hiérarchie de catégories/sous-catégories
+   et ses colonnes (avec leur type, réordonnables par glisser-déposer) ;
+   les cas de test sont saisis selon ce schéma et affichés en vue
+   tableau. Chaque modification de valeur est journalisée (historique)
+   pour le suivi de contribution. Les membres de l'équipe sont gérés
+   séparément (registre global) puis affectés aux cahiers.
    ════════════════════════════════════════════════════════════════ */
 const STORAGE_KEY_TESTS = 'boa_testbooks_v1';
+const STORAGE_KEY_MEMBERS = 'boa_members_v1';
 const CURRENT_TESTER_KEY = 'boa_current_tester';
 
 const COLUMN_TYPES = [
@@ -1243,6 +1263,89 @@ const SELECT_PALETTE = [
   'background:#e0f2fe;color:#0369a1;',
 ];
 
+/* ─── Membres (registre global, indépendant des cahiers) ───────── */
+function loadMembers(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY_MEMBERS);
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){ return []; }
+}
+function saveMembers(members){ localStorage.setItem(STORAGE_KEY_MEMBERS, JSON.stringify(members)); }
+function findOrCreateMemberByName(members, name){
+  let m = members.find(x=>x.name.toLowerCase()===name.toLowerCase());
+  if(!m){ m = { id:newId(), name }; members.push(m); }
+  return m;
+}
+function memberName(id){
+  const m = loadMembers().find(x=>x.id===id);
+  return m ? m.name : '—';
+}
+function bookMembers(book){
+  const members = loadMembers();
+  return members.filter(m=>book.memberIds.includes(m.id));
+}
+
+function openMembersModal(){
+  document.getElementById('modal-root').innerHTML = membersModalHtml();
+}
+function closeMembersModal(){ document.getElementById('modal-root').innerHTML = ''; }
+function membersModalHtml(){
+  const members = loadMembers().sort((a,b)=>a.name.localeCompare(b.name));
+  return `
+    <div class="modal-overlay" onclick="if(event.target===this) closeMembersModal()">
+      <div class="modal-card modal-wide">
+        <h3>Membres de l'équipe</h3>
+        <p>Ces personnes existent une seule fois et peuvent ensuite être affectées à un ou plusieurs cahiers de test.</p>
+        <div class="form-grid">
+          <div class="form-field full" style="display:flex;gap:8px;">
+            <input id="new-member-name" type="text" placeholder="Nom du membre" onkeydown="if(event.key==='Enter'){event.preventDefault();addMember();}">
+            <button class="btn-primary" style="flex-shrink:0;" onclick="addMember()">${icon('Plus','#fff')} Ajouter</button>
+          </div>
+          <div class="form-field full" style="max-height:320px;overflow-y:auto;border:1px solid var(--boa-gray-border);border-radius:8px;">
+            ${members.length===0 ? `<div class="empty">Aucun membre. Ajoutez-en un ci-dessus.</div>` : members.map(m=>`
+              <div class="member-row">
+                <span class="mname">${escapeHtml(m.name)}</span>
+                <button class="icon-btn danger" onclick="deleteMember('${m.id}')" title="Supprimer">${icon('Trash2')}</button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        <div class="modal-actions" style="margin-top:18px;">
+          <button class="btn-primary" onclick="closeMembersModal()">Fermer</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+function addMember(){
+  const input = document.getElementById('new-member-name');
+  const name = input.value.trim();
+  if(!name) return;
+  const members = loadMembers();
+  if(members.some(m=>m.name.toLowerCase()===name.toLowerCase())){ alert('Ce membre existe déjà.'); return; }
+  members.push({ id:newId(), name });
+  saveMembers(members);
+  openMembersModal();
+}
+function deleteMember(id){
+  if(!confirm('Supprimer ce membre ? Il sera retiré des cahiers où il était affecté.')) return;
+  const members = loadMembers().filter(m=>m.id!==id);
+  saveMembers(members);
+  const books = loadTestBooks();
+  books.forEach(b=>{ b.memberIds = b.memberIds.filter(mid=>mid!==id); });
+  saveTestBooks(books);
+  openMembersModal();
+}
+function toggleBookMember(bookId, memberId, checked){
+  const books = loadTestBooks();
+  const book = books.find(b=>b.id===bookId);
+  if(checked){ if(!book.memberIds.includes(memberId)) book.memberIds.push(memberId); }
+  else book.memberIds = book.memberIds.filter(id=>id!==memberId);
+  touchTestBook(book);
+  saveTestBooks(books);
+  renderTestBookDetail(bookId);
+}
+
 function loadTestBooks(){
   try{
     const raw = localStorage.getItem(STORAGE_KEY_TESTS);
@@ -1261,18 +1364,27 @@ function getCurrentTester(){ return localStorage.getItem(CURRENT_TESTER_KEY) || 
 function setCurrentTester(name){
   localStorage.setItem(CURRENT_TESTER_KEY, name);
 }
-/* Anciens cahiers (avant l'introduction des feuilles) : on les enveloppe
-   dans une feuille unique "Général" pour ne rien perdre. */
+/* Anciens cahiers : on enveloppe la structure plate dans une feuille
+   unique "Général", et on convertit l'ancienne liste libre "team"
+   (simples noms) en membres globaux référencés par id. */
 function migrateTestBooks(books){
   let changed = false;
+  let members = null;
   books.forEach(b=>{
     if(!Array.isArray(b.sheets)){
       b.sheets = [ { id:newId(), name:'Feuille 1', categories:b.categories||[], columns:b.columns||[], testCases:b.testCases||[] } ];
       delete b.categories; delete b.columns; delete b.testCases;
       changed = true;
     }
-    if(!Array.isArray(b.team)){ b.team = []; changed = true; }
+    if(Array.isArray(b.team)){
+      members = members || loadMembers();
+      b.memberIds = b.team.map(name=>findOrCreateMemberByName(members, name).id);
+      delete b.team;
+      changed = true;
+    }
+    if(!Array.isArray(b.memberIds)){ b.memberIds = []; changed = true; }
   });
+  if(members) saveMembers(members);
   return changed;
 }
 
@@ -1280,7 +1392,7 @@ function newTestBook(name, description){
   const now = new Date().toISOString();
   return {
     id: newId(), name, description: description || '', createdAt: now, updatedAt: now,
-    team: [],
+    memberIds: [],
     sheets: [ newSheet('Feuille 1') ],
   };
 }
@@ -1317,6 +1429,11 @@ function categoryDepth(sheet, catId){
   }
   return depth;
 }
+function categoryDepthLabel(depth){
+  if(depth === 0) return 'Catégorie';
+  if(depth === 1) return 'Sous-catégorie';
+  return 'Sous-'.repeat(depth-1) + 'sous-catégorie';
+}
 function flattenCategories(sheet, parentId=null, acc=[]){
   categoryChildren(sheet, parentId).forEach(c=>{
     acc.push(c);
@@ -1327,6 +1444,17 @@ function flattenCategories(sheet, parentId=null, acc=[]){
 function categoryLabel(sheet, catId){
   const c = sheet.categories.find(x=>x.id===catId);
   return c ? c.name : '—';
+}
+function categoryPath(sheet, catId){
+  const chain = [];
+  let cur = sheet.categories.find(c=>c.id===catId);
+  let guard = 0;
+  while(cur){
+    chain.unshift(cur.name);
+    cur = cur.parentId ? sheet.categories.find(c=>c.id===cur.parentId) : null;
+    if(++guard > 20) break;
+  }
+  return chain.length ? chain.join(' > ') : '—';
 }
 function categoryDescendantIds(sheet, catId){
   const ids = [catId];
@@ -1344,7 +1472,8 @@ function renderTests(){
   const books = loadTestBooks().sort((a,b)=> b.updatedAt.localeCompare(a.updatedAt));
   document.getElementById('page-subtitle').textContent = `${books.length} cahier(s) de test`;
   let html = `
-    <div style="display:flex;justify-content:flex-end;margin-bottom:18px;">
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-bottom:18px;">
+      <button class="btn-secondary" onclick="openMembersModal()">${icon('FolderOpen')} Gérer les membres</button>
       <button class="btn-primary" onclick="openNewTestBookModal()">${icon('Plus','#fff')} Nouveau cahier de test</button>
     </div>`;
   if(books.length === 0){
@@ -1410,7 +1539,41 @@ function deleteTestBook(id){
   renderTests();
 }
 
-/* ─── Détail d'un cahier : liste de ses feuilles ──────────────── */
+/* ─── Export du cahier en classeur Excel (une feuille par Feuille) ── */
+function exportCellValue(col, v){
+  if(v === undefined || v === null || v === '') return '';
+  if(col.type === 'select'){ const o=(col.options||[]).find(x=>x.value===v); return o?o.label:v; }
+  if(col.type === 'person') return memberName(v);
+  if(col.type === 'checkbox') return v ? 'Oui' : 'Non';
+  if(col.type === 'date') return fmt(v);
+  if(col.type === 'image') return 'Capture (voir application)';
+  return String(v);
+}
+function exportTestBookXlsx(bookId){
+  if(typeof XLSX === 'undefined'){ alert("La librairie d'export Excel n'a pas pu être chargée (connexion internet requise)."); return; }
+  const books = loadTestBooks();
+  const book = books.find(b=>b.id===bookId);
+  if(!book) return;
+  const wb = XLSX.utils.book_new();
+  book.sheets.forEach(sheet=>{
+    const header = ['Catégorie', ...sheet.columns.map(c=>c.label)];
+    const rows = sheet.testCases.map(tc=>[
+      categoryPath(sheet, tc.categoryId),
+      ...sheet.columns.map(col=>exportCellValue(col, tc.values[col.id])),
+    ]);
+    const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+    let base = (sheet.name || 'Feuille').replace(/[\\/?*[\]:]/g,' ').trim().slice(0,31) || 'Feuille';
+    let name = base, i = 1;
+    while(wb.SheetNames.includes(name)){ name = (base.slice(0,28) + '_' + (++i)).slice(0,31); }
+    XLSX.utils.book_append_sheet(wb, ws, name);
+  });
+  if(wb.SheetNames.length === 0){
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Aucune feuille dans ce cahier']]), 'Vide');
+  }
+  XLSX.writeFile(wb, `${(book.name||'Cahier_de_test').replace(/[^a-z0-9]+/gi,'_')}.xlsx`);
+}
+
+/* ─── Détail d'un cahier : équipe affectée + liste de ses feuilles ── */
 function viewTestBook(id){
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   location.hash = `testbook/${id}`;
@@ -1423,20 +1586,42 @@ function renderTestBookDetail(bookId){
   const book = books.find(b=>b.id===bookId);
   if(!book){ navigate('tests'); return; }
 
+  const allMembers = loadMembers().sort((a,b)=>a.name.localeCompare(b.name));
+  const tester = getCurrentTester();
+  const assigned = bookMembers(book);
+
   document.getElementById('page-title').textContent = book.name;
   document.getElementById('page-subtitle').textContent = `${book.sheets.length} feuille(s) · ${totalCases(book)} cas de test au total`;
 
   document.getElementById('content').innerHTML = `
-    <button class="back-link" onclick="backToTests()">${icon('ArrowLeft')} Retour aux cahiers de test</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+      <button class="back-link" onclick="backToTests()">${icon('ArrowLeft')} Retour aux cahiers de test</button>
+      <button class="btn-outline" onclick="exportTestBookXlsx('${book.id}')">${icon('FileDown')} Télécharger le classeur Excel (.xlsx)</button>
+    </div>
 
-    <div class="section-card" style="margin-bottom:18px;">
-      <div class="section-head"><h2>Équipe</h2></div>
-      <div style="padding:16px;">
-        <p style="font-size:12.5px;color:#6b7280;margin-bottom:10px;">Membres pouvant être assignés (colonnes "Personne") ou sélectionnés comme testeur actif, pour toutes les feuilles de ce cahier.</p>
-        <div class="form-field full" style="max-width:480px;">
-          <input id="team-input" type="text" value="${escapeHtml(book.team.join(', '))}" placeholder="séparés par des virgules">
+    <div class="section-card" style="margin:18px 0;">
+      <div class="section-head">
+        <h2>Équipe affectée à ce cahier</h2>
+        <button class="btn-secondary" onclick="openMembersModal()">${icon('Pencil')} Gérer les membres</button>
+      </div>
+      <div style="padding:14px 16px;">
+        <p style="font-size:12.5px;color:#6b7280;margin-bottom:10px;">Les membres sont créés une seule fois (registre global), puis cochés ici pour pouvoir être affectés aux cas de test de ce cahier (colonnes "Personne").</p>
+        ${allMembers.length===0 ? `<div class="empty">Aucun membre créé pour l'instant. Cliquez sur "Gérer les membres" pour en ajouter.</div>` : `
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+          ${allMembers.map(m=>`
+            <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;border:1px solid var(--boa-gray-border);border-radius:8px;padding:6px 10px;cursor:pointer;">
+              <input type="checkbox" ${book.memberIds.includes(m.id)?'checked':''} onchange="toggleBookMember('${book.id}','${m.id}', this.checked)">
+              ${escapeHtml(m.name)}
+            </label>
+          `).join('')}
+        </div>`}
+        <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;">
+          <label style="color:#6b7280;">Connecté en tant que (optionnel, pour l'historique) :</label>
+          <select onchange="setCurrentTester(this.value)" style="padding:6px 10px;border:1px solid var(--boa-gray-border);border-radius:7px;font-size:12.5px;">
+            <option value="">—</option>
+            ${assigned.map(m=>`<option value="${escapeHtml(m.name)}" ${tester===m.name?'selected':''}>${escapeHtml(m.name)}</option>`).join('')}
+          </select>
         </div>
-        <button class="btn-secondary" style="margin-top:10px;" onclick="saveTeam('${book.id}')">Enregistrer l'équipe</button>
       </div>
     </div>
 
@@ -1502,18 +1687,10 @@ function deleteSheet(bookId, sheetId){
   saveTestBooks(books);
   renderTestBookDetail(bookId);
 }
-function saveTeam(bookId){
-  const books = loadTestBooks();
-  const book = books.find(b=>b.id===bookId);
-  const raw = document.getElementById('team-input').value;
-  book.team = raw.split(',').map(s=>s.trim()).filter(Boolean);
-  touchTestBook(book);
-  saveTestBooks(books);
-  renderTestBookDetail(bookId);
-}
 
 /* ─── Détail d'une feuille : Structure / Cas de test / Suivi ──── */
 let testDetailState = { bookId:null, sheetId:null, tab:'cases', categoryFilter:'', selected:new Set() };
+let draggedColId = null;
 
 function viewSheet(bookId, sheetId){
   testDetailState = { bookId, sheetId, tab:'cases', categoryFilter:'', selected:new Set() };
@@ -1536,8 +1713,8 @@ function renderSheetDetail(){
   const { book, sheet } = getCurrentSheet();
   if(!book || !sheet){ navigate('tests'); return; }
 
-  document.getElementById('page-title').textContent = `${book.name} — ${sheet.name}`;
-  document.getElementById('page-subtitle').textContent = `${sheet.testCases.length} cas de test`;
+  document.getElementById('page-title').textContent = book.name;
+  document.getElementById('page-subtitle').textContent = `${sheet.name} · ${sheet.testCases.length} cas de test`;
 
   const tabs = [
     { id:'cases', label:`Vue tableau (${sheet.testCases.length})` },
@@ -1551,6 +1728,10 @@ function renderSheetDetail(){
 
   document.getElementById('content').innerHTML = `
     <button class="back-link" onclick="backToBook()">${icon('ArrowLeft')} Retour à « ${escapeHtml(book.name)} »</button>
+    <div class="sheet-tabstrip">
+      ${book.sheets.map(s=>`<button class="sheet-tab ${s.id===sheet.id?'active':''}" onclick="viewSheet('${book.id}','${s.id}')">${escapeHtml(s.name)}</button>`).join('')}
+      <button class="sheet-tab-add" onclick="openNewSheetModal('${book.id}')" title="Nouvelle feuille">${icon('Plus')}</button>
+    </div>
     <div class="tabs">
       ${tabs.map(t=>`<button class="tab-btn ${testDetailState.tab===t.id?'active':''}" onclick="setTestTab('${t.id}')">${t.label}</button>`).join('')}
     </div>
@@ -1559,25 +1740,33 @@ function renderSheetDetail(){
   hydrateImageThumbs(document.getElementById('content'));
 }
 
-/* ─── Onglet Structure (catégories, colonnes) ─────────────────── */
+/* ─── Onglet Structure (catégories imbriquées, colonnes réordonnables) ── */
 function renderStructureTab(book, sheet){
-  const tree = flattenCategories(sheet);
+  const roots = categoryChildren(sheet, null);
+  function renderCatRow(c){
+    const depth = categoryDepth(sheet, c.id);
+    const children = categoryChildren(sheet, c.id);
+    return `
+      <div class="cat-row" style="padding-left:${14 + depth*22}px;">
+        <span class="cat-pill">${categoryDepthLabel(depth)}</span>
+        <span class="tname">${escapeHtml(c.name)}</span>
+        <span class="tactions">
+          <button class="icon-btn" onclick="openCategoryModal('${book.id}','${sheet.id}',null,'${c.id}')" title="Ajouter une sous-catégorie ici">${icon('Plus')}</button>
+          <button class="icon-btn" onclick="openCategoryModal('${book.id}','${sheet.id}','${c.id}')" title="Modifier">${icon('Pencil')}</button>
+          <button class="icon-btn danger" onclick="deleteCategory('${book.id}','${sheet.id}','${c.id}')" title="Supprimer">${icon('Trash2')}</button>
+        </span>
+      </div>
+      ${children.map(renderCatRow).join('')}
+    `;
+  }
   return `
     <div class="grid grid-2" style="align-items:start;">
       <div class="section-card">
         <div class="section-head">
-          <h2>${icon('GitBranch')} Catégories <span class="count">${tree.length}</span></h2>
-          <button class="btn-secondary" onclick="openCategoryModal('${book.id}','${sheet.id}')">${icon('Plus')} Ajouter</button>
+          <h2>${icon('GitBranch')} Catégories <span class="count">${flattenCategories(sheet).length}</span></h2>
+          <button class="btn-secondary" onclick="openCategoryModal('${book.id}','${sheet.id}')">${icon('Plus')} Nouvelle catégorie</button>
         </div>
-        ${tree.length === 0 ? `<div class="empty">Aucune catégorie.</div>` : tree.map(c=>`
-          <div class="tree-row" style="padding-left:${14 + categoryDepth(sheet,c.id)*20}px;">
-            <span class="tname">${escapeHtml(c.name)}</span>
-            <span class="tactions">
-              <button class="icon-btn" onclick="openCategoryModal('${book.id}','${sheet.id}','${c.id}')" title="Modifier">${icon('Pencil')}</button>
-              <button class="icon-btn danger" onclick="deleteCategory('${book.id}','${sheet.id}','${c.id}')" title="Supprimer">${icon('Trash2')}</button>
-            </span>
-          </div>
-        `).join('')}
+        ${roots.length === 0 ? `<div class="empty">Aucune catégorie.</div>` : roots.map(renderCatRow).join('')}
       </div>
 
       <div class="section-card">
@@ -1585,8 +1774,13 @@ function renderStructureTab(book, sheet){
           <h2>${icon('LayoutGrid')} Colonnes <span class="count">${sheet.columns.length}</span></h2>
           <button class="btn-secondary" onclick="openColumnModal('${book.id}','${sheet.id}')">${icon('Plus')} Ajouter</button>
         </div>
-        ${sheet.columns.length === 0 ? `<div class="empty">Aucune colonne.</div>` : sheet.columns.map(col=>`
-          <div class="tree-row">
+        ${sheet.columns.length === 0 ? `<div class="empty">Aucune colonne.</div>` : `
+        <p style="font-size:11.5px;color:#9ca3af;padding:8px 14px 0;">Glissez-déposez pour réordonner les colonnes du tableau.</p>
+        ${sheet.columns.map(col=>`
+          <div class="tree-row col-row" draggable="true"
+            ondragstart="colDragStart('${col.id}')" ondragover="colDragOver(event)"
+            ondrop="colDrop('${book.id}','${sheet.id}','${col.id}')">
+            ${icon('List','#9ca3af')}
             <span class="tname">${escapeHtml(col.label)}</span>
             <span class="col-type-pill">${COLUMN_TYPE_LABELS[col.type]}</span>
             ${col.required ? `<span class="col-type-pill" style="background:var(--boa-red-light);color:var(--boa-red);">requis</span>` : ''}
@@ -1595,23 +1789,42 @@ function renderStructureTab(book, sheet){
               <button class="icon-btn danger" onclick="deleteColumn('${book.id}','${sheet.id}','${col.id}')" title="Supprimer">${icon('Trash2')}</button>
             </span>
           </div>
-        `).join('')}
+        `).join('')}`}
       </div>
     </div>
   `;
 }
 
-function openCategoryModal(bookId, sheetId, catId){
+function colDragStart(colId){ draggedColId = colId; }
+function colDragOver(ev){ ev.preventDefault(); }
+function colDrop(bookId, sheetId, targetColId){
+  if(!draggedColId || draggedColId === targetColId) return;
+  const books = loadTestBooks();
+  const book = books.find(b=>b.id===bookId);
+  const sheet = book.sheets.find(s=>s.id===sheetId);
+  const fromIdx = sheet.columns.findIndex(c=>c.id===draggedColId);
+  const toIdx = sheet.columns.findIndex(c=>c.id===targetColId);
+  draggedColId = null;
+  if(fromIdx < 0 || toIdx < 0) return;
+  const [moved] = sheet.columns.splice(fromIdx, 1);
+  sheet.columns.splice(toIdx, 0, moved);
+  touchTestBook(book);
+  saveTestBooks(books);
+  renderSheetDetail();
+}
+
+function openCategoryModal(bookId, sheetId, catId, presetParentId){
   const books = loadTestBooks();
   const book = books.find(b=>b.id===bookId);
   const sheet = book.sheets.find(s=>s.id===sheetId);
   const cat = catId ? sheet.categories.find(c=>c.id===catId) : null;
   openModal({
-    title: cat ? 'Modifier la catégorie' : 'Nouvelle catégorie',
+    title: cat ? 'Modifier la catégorie' : (presetParentId ? 'Nouvelle sous-catégorie' : 'Nouvelle catégorie'),
     fields:[
       { name:'name', label:'Nom', type:'text', value: cat ? cat.name : '', required:true, full:true },
-      { name:'parentId', label:'Catégorie parente', type:'select', value: cat ? (cat.parentId||'') : '',
-        options:[{value:'', label:'(racine)'}, ...categorySelectOptions(sheet, catId)], full:true },
+      { name:'parentId', label:'Catégorie parente', type:'select',
+        value: cat ? (cat.parentId||'') : (presetParentId||''),
+        options:[{value:'', label:'(catégorie racine)'}, ...categorySelectOptions(sheet, catId)], full:true },
     ],
     onSubmit:(values)=>{
       if(cat){ cat.name = values.name; cat.parentId = values.parentId || null; }
@@ -1692,7 +1905,6 @@ function toggleSelectAll(ids, checked){
 function clearSelection(){ testDetailState.selected.clear(); renderSheetDetail(); }
 
 function renderCasesTab(book, sheet){
-  const tester = getCurrentTester();
   const catOptions = categorySelectOptions(sheet, null);
   const filter = testDetailState.categoryFilter;
   const filterIds = filter ? categoryDescendantIds(sheet, filter) : null;
@@ -1703,15 +1915,6 @@ function renderCasesTab(book, sheet){
   const allSelected = visibleIds.length>0 && selectedCount===visibleIds.length;
 
   let html = `
-    <div class="tester-bar">
-      ${icon('Eye')}
-      <label>Je suis :</label>
-      <select onchange="setCurrentTester(this.value)">
-        <option value="">— sélectionner —</option>
-        ${book.team.map(name=>`<option value="${escapeHtml(name)}" ${tester===name?'selected':''}>${escapeHtml(name)}</option>`).join('')}
-      </select>
-      <span style="margin-left:auto;color:#9ca3af;">Les changements seront attribués à ce nom.</span>
-    </div>
     <div class="filters-bar">
       <div class="select-wrap">
         <select onchange="setTestCategoryFilter(this.value)">
@@ -1737,9 +1940,9 @@ function renderCasesTab(book, sheet){
     return html;
   }
 
-  html += `<div class="table-card" style="overflow-x:auto;"><table>
+  html += `<div class="table-card" style="overflow-x:auto;"><table class="test-cases-table">
     <thead><tr>
-      <th style="width:32px;"><input type="checkbox" ${allSelected?'checked':''} onchange='toggleSelectAll(${JSON.stringify(visibleIds)}, this.checked)'></th>
+      <th style="width:28px;"><input type="checkbox" ${allSelected?'checked':''} onchange='toggleSelectAll(${JSON.stringify(visibleIds)}, this.checked)'></th>
       <th>Catégorie</th>
       ${sheet.columns.map(c=>`<th>${escapeHtml(c.label)}</th>`).join('')}
       <th class="right">Actions</th>
@@ -1748,7 +1951,7 @@ function renderCasesTab(book, sheet){
       ${cases.map(tc=>`
         <tr>
           <td><input type="checkbox" ${testDetailState.selected.has(tc.id)?'checked':''} onchange="toggleCaseSelect('${tc.id}', this.checked)"></td>
-          <td>${escapeHtml(categoryLabel(sheet, tc.categoryId))}</td>
+          <td>${escapeHtml(categoryPath(sheet, tc.categoryId))}</td>
           ${sheet.columns.map(c=>`<td>${renderCellValue(c, tc.values[c.id])}</td>`).join('')}
           <td class="right">
             <button class="icon-btn" onclick="openTestCaseModal('${book.id}','${sheet.id}','${tc.id}')" title="Modifier">${icon('Pencil')}</button>
@@ -1761,7 +1964,7 @@ function renderCasesTab(book, sheet){
   return html;
 }
 
-/* ─── Affectation (PM crée les cas, puis les affecte à l'équipe) ── */
+/* ─── Affectation (l'administrateur crée les cas, puis les affecte) ── */
 function openBulkAssignModal(bookId, sheetId){
   const books = loadTestBooks();
   const book = books.find(b=>b.id===bookId);
@@ -1770,16 +1973,17 @@ function openBulkAssignModal(bookId, sheetId){
   if(ids.length===0) return;
   const personColumns = sheet.columns.filter(c=>c.type==='person');
   if(personColumns.length===0){ alert('Aucune colonne de type "Personne" sur cette feuille.'); return; }
+  const members = bookMembers(book);
 
   openModal({
     title:`Affecter ${ids.length} cas de test`,
     wide:true,
     fields: personColumns.map(col=>({
       name: col.id, label: col.label, type:'select', full:true,
-      options:[{value:'', label:'(ne pas modifier)'}, ...book.team.map(n=>({value:n,label:n}))],
+      options:[{value:'', label:'(ne pas modifier)'}, ...members.map(m=>({value:m.id,label:m.name}))],
     })),
     onSubmit:(values)=>{
-      const author = getCurrentTester() || 'Anonyme';
+      const author = getCurrentTester() || 'Administrateur';
       const now = new Date().toISOString();
       ids.forEach(id=>{
         const tc = sheet.testCases.find(c=>c.id===id);
@@ -1810,6 +2014,7 @@ function renderCellValue(col, value){
     const style = SELECT_PALETTE[(idx>=0?idx:0) % SELECT_PALETTE.length];
     return `<span class="badge" style="${style}">${escapeHtml(opt ? opt.label : value)}</span>`;
   }
+  if(col.type === 'person') return escapeHtml(memberName(value));
   if(col.type === 'checkbox') return value ? `${icon('CheckCircle2','#1B7A4B')}` : '<span style="color:#cbd5e1;">—</span>';
   if(col.type === 'date') return fmt(value);
   if(col.type === 'image') return `<span data-img-key="${escapeHtml(value)}" style="display:inline-block;min-width:40px;">…</span>`;
@@ -1820,7 +2025,7 @@ function renderCellValue(col, value){
 function columnToField(book, col, currentValue){
   const base = { name: col.id, label: col.label, required: col.required, value: currentValue };
   if(col.type === 'select') return { ...base, type:'select', options: col.options, full:true };
-  if(col.type === 'person') return { ...base, type:'select', options: book.team.map(n=>({value:n,label:n})), full:true };
+  if(col.type === 'person') return { ...base, type:'select', options: bookMembers(book).map(m=>({value:m.id,label:m.name})), full:true };
   if(col.type === 'textarea') return { ...base, type:'textarea', full:true, rows:3 };
   if(col.type === 'checkbox') return { ...base, type:'checkbox' };
   if(col.type === 'image') return { ...base, type:'image', full:true };
@@ -1848,7 +2053,7 @@ function openTestCaseModal(bookId, sheetId, caseId){
     wide:true,
     fields,
     onSubmit:(values)=>{
-      const author = getCurrentTester() || 'Anonyme';
+      const author = getCurrentTester() || 'Administrateur';
       const now = new Date().toISOString();
       const { categoryId, ...colValues } = values;
       if(tc){
@@ -1876,6 +2081,7 @@ function openTestCaseModal(bookId, sheetId, caseId){
 function formatHistVal(col, v){
   if(v === undefined || v === null || v === '') return '(vide)';
   if(col.type === 'select'){ const o=(col.options||[]).find(x=>x.value===v); return o?o.label:v; }
+  if(col.type === 'person') return memberName(v);
   if(col.type === 'checkbox') return v ? 'Oui' : 'Non';
   if(col.type === 'image') return 'capture mise à jour';
   return String(v).slice(0,60);
