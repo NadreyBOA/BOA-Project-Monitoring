@@ -1280,6 +1280,25 @@ function memberName(id){
   const m = loadMembers().find(x=>x.id===id);
   return m ? m.name : '—';
 }
+function renameMember(id){
+  const members = loadMembers();
+  const m = members.find(x=>x.id===id);
+  if(!m) return;
+  openModal({
+    title:'Modifier le membre',
+    fields:[
+      { name:'name', label:'Nom et prénom', type:'text', value:m.name, required:true, full:true },
+    ],
+    onSubmit:(values)=>{
+      if(members.some(x=>x.id!==id && x.name.toLowerCase()===values.name.toLowerCase())){
+        alert('Un membre porte déjà ce nom.'); return;
+      }
+      m.name = values.name;
+      saveMembers(members);
+      openMembersModal();
+    }
+  });
+}
 function bookMembers(book){
   const members = loadMembers();
   return members.filter(m=>book.memberIds.includes(m.id));
@@ -1305,6 +1324,7 @@ function membersModalHtml(){
             ${members.length===0 ? `<div class="empty">Aucun membre. Ajoutez-en un ci-dessus.</div>` : members.map(m=>`
               <div class="member-row">
                 <span class="mname">${escapeHtml(m.name)}</span>
+                <button class="icon-btn" onclick="renameMember('${m.id}')" title="Modifier">${icon('Pencil')}</button>
                 <button class="icon-btn danger" onclick="deleteMember('${m.id}')" title="Supprimer">${icon('Trash2')}</button>
               </div>
             `).join('')}
@@ -1399,7 +1419,7 @@ function newTestBook(name, description){
 function newSheet(name){
   return {
     id: newId(), name,
-    categories: [ { id:newId(), name:'Général', parentId:null } ],
+    categories: [ { id:newId(), name:'Général', parentId:null, idPrefix:'', idDigits:3 } ],
     columns: [
       { id:newId(), label:'Description', type:'textarea', required:true, options:[] },
       { id:newId(), label:'Responsable', type:'person', required:false, options:[] },
@@ -1466,6 +1486,35 @@ function categorySelectOptions(sheet, excludeId){
   return flattenCategories(sheet).filter(c=>!excluded.includes(c.id))
     .map(c=>({ value:c.id, label: '— '.repeat(categoryDepth(sheet,c.id)) + c.name }));
 }
+function categoryPathArray(sheet, catId){
+  const chain = [];
+  let cur = sheet.categories.find(c=>c.id===catId);
+  let guard = 0;
+  while(cur){
+    chain.unshift(cur.name);
+    cur = cur.parentId ? sheet.categories.find(c=>c.id===cur.parentId) : null;
+    if(++guard > 20) break;
+  }
+  return chain;
+}
+function sheetMaxDepth(sheet){
+  if(sheet.categories.length===0) return 1;
+  return Math.max(...sheet.categories.map(c=>categoryDepth(sheet,c.id))) + 1;
+}
+/* L'ID affiché (ex: OML001) dépend du préfixe défini sur la catégorie
+   du cas de test et de sa position parmi les cas du même "bloc"
+   (même catégorie exacte) dans l'ordre du tableau ; insérer un cas au
+   milieu d'un bloc décale donc automatiquement la numérotation de
+   tous ceux qui suivent dans ce bloc, sans rien stocker en dur. */
+function caseDisplayId(sheet, tc){
+  const cat = sheet.categories.find(c=>c.id===tc.categoryId);
+  const prefix = cat && cat.idPrefix ? cat.idPrefix : '';
+  const digits = cat && cat.idDigits ? cat.idDigits : 3;
+  const siblings = sheet.testCases.filter(c=>c.categoryId===tc.categoryId);
+  const idx = siblings.indexOf(tc);
+  const num = String(idx+1).padStart(digits,'0');
+  return prefix ? `${prefix}${num}` : `#${idx+1}`;
+}
 
 /* ─── Liste des cahiers de test ──────────────────────────────── */
 function renderTests(){
@@ -1491,6 +1540,7 @@ function renderTests(){
           <div class="tactions">
             <button class="btn-primary" style="flex:1;" onclick="viewTestBook('${b.id}')">${icon('Eye','#fff')} Ouvrir</button>
             <button class="icon-btn" onclick="renameTestBook('${b.id}')" title="Renommer">${icon('Pencil')}</button>
+            <button class="icon-btn" onclick="duplicateTestBook('${b.id}')" title="Dupliquer">${icon('Copy')}</button>
             <button class="icon-btn danger" onclick="deleteTestBook('${b.id}')" title="Supprimer">${icon('Trash2')}</button>
           </div>
         </div>`).join('')}
@@ -1538,6 +1588,38 @@ function deleteTestBook(id){
   saveTestBooks(books);
   renderTests();
 }
+/* Duplication d'une feuille : tous les id (catégories, colonnes, cas)
+   sont régénérés et les références internes (parentId, values par
+   colonne) sont remappées pour rester cohérentes dans la copie. */
+function cloneSheetForDuplication(s){
+  const catMap = {}, colMap = {};
+  const categories = s.categories.map(c=>{ const nid=newId(); catMap[c.id]=nid; return { id:nid, name:c.name, parentId:c.parentId, idPrefix:c.idPrefix||'', idDigits:c.idDigits||3 }; });
+  categories.forEach(c=>{ c.parentId = c.parentId ? (catMap[c.parentId]||null) : null; });
+  const columns = s.columns.map(c=>{ const nid=newId(); colMap[c.id]=nid; return { ...c, id:nid, options:(c.options||[]).map(o=>({...o})) }; });
+  const now = new Date().toISOString();
+  const testCases = s.testCases.map(tc=>{
+    const newValues = {};
+    Object.entries(tc.values||{}).forEach(([colId,v])=>{ if(colMap[colId]) newValues[colMap[colId]] = v; });
+    return { id:newId(), categoryId: catMap[tc.categoryId] || null, values:newValues,
+      history:[ { date:now, author:'Administrateur', field:'_create', fieldLabel:'Création', from:'', to:'dupliqué' } ] };
+  });
+  return { id:newId(), name:s.name, categories, columns, testCases };
+}
+function duplicateTestBook(id){
+  if(!confirm('Dupliquer ce cahier de test (feuilles, catégories, colonnes et cas de test) ?')) return;
+  const books = loadTestBooks();
+  const book = books.find(b=>b.id===id);
+  if(!book) return;
+  const now = new Date().toISOString();
+  const copy = {
+    id:newId(), name: book.name + ' (copie)', description: book.description,
+    createdAt: now, updatedAt: now, memberIds: [...book.memberIds],
+    sheets: book.sheets.map(cloneSheetForDuplication),
+  };
+  books.push(copy);
+  saveTestBooks(books);
+  renderTests();
+}
 
 /* ─── Export du cahier en classeur Excel (une feuille par Feuille) ── */
 function exportCellValue(col, v){
@@ -1556,11 +1638,18 @@ function exportTestBookXlsx(bookId){
   if(!book) return;
   const wb = XLSX.utils.book_new();
   book.sheets.forEach(sheet=>{
-    const header = ['Catégorie', ...sheet.columns.map(c=>c.label)];
-    const rows = sheet.testCases.map(tc=>[
-      categoryPath(sheet, tc.categoryId),
-      ...sheet.columns.map(col=>exportCellValue(col, tc.values[col.id])),
-    ]);
+    const maxDepth = sheetMaxDepth(sheet);
+    const levelHeaders = Array.from({length:maxDepth}, (_,i)=> i===0 ? 'Catégorie' : 'Sous-'.repeat(i-1>0?i-1:0) + (i===1?'Sous-catégorie':'sous-catégorie'));
+    const header = ['ID', ...levelHeaders, ...sheet.columns.map(c=>c.label)];
+    const rows = sheet.testCases.map(tc=>{
+      const path = categoryPathArray(sheet, tc.categoryId);
+      const padded = [...path, ...Array(Math.max(0, maxDepth - path.length)).fill('')];
+      return [
+        caseDisplayId(sheet, tc),
+        ...padded,
+        ...sheet.columns.map(col=>exportCellValue(col, tc.values[col.id])),
+      ];
+    });
     const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
     let base = (sheet.name || 'Feuille').replace(/[\\/?*[\]:]/g,' ').trim().slice(0,31) || 'Feuille';
     let name = base, i = 1;
@@ -1724,7 +1813,7 @@ function renderSheetDetail(){
   let tabContent = '';
   if(testDetailState.tab === 'structure') tabContent = renderStructureTab(book, sheet);
   else if(testDetailState.tab === 'cases') tabContent = renderCasesTab(book, sheet);
-  else if(testDetailState.tab === 'suivi') tabContent = renderSuiviTab(sheet);
+  else if(testDetailState.tab === 'suivi') tabContent = renderSuiviTab(book, sheet);
 
   document.getElementById('content').innerHTML = `
     <button class="back-link" onclick="backToBook()">${icon('ArrowLeft')} Retour à « ${escapeHtml(book.name)} »</button>
@@ -1750,6 +1839,7 @@ function renderStructureTab(book, sheet){
       <div class="cat-row" style="padding-left:${14 + depth*22}px;">
         <span class="cat-pill">${categoryDepthLabel(depth)}</span>
         <span class="tname">${escapeHtml(c.name)}</span>
+        ${c.idPrefix ? `<span class="col-type-pill">${escapeHtml(c.idPrefix)}${'0'.repeat(c.idDigits||3)}</span>` : ''}
         <span class="tactions">
           <button class="icon-btn" onclick="openCategoryModal('${book.id}','${sheet.id}',null,'${c.id}')" title="Ajouter une sous-catégorie ici">${icon('Plus')}</button>
           <button class="icon-btn" onclick="openCategoryModal('${book.id}','${sheet.id}','${c.id}')" title="Modifier">${icon('Pencil')}</button>
@@ -1825,10 +1915,14 @@ function openCategoryModal(bookId, sheetId, catId, presetParentId){
       { name:'parentId', label:'Catégorie parente', type:'select',
         value: cat ? (cat.parentId||'') : (presetParentId||''),
         options:[{value:'', label:'(catégorie racine)'}, ...categorySelectOptions(sheet, catId)], full:true },
+      { name:'idPrefix', label:'Préfixe des ID de ce bloc (ex : OML)', type:'text', value: cat ? (cat.idPrefix||'') : '' },
+      { name:'idDigits', label:'Nombre de chiffres (ex : 3 → 001)', type:'number', value: cat ? (cat.idDigits||3) : 3 },
     ],
     onSubmit:(values)=>{
-      if(cat){ cat.name = values.name; cat.parentId = values.parentId || null; }
-      else sheet.categories.push({ id:newId(), name:values.name, parentId: values.parentId || null });
+      const idPrefix = (values.idPrefix||'').trim().toUpperCase();
+      const idDigits = values.idDigits || 3;
+      if(cat){ cat.name = values.name; cat.parentId = values.parentId || null; cat.idPrefix = idPrefix; cat.idDigits = idDigits; }
+      else sheet.categories.push({ id:newId(), name:values.name, parentId: values.parentId || null, idPrefix, idDigits });
       touchTestBook(book);
       saveTestBooks(books);
       renderSheetDetail();
@@ -1923,6 +2017,7 @@ function renderCasesTab(book, sheet){
         </select>
         ${icon('ChevronDown','#9ca3af')}
       </div>
+      ${personColumns.length>0 ? `<button class="btn-secondary" onclick="openBlockAssignModal('${book.id}','${sheet.id}')">${icon('ArrowRight')} Affecter un bloc (catégorie / feuille / cahier)</button>` : ''}
       ${personColumns.length>0 && selectedCount>0 ? `
         <button class="btn-secondary" onclick="openBulkAssignModal('${book.id}','${sheet.id}')">${icon('ArrowRight')} Affecter la sélection (${selectedCount})</button>
         <button class="btn-outline" onclick="clearSelection()">Annuler la sélection</button>
@@ -1943,6 +2038,7 @@ function renderCasesTab(book, sheet){
   html += `<div class="table-card" style="overflow-x:auto;"><table class="test-cases-table">
     <thead><tr>
       <th style="width:28px;"><input type="checkbox" ${allSelected?'checked':''} onchange='toggleSelectAll(${JSON.stringify(visibleIds)}, this.checked)'></th>
+      <th>ID</th>
       <th>Catégorie</th>
       ${sheet.columns.map(c=>`<th>${escapeHtml(c.label)}</th>`).join('')}
       <th class="right">Actions</th>
@@ -1951,10 +2047,12 @@ function renderCasesTab(book, sheet){
       ${cases.map(tc=>`
         <tr>
           <td><input type="checkbox" ${testDetailState.selected.has(tc.id)?'checked':''} onchange="toggleCaseSelect('${tc.id}', this.checked)"></td>
+          <td><strong>${escapeHtml(caseDisplayId(sheet, tc))}</strong></td>
           <td>${escapeHtml(categoryPath(sheet, tc.categoryId))}</td>
           ${sheet.columns.map(c=>`<td>${renderCellValue(c, tc.values[c.id])}</td>`).join('')}
           <td class="right">
             <button class="icon-btn" onclick="openTestCaseModal('${book.id}','${sheet.id}','${tc.id}')" title="Modifier">${icon('Pencil')}</button>
+            <button class="icon-btn" onclick="duplicateTestCase('${book.id}','${sheet.id}','${tc.id}')" title="Dupliquer">${icon('Copy')}</button>
             <button class="icon-btn danger" onclick="deleteTestCase('${book.id}','${sheet.id}','${tc.id}')" title="Supprimer">${icon('Trash2')}</button>
           </td>
         </tr>
@@ -2006,6 +2104,67 @@ function openBulkAssignModal(bookId, sheetId){
   });
 }
 
+/* ─── Affectation par bloc (catégorie/sous-catégorie, feuille entière
+   ou cahier entier) — évite de devoir sélectionner cas par cas quand
+   une même personne doit gérer tout un bloc ── */
+function openBlockAssignModal(bookId, sheetId){
+  const books = loadTestBooks();
+  const book = books.find(b=>b.id===bookId);
+  const sheet = book.sheets.find(s=>s.id===sheetId);
+  const personLabels = [...new Set(sheet.columns.filter(c=>c.type==='person').map(c=>c.label))];
+  if(personLabels.length===0){ alert('Aucune colonne de type "Personne" sur cette feuille.'); return; }
+  const members = bookMembers(book);
+  if(members.length===0){ alert('Affectez d\'abord des membres à ce cahier.'); return; }
+
+  openModal({
+    title:'Affecter un bloc entier',
+    wide:true,
+    fields:[
+      { name:'scope', label:'Portée de l\'affectation', type:'select', required:true, full:true,
+        options:[
+          { value:'category', label:'Une catégorie / sous-catégorie (et ses sous-blocs)' },
+          { value:'sheet', label:'Toute la feuille « '+sheet.name+' »' },
+          { value:'book', label:'Tout le cahier (toutes les feuilles)' },
+        ] },
+      { name:'categoryId', label:'Catégorie concernée (si portée = catégorie)', type:'select', full:true,
+        options: categorySelectOptions(sheet, null) },
+      { name:'colLabel', label:'Colonne "Personne" à affecter', type:'select', required:true, full:true,
+        options: personLabels.map(l=>({value:l,label:l})) },
+      { name:'memberId', label:'Affecter à', type:'select', required:true, full:true,
+        options: members.map(m=>({value:m.id,label:m.name})) },
+    ],
+    onSubmit:(values)=>{
+      const author = getCurrentTester() || 'Administrateur';
+      const now = new Date().toISOString();
+      let count = 0;
+      const sheetsToScan = values.scope==='book' ? book.sheets : [sheet];
+      sheetsToScan.forEach(s=>{
+        const col = s.columns.find(c=>c.type==='person' && c.label===values.colLabel);
+        if(!col) return;
+        let targetCases = s.testCases;
+        if(values.scope==='category' && s.id===sheet.id && values.categoryId){
+          const ids = categoryDescendantIds(s, values.categoryId);
+          targetCases = s.testCases.filter(tc=>ids.includes(tc.categoryId));
+        } else if(values.scope==='category' && s.id!==sheet.id){
+          targetCases = [];
+        }
+        targetCases.forEach(tc=>{
+          const oldV = tc.values[col.id];
+          if(oldV !== values.memberId){
+            tc.values[col.id] = values.memberId;
+            tc.history.push({ date:now, author, field:col.id, fieldLabel:col.label, from:formatHistVal(col,oldV), to:formatHistVal(col,values.memberId) });
+            count++;
+          }
+        });
+      });
+      touchTestBook(book);
+      saveTestBooks(books);
+      renderSheetDetail();
+      alert(`${count} cas de test affecté(s).`);
+    }
+  });
+}
+
 function renderCellValue(col, value){
   if(value === undefined || value === null || value === '') return '<span style="color:#cbd5e1;">—</span>';
   if(col.type === 'select'){
@@ -2045,6 +2204,9 @@ function openTestCaseModal(bookId, sheetId, caseId){
   const fields = [
     { name:'categoryId', label:'Catégorie', type:'select', required:true, full:true,
       value: tc ? tc.categoryId : (catOptions[0] && catOptions[0].value), options: catOptions },
+    ...(!tc ? [{ name:'insertBeforeId', label:'Position dans le bloc (ID)', type:'select', full:true,
+      value:'', options:[{value:'', label:'(à la fin du bloc)'},
+        ...sheet.testCases.map(c=>({ value:c.id, label:`Avant ${caseDisplayId(sheet,c)} — ${categoryLabel(sheet,c.categoryId)}` }))] }] : []),
     ...sheet.columns.map(col=>columnToField(book, col, tc ? tc.values[col.id] : undefined)),
   ];
 
@@ -2055,7 +2217,7 @@ function openTestCaseModal(bookId, sheetId, caseId){
     onSubmit:(values)=>{
       const author = getCurrentTester() || 'Administrateur';
       const now = new Date().toISOString();
-      const { categoryId, ...colValues } = values;
+      const { categoryId, insertBeforeId, ...colValues } = values;
       if(tc){
         sheet.columns.forEach(col=>{
           const oldV = tc.values[col.id];
@@ -2070,7 +2232,9 @@ function openTestCaseModal(bookId, sheetId, caseId){
         const newCase = { id:newId(), categoryId, values:colValues, history:[
           { date:now, author, field:'_create', fieldLabel:'Création', from:'', to:'cas de test créé' }
         ] };
-        sheet.testCases.push(newCase);
+        const beforeIdx = insertBeforeId ? sheet.testCases.findIndex(c=>c.id===insertBeforeId) : -1;
+        if(beforeIdx >= 0 && sheet.testCases[beforeIdx].categoryId === categoryId) sheet.testCases.splice(beforeIdx, 0, newCase);
+        else sheet.testCases.push(newCase);
       }
       touchTestBook(book);
       saveTestBooks(books);
@@ -2096,9 +2260,125 @@ function deleteTestCase(bookId, sheetId, caseId){
   saveTestBooks(books);
   renderSheetDetail();
 }
+/* Dupliquer un cas de test : la copie est insérée juste après
+   l'original dans son bloc (catégorie), ce qui décale automatiquement
+   la numérotation de tous les ID suivants du même bloc. */
+function duplicateTestCase(bookId, sheetId, caseId){
+  const books = loadTestBooks();
+  const book = books.find(b=>b.id===bookId);
+  const sheet = book.sheets.find(s=>s.id===sheetId);
+  const idx = sheet.testCases.findIndex(c=>c.id===caseId);
+  if(idx < 0) return;
+  const original = sheet.testCases[idx];
+  const now = new Date().toISOString();
+  const copy = {
+    id:newId(), categoryId: original.categoryId, values:{ ...original.values },
+    history:[ { date:now, author:getCurrentTester()||'Administrateur', field:'_create', fieldLabel:'Création', from:'', to:'dupliqué depuis '+caseDisplayId(sheet, original) } ],
+  };
+  sheet.testCases.splice(idx+1, 0, copy);
+  touchTestBook(book);
+  saveTestBooks(books);
+  renderSheetDetail();
+}
 
 /* ─── Onglet Suivi & Contribution ──────────────────────────────── */
-function renderSuiviTab(sheet){
+function statusColumnOf(sheet){ return sheet.columns.find(c=>c.type==='select' && /statut|status/i.test(c.label)); }
+function personColumnsOf(sheet){ return sheet.columns.filter(c=>c.type==='person'); }
+function renderRealisationSection(book, sheet){
+  const total = sheet.testCases.length;
+  const statusCol = statusColumnOf(sheet);
+  const personCols = personColumnsOf(sheet);
+
+  let statusBars = '';
+  if(statusCol){
+    const byStatus = {};
+    (statusCol.options||[]).forEach(o=> byStatus[o.label] = 0);
+    byStatus['Non défini'] = 0;
+    sheet.testCases.forEach(tc=>{
+      const v = tc.values[statusCol.id];
+      const opt = (statusCol.options||[]).find(o=>o.value===v);
+      const label = opt ? opt.label : 'Non défini';
+      byStatus[label] = (byStatus[label]||0) + 1;
+    });
+    const maxStatus = Math.max(1, ...Object.values(byStatus));
+    statusBars = `
+      <div class="card chart-card">
+        <h2>Avancement par statut</h2>
+        <div class="bars">
+          ${Object.entries(byStatus).filter(([,c])=>c>0 || total===0).map(([label,count])=>`
+            <div class="bar-row">
+              <div class="bar-label" title="${escapeHtml(label)}">${escapeHtml(label)}</div>
+              <div class="bar-track"><div class="bar-fill" style="width:${count/maxStatus*100}%"></div></div>
+              <div class="bar-value">${count}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>`;
+  }
+
+  let assignedCount = 0, unassignedCount = 0;
+  if(personCols.length>0){
+    sheet.testCases.forEach(tc=>{
+      const hasAny = personCols.some(pc=> tc.values[pc.id]);
+      if(hasAny) assignedCount++; else unassignedCount++;
+    });
+  } else { unassignedCount = total; }
+
+  let memberTable = '';
+  if(personCols.length>0){
+    const members = bookMembers(book);
+    const statusOptions = statusCol ? (statusCol.options||[]) : [];
+    memberTable = `
+      <div class="table-card" style="overflow-x:auto;margin-top:14px;">
+        <table class="test-cases-table">
+          <thead><tr>
+            <th>Membre</th>
+            <th>Cas affectés</th>
+            ${statusOptions.map(o=>`<th>${escapeHtml(o.label)}</th>`).join('')}
+          </tr></thead>
+          <tbody>
+            ${members.map(m=>{
+              const mine = sheet.testCases.filter(tc=> personCols.some(pc=> tc.values[pc.id]===m.id));
+              return `<tr>
+                <td><strong>${escapeHtml(m.name)}</strong></td>
+                <td>${mine.length}</td>
+                ${statusOptions.map(o=>`<td>${mine.filter(tc=> statusCol && tc.values[statusCol.id]===o.value).length}</td>`).join('')}
+              </tr>`;
+            }).join('')}
+            <tr>
+              <td><strong>Non affectés</strong></td>
+              <td>${unassignedCount}</td>
+              ${statusOptions.map(()=>`<td>—</td>`).join('')}
+            </tr>
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  return `
+    <div class="section-card" style="margin-bottom:18px;">
+      <div class="section-head"><h2>${icon('TrendingUp')} Niveau de réalisation</h2></div>
+      <div style="padding:14px 16px;">
+        <div class="grid grid-3" style="margin-bottom:14px;">
+          <div class="card kpi-card">
+            <div class="kpi-icon" style="background:var(--boa-green-light);">${icon('CheckCircle2','#1B7A4B')}</div>
+            <div><div class="kpi-value">${assignedCount}</div><div class="kpi-label">Cas affectés</div></div>
+          </div>
+          <div class="card kpi-card">
+            <div class="kpi-icon" style="background:var(--boa-red-light);">${icon('AlertCircle','#D14343')}</div>
+            <div><div class="kpi-value">${unassignedCount}</div><div class="kpi-label">Cas non affectés</div></div>
+          </div>
+          <div class="card kpi-card">
+            <div class="kpi-icon" style="background:var(--boa-navy-light);">${icon('Activity','#1B2E5E')}</div>
+            <div><div class="kpi-value">${total}</div><div class="kpi-label">Total cas de test</div></div>
+          </div>
+        </div>
+        ${statusBars}
+        ${memberTable}
+      </div>
+    </div>`;
+}
+function renderSuiviTab(book, sheet){
   const total = sheet.testCases.length;
   const allHistory = [];
   sheet.testCases.forEach(tc=> tc.history.forEach(h=> allHistory.push({ ...h, caseId:tc.id })));
@@ -2116,6 +2396,7 @@ function renderSuiviTab(sheet){
   const maxAuthor = Math.max(1, ...Object.values(byAuthor));
 
   return `
+    ${renderRealisationSection(book, sheet)}
     <div class="grid grid-3" style="margin-bottom:18px;">
       <div class="card kpi-card">
         <div class="kpi-icon" style="background:var(--boa-green-light);">${icon('CheckCircle2','#1B7A4B')}</div>
@@ -4632,6 +4913,7 @@ function icon(name, color){
     CalendarRange:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M7 14h2"/><path d="M15 14h2"/><path d="M7 18h2"/><path d="M15 18h2"/></svg>`,
     GitBranch:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>`,
     ArrowRight:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>`,
+    Copy:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`,
   };
   return icons[name] || '';
 }
