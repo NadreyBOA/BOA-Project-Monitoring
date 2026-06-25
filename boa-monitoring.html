@@ -495,6 +495,15 @@
     .grid-2{grid-template-columns:1fr;}
   }
 
+  /* ─── Tableau de bord : période & évolution annuelle ──────── */
+  .dash-period-bar{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+  .dash-period-label{font-size:12.5px;font-weight:600;color:#6b7280;}
+  .year-chart{display:flex;align-items:flex-end;gap:18px;padding:16px 8px 4px;min-height:130px;}
+  .year-chart-col{display:flex;flex-direction:column;align-items:center;gap:6px;}
+  .year-chart-value{font-size:11.5px;font-weight:700;color:var(--boa-black);}
+  .year-chart-bar{width:34px;background:var(--boa-green);border-radius:5px 5px 0 0;transition:height .2s;}
+  .year-chart-label{font-size:11px;color:#9ca3af;}
+
   /* ─── Sidebar : groupe déroulant ────────────────────────── */
   .nav-group-toggle{width:100%;display:flex;align-items:center;}
   .nav-group-chevron{transition:transform .15s;flex-shrink:0;}
@@ -1498,8 +1507,27 @@ function deleteRunItem(id){
 }
 
 /* ─── Vue Tableau de bord ───────────────────────────────────── */
+let dashboardPeriod = 'all';
+
+function projectYear(p){
+  const d = new Date(p.startDate || p.createdAt);
+  return isNaN(d) ? null : d.getFullYear();
+}
+
+function setDashboardPeriod(value){
+  dashboardPeriod = value;
+  renderDashboard();
+}
+
 function renderDashboard(){
-  const projects = loadProjects();
+  const allProjects = loadProjects();
+  const years = [...new Set(allProjects.map(projectYear).filter(Boolean))].sort((a,b)=>b-a);
+  const currentYear = new Date().getFullYear();
+
+  const projects = dashboardPeriod === 'all'
+    ? allProjects
+    : allProjects.filter(p=>projectYear(p) === Number(dashboardPeriod));
+
   const stats = getProjectStats(projects);
   const openActions = getAllOpenActions(projects);
   const overdueActions = openActions.filter(a=>isOverdue(a.dueDate));
@@ -1514,6 +1542,10 @@ function renderDashboard(){
   const attention = projects
     .filter(p=> p.healthStatus !== 'VERT' || (p.status==='EN_COURS' && isOverdue(p.plannedEndDate)))
     .sort((a,b)=> (a.healthStatus==='ROUGE' ? -1 : 1));
+
+  /* Priorité */
+  const priorityCounts = {};
+  Object.keys(PRIORITY_LABELS).forEach(k=> priorityCounts[k] = projects.filter(p=>p.priority===k).length);
 
   /* Status pie */
   const statusCounts = {
@@ -1538,7 +1570,29 @@ function renderDashboard(){
   projects.forEach(p=> catCounts[p.category] = (catCounts[p.category]||0)+1);
   const maxCat = Math.max(1, ...Object.values(catCounts));
 
+  /* Évolution par année (toutes années, indépendant du filtre) */
+  const yearCounts = {};
+  allProjects.forEach(p=>{ const y = projectYear(p); if(y) yearCounts[y] = (yearCounts[y]||0)+1; });
+  const yearSeries = Object.entries(yearCounts).sort(([a],[b])=>a-b);
+  const maxYear = Math.max(1, ...yearSeries.map(([,v])=>v));
+
+  /* Run summary */
+  const runItems = loadRunItems();
+  const runOpen = runItems.filter(it=>it.status!=='FERME');
+  const runOverdue = runOpen.filter(it=>it.dueDate && isOverdue(it.dueDate));
+
   document.getElementById('content').innerHTML = `
+    <div class="dash-period-bar">
+      <span class="dash-period-label">Période :</span>
+      <div class="select-wrap">
+        <select onchange="setDashboardPeriod(this.value)">
+          <option value="all" ${dashboardPeriod==='all'?'selected':''}>Toutes les années</option>
+          ${years.map(y=>`<option value="${y}" ${String(dashboardPeriod)===String(y)?'selected':''}>${y}${y===currentYear?' (en cours)':''}</option>`).join('')}
+        </select>
+        ${icon('ChevronDown','#9ca3af')}
+      </div>
+    </div>
+
     <!-- KPI Cards -->
     <div class="grid grid-4">
       ${kpiCard('FolderOpen','#1B2E5E','#e8ecf5', stats.total, 'Total projets')}
@@ -1563,6 +1617,15 @@ function renderDashboard(){
       </div>
     </div>
 
+    <!-- Priorité row -->
+    <div class="grid grid-4 section">
+      ${Object.entries(PRIORITY_LABELS).map(([k,label])=>`
+        <div class="card health-card">
+          <span class="badge" style="${PRIORITY_COLORS[k]}">${label}</span>
+          <div><div class="health-value">${priorityCounts[k]}</div><div class="health-label">Projet(s)</div></div>
+        </div>`).join('')}
+    </div>
+
     <!-- Charts -->
     <div class="grid grid-2 section">
       <div class="card chart-card">
@@ -1580,7 +1643,7 @@ function renderDashboard(){
         </div>` : `<div class="empty">Aucun projet</div>`}
       </div>
       <div class="card chart-card">
-        <h2>Projets par catégorie</h2>
+        <h2>Projets par type${dashboardPeriod!=='all' ? ` — ${dashboardPeriod}` : ''}</h2>
         ${Object.keys(catCounts).length ? `
         <div class="bars">
           ${Object.entries(catCounts).map(([cat,count])=>`
@@ -1590,6 +1653,33 @@ function renderDashboard(){
               <div class="bar-value">${count}</div>
             </div>`).join('')}
         </div>` : `<div class="empty">Aucun projet</div>`}
+      </div>
+    </div>
+
+    <!-- Évolution par année -->
+    <div class="section card chart-card">
+      <h2>Évolution des projets par année</h2>
+      ${yearSeries.length ? `
+      <div class="year-chart">
+        ${yearSeries.map(([y,v])=>`
+          <div class="year-chart-col">
+            <div class="year-chart-value">${v}</div>
+            <div class="year-chart-bar" style="height:${Math.max(6,(v/maxYear)*100)}px;${Number(y)===Number(dashboardPeriod) ? 'background:var(--boa-navy);' : ''}"></div>
+            <div class="year-chart-label">${y}</div>
+          </div>`).join('')}
+      </div>` : `<div class="empty">Aucun projet</div>`}
+    </div>
+
+    <!-- Suivi du Run -->
+    <div class="section section-card">
+      <div class="section-head">
+        <h2>${icon('CheckCircle2','#1B7A4B')} Suivi du Run</h2>
+        <a class="count" href="#" onclick="navigate('run');return false;">Voir le Run ${icon('ChevronRight','#9ca3af')}</a>
+      </div>
+      <div class="grid grid-3" style="padding:16px;">
+        <div class="card health-card"><div><div class="health-value">${runOpen.length}</div><div class="health-label">Ouverts</div></div></div>
+        <div class="card health-card"><div><div class="health-value" style="${runOverdue.length?'color:var(--boa-red);':''}">${runOverdue.length}</div><div class="health-label">En retard</div></div></div>
+        <div class="card health-card"><div><div class="health-value">${runItems.filter(it=>it.status==='FERME').length}</div><div class="health-label">Clôturés</div></div></div>
       </div>
     </div>
 
