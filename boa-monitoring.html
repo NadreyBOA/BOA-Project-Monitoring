@@ -495,6 +495,14 @@
     .grid-2{grid-template-columns:1fr;}
   }
 
+  /* ─── Sidebar : groupe déroulant ────────────────────────── */
+  .nav-group-toggle{width:100%;display:flex;align-items:center;}
+  .nav-group-chevron{transition:transform .15s;flex-shrink:0;}
+  .nav-subitems{display:none;}
+  .nav-subitems.open{display:block;}
+  .nav-group-toggle.active .nav-group-chevron{transform:rotate(180deg);}
+  .nav-subitem{padding-left:42px;font-size:12.5px;}
+
   /* Paramètres */
   .settings-section{background:#fff;border:1px solid var(--boa-gray-border);border-radius:12px;padding:24px;max-width:680px;}
   .settings-section-title{font-size:16px;font-weight:700;color:var(--boa-black);margin-bottom:4px;}
@@ -529,10 +537,18 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
         Tableau de bord
       </button>
-      <button class="nav-item" data-view="projects">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>
-        Projets
-      </button>
+      <div class="nav-group">
+        <button class="nav-item nav-group-toggle" id="nav-group-toggle-projects" onclick="toggleNavGroup('projects')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>
+          Projets
+          <svg class="nav-group-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto;"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="nav-subitems" id="nav-subitems-projects">
+          <button class="nav-item nav-subitem" data-view="projects">Projet</button>
+          <button class="nav-item nav-subitem" data-view="mep">Demande de MEP</button>
+          <button class="nav-item nav-subitem" data-view="production">Points production</button>
+        </div>
+      </div>
       <button class="nav-item" data-view="run">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
         Suivi du Run
@@ -1104,12 +1120,38 @@ const VIEWS = {
   projects:  { title:'Projets', subtitle:'Liste et suivi des projets', render: renderProjects },
   run:       { title:'Suivi du Run', subtitle:"Sujets, requêtes et incidents traités au quotidien", render: renderRun },
   settings:  { title:'Paramètres', subtitle:"Configuration de l'outil", render: renderSettings },
+  mep:       { title:'Demande de MEP', subtitle:'Mises en production', render: renderMepPlaceholder },
+  production:{ title:'Points production', subtitle:'Suivi en production', render: renderProductionPlaceholder },
 };
+
+function renderPlaceholderView(message){
+  document.getElementById('content').innerHTML = `
+    <div class="empty" style="padding:60px 18px;">${escapeHtml(message)}</div>`;
+}
+function renderMepPlaceholder(){ renderPlaceholderView('Contenu à venir : suivi des demandes de mise en production.'); }
+function renderProductionPlaceholder(){ renderPlaceholderView('Contenu à venir : suivi des points en production.'); }
+
+const NAV_GROUPS = { projects: ['projects','mep','production'] };
+
+function toggleNavGroup(group){
+  const el = document.getElementById(`nav-subitems-${group}`);
+  const toggleEl = document.getElementById(`nav-group-toggle-${group}`);
+  if(!el) return;
+  const open = el.classList.toggle('open');
+  if(toggleEl) toggleEl.classList.toggle('active', open);
+}
 
 function navigate(view){
   if(!VIEWS[view]) view = 'dashboard';
-  document.querySelectorAll('.nav-item').forEach(el=>{
+  document.querySelectorAll('.nav-item[data-view]').forEach(el=>{
     el.classList.toggle('active', el.dataset.view === view);
+  });
+  Object.entries(NAV_GROUPS).forEach(([group, views])=>{
+    const toggleEl = document.getElementById(`nav-group-toggle-${group}`);
+    const subEl = document.getElementById(`nav-subitems-${group}`);
+    const isActive = views.includes(view);
+    if(toggleEl) toggleEl.classList.toggle('active', isActive);
+    if(subEl && isActive) subEl.classList.add('open');
   });
   document.getElementById('page-title').textContent = VIEWS[view].title;
   document.getElementById('page-subtitle').textContent = VIEWS[view].subtitle;
@@ -1117,7 +1159,7 @@ function navigate(view){
   location.hash = view;
 }
 
-document.querySelectorAll('.nav-item').forEach(el=>{
+document.querySelectorAll('.nav-item[data-view]').forEach(el=>{
   el.addEventListener('click', ()=> navigate(el.dataset.view));
 });
 document.getElementById('new-project-btn').addEventListener('click', e=>{
