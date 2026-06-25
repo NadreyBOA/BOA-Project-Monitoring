@@ -247,6 +247,28 @@
   .progress-fill{height:100%;background:var(--boa-green);border-radius:6px;}
   .progress-label{font-size:11px;color:#6b7280;margin-top:3px;}
 
+  /* ─── Table Projets : tri, jauge temps, mode reporting ────── */
+  .projects-table th{padding:8px 14px;font-size:10px;}
+  .projects-table td{padding:8px 14px;font-size:12px;}
+  .projects-table td .pname{font-size:12.5px;}
+  .projects-table td .psub{font-size:10.5px;}
+  .sortable-th{cursor:pointer;user-select:none;white-space:nowrap;}
+  .sortable-th:hover{color:var(--boa-navy);}
+  .project-row{cursor:pointer;}
+  .project-row.expanded{background:var(--boa-gray-bg);}
+  .time-gauge{height:4px;border-radius:3px;background:var(--boa-gray-surf);margin-top:5px;overflow:hidden;}
+  .time-gauge-fill{height:100%;border-radius:3px;}
+  .project-report-row td{padding:0;border-bottom:1px solid var(--boa-gray-surf);background:var(--boa-gray-bg);}
+  .report-panel{display:grid;grid-template-columns:1fr 1fr 1fr 1.3fr;gap:16px;padding:16px 20px;}
+  .report-col-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:#6b7280;display:flex;align-items:center;gap:6px;margin-bottom:8px;cursor:pointer;}
+  .report-col-title:hover{text-decoration:underline;}
+  .report-item{font-size:12px;color:#374151;display:flex;align-items:center;gap:6px;padding:4px 0;cursor:pointer;}
+  .report-item:hover{color:var(--boa-navy);}
+  .report-item .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+  .report-item-date{color:#9ca3af;}
+  .report-empty{font-size:11.5px;color:#9ca3af;font-style:italic;}
+  .report-obs-input{width:100%;min-height:80px;border:1px solid var(--boa-gray-border);border-radius:8px;padding:8px;font-size:12px;font-family:inherit;resize:vertical;}
+
   /* ─── Action icon buttons ────────────────────────────────── */
   .icon-btn{padding:6px;border-radius:6px;border:none;background:none;cursor:pointer;color:#6b7280;display:inline-flex;}
   .icon-btn:hover{background:var(--boa-gray-bg);color:var(--boa-green);}
@@ -1612,7 +1634,114 @@ function renderDashboard(){
 
 /* ─── Vue Projets ────────────────────────────────────────────── */
 const projectsFilterState = { search:'', status:'', priority:'', category:'' };
+const projectsSortState = { key:'plannedEndDate', dir:'asc' };
+let expandedProjectId = null;
 let confirmDeleteId = null;
+
+function sortProjectsBy(key){
+  if(projectsSortState.key === key){
+    projectsSortState.dir = projectsSortState.dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    projectsSortState.key = key;
+    projectsSortState.dir = 'asc';
+  }
+  renderProjects();
+}
+
+const PROJECTS_SORT_VALUE = {
+  name: p=>p.name.toLowerCase(),
+  status: p=>STATUS_LABELS[p.status] ?? p.status,
+  priority: p=>({CRITIQUE:0,HAUTE:1,MOYENNE:2,BASSE:3}[p.priority] ?? 9),
+  healthStatus: p=>({ROUGE:0,ORANGE:1,VERT:2}[p.healthStatus] ?? 9),
+  progress: p=>p.progress ?? 0,
+  projectManager: p=>(p.projectManager||'').toLowerCase(),
+  startDate: p=>p.startDate || '',
+  plannedEndDate: p=>p.plannedEndDate || '',
+};
+
+function sortProjectsList(list){
+  const { key, dir } = projectsSortState;
+  const getValue = PROJECTS_SORT_VALUE[key];
+  if(!getValue) return list;
+  const sorted = [...list].sort((a,b)=>{
+    const va = getValue(a), vb = getValue(b);
+    if(va < vb) return -1;
+    if(va > vb) return 1;
+    return 0;
+  });
+  if(dir === 'desc') sorted.reverse();
+  return sorted;
+}
+
+function sortArrowIcon(key){
+  if(projectsSortState.key !== key) return '';
+  return projectsSortState.dir === 'asc' ? ' ▲' : ' ▼';
+}
+
+function toggleExpandedProject(id){
+  expandedProjectId = expandedProjectId === id ? null : id;
+  renderProjects();
+}
+
+function updateProjectObservations(id, value){
+  const projects = loadProjects();
+  const p = projects.find(p=>p.id===id);
+  if(!p) return;
+  p.observations = value;
+  p.updatedAt = new Date().toISOString();
+  saveProjects(projects);
+}
+
+function goToProjectMilestoneStatus(id){
+  viewProject(id);
+  setDetailTab('jalons');
+  setJalonsView('kanban');
+}
+function goToProjectJournal(id){
+  viewProject(id);
+  setDetailTab('journal');
+}
+
+function timeGaugeFraction(startDate, endDate){
+  if(!startDate || !endDate) return 0;
+  const start = new Date(startDate).getTime();
+  const end = new Date(endDate).getTime();
+  const now = Date.now();
+  if(end <= start) return 1;
+  return Math.min(1, Math.max(0, (now - start) / (end - start)));
+}
+
+function renderProjectReportingPanel(p){
+  const milestones = p.milestones || [];
+  const done = milestones.filter(m=>m.status==='TERMINE').sort((a,b)=>(b.plannedDate||'').localeCompare(a.plannedDate||''));
+  const ongoing = milestones.filter(m=>m.status==='EN_COURS' || m.status==='EN_RETARD').sort((a,b)=>(a.plannedDate||'').localeCompare(b.plannedDate||''));
+  const upcoming = milestones.filter(m=>m.status==='NON_COMMENCE').sort((a,b)=>(a.plannedDate||'').localeCompare(b.plannedDate||''));
+
+  const itemHtml = (m)=>`<div class="report-item" onclick="event.stopPropagation(); goToProjectMilestoneStatus('${p.id}')">
+    <span class="dot" style="background:${MILESTONE_STATUS_DOT[m.status]};"></span>
+    ${escapeHtml(m.name)} <span class="report-item-date">— ${fmt(m.plannedDate)}</span>
+  </div>`;
+
+  return `
+    <div class="report-panel">
+      <div class="report-col">
+        <div class="report-col-title done" onclick="event.stopPropagation(); goToProjectMilestoneStatus('${p.id}')">${icon('Check','#1B7A4B')} Ce qui a été fait</div>
+        ${done.length ? done.map(itemHtml).join('') : `<div class="report-empty">Aucun jalon terminé</div>`}
+      </div>
+      <div class="report-col">
+        <div class="report-col-title ongoing" onclick="event.stopPropagation(); goToProjectMilestoneStatus('${p.id}')">${icon('Clock','#1B3A6B')} En cours</div>
+        ${ongoing.length ? ongoing.map(itemHtml).join('') : `<div class="report-empty">Rien en cours</div>`}
+      </div>
+      <div class="report-col">
+        <div class="report-col-title upcoming" onclick="event.stopPropagation(); goToProjectMilestoneStatus('${p.id}')">${icon('ArrowRight','#d4830a')} À venir</div>
+        ${upcoming.length ? upcoming.slice(0,5).map(itemHtml).join('') : `<div class="report-empty">Rien de planifié</div>`}
+      </div>
+      <div class="report-col report-col-obs">
+        <div class="report-col-title obs" onclick="event.stopPropagation(); goToProjectJournal('${p.id}')">${icon('FileText','#6b7280')} Observations</div>
+        <textarea class="report-obs-input" onclick="event.stopPropagation()" onchange="updateProjectObservations('${p.id}', this.value)" placeholder="Notes, points d'attention...">${escapeHtml(p.observations || '')}</textarea>
+      </div>
+    </div>`;
+}
 
 function updateProjectsFilter(key, value){
   projectsFilterState[key] = value;
@@ -1732,27 +1861,32 @@ function renderProjects(){
         Aucun projet trouvé.
       </div>`;
   } else {
+    const sorted = sortProjectsList(filtered);
+    const sortTh = (key, label)=>`<th class="sortable-th" onclick="sortProjectsBy('${key}')">${label}${sortArrowIcon(key)}</th>`;
     html += `
       <div class="table-card">
-        <table>
+        <table class="projects-table">
           <thead>
             <tr>
-              <th>Projet</th>
-              <th>Statut</th>
-              <th>Priorité</th>
-              <th>Santé</th>
-              <th>Avancement</th>
-              <th>Chef de projet</th>
-              <th>Fin prévue</th>
+              ${sortTh('name','Projet')}
+              ${sortTh('status','Statut')}
+              ${sortTh('priority','Priorité')}
+              ${sortTh('healthStatus','Santé')}
+              ${sortTh('progress','Avancement')}
+              ${sortTh('projectManager','Chef de projet')}
+              ${sortTh('startDate','Début')}
+              ${sortTh('plannedEndDate','Fin prévue')}
               <th class="right">Actions</th>
             </tr>
           </thead>
           <tbody>
-            ${filtered.map(p=>{
+            ${sorted.map(p=>{
               const overdue = p.status === 'EN_COURS' && isOverdue(p.plannedEndDate);
               const days = daysLeft(p.plannedEndDate);
+              const expanded = expandedProjectId === p.id;
+              const gauge = timeGaugeFraction(p.startDate, p.plannedEndDate);
               return `
-              <tr>
+              <tr class="project-row${expanded ? ' expanded' : ''}" onclick="toggleExpandedProject('${p.id}')">
                 <td>
                   <div class="pname">${escapeHtml(p.name)}</div>
                   <div class="psub">${p.code} · ${CATEGORY_LABELS[p.category] ?? p.category}</div>
@@ -1765,21 +1899,24 @@ function renderProjects(){
                     ${HEALTH_LABELS[p.healthStatus]}
                   </span>
                 </td>
-                <td style="width:140px;">
+                <td style="width:120px;">
                   <div class="progress-track"><div class="progress-fill" style="width:${p.progress}%"></div></div>
                   <div class="progress-label">${p.progress}%</div>
                 </td>
                 <td>${escapeHtml(p.projectManager)}</td>
-                <td>
+                <td>${fmt(p.startDate)}</td>
+                <td style="width:130px;">
                   <div style="${overdue ? 'color:var(--boa-red);font-weight:600;' : 'color:#374151;'}">${fmt(p.plannedEndDate)}</div>
-                  ${p.status==='EN_COURS' ? `<div style="font-size:11px;margin-top:2px;${overdue ? 'color:var(--boa-red);' : days<=30 ? 'color:var(--boa-orange);' : 'color:#9ca3af;'}">${overdue ? `${Math.abs(days)}j de retard` : `${days}j restants`}</div>` : ''}
+                  ${p.status==='EN_COURS' ? `<div style="font-size:10.5px;margin-top:1px;${overdue ? 'color:var(--boa-red);' : days<=30 ? 'color:var(--boa-orange);' : 'color:#9ca3af;'}">${overdue ? `${Math.abs(days)}j de retard` : `${days}j restants`}</div>` : ''}
+                  <div class="time-gauge" title="Temps écoulé : ${Math.round(gauge*100)}%"><div class="time-gauge-fill" style="width:${Math.round(gauge*100)}%;background:${overdue ? 'var(--boa-red)' : gauge>0.85 ? 'var(--boa-orange)' : 'var(--boa-green)'};"></div></div>
                 </td>
-                <td class="right">
+                <td class="right" onclick="event.stopPropagation()">
                   <button class="icon-btn" title="Voir" onclick="viewProject('${p.id}')">${icon('Eye')}</button>
                   <button class="icon-btn" title="Modifier" onclick="editProject('${p.id}')">${icon('Pencil')}</button>
                   <button class="icon-btn danger" title="Supprimer" onclick="requestDeleteProject('${p.id}')">${icon('Trash2')}</button>
                 </td>
-              </tr>`;
+              </tr>
+              ${expanded ? `<tr class="project-report-row"><td colspan="9">${renderProjectReportingPanel(p)}</td></tr>` : ''}`;
             }).join('')}
           </tbody>
         </table>
@@ -3571,6 +3708,8 @@ function icon(name, color){
     FolderOpen:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></svg>`,
     Activity:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>`,
     Clock:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
+    Check:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+    FileText:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>`,
     CheckCircle2:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/></svg>`,
     AlertCircle:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
     TrendingUp:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>`,
