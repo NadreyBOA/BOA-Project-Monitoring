@@ -39,34 +39,62 @@
   /* ─── Layout ─────────────────────────────────────────────── */
   .layout{display:flex;min-height:100vh;}
 
-  /* Sidebar */
+  /* Sidebar — rail + panel (style ClickUp) */
   .sidebar{
-    width:220px;flex-shrink:0;
-    background:#ffffff;
-    color:var(--boa-black);
-    display:flex;flex-direction:column;
+    width:280px;flex-shrink:0;display:flex;
     position:sticky;top:0;height:100vh;
-    border-right:1px solid var(--boa-gray-border);
     z-index:10;
   }
-  .sidebar-header{
-    display:flex;align-items:center;gap:10px;
-    padding:18px 16px;
-    border-bottom:1px solid var(--boa-gray-border);
+  .rail{
+    width:52px;flex-shrink:0;background:var(--boa-navy-dark);
+    display:flex;flex-direction:column;align-items:center;gap:10px;
+    padding:14px 0;
   }
-  .sidebar-logo{
-    width:32px;height:32px;border-radius:8px;
-    background:var(--boa-green);
+  .rail-logo{
+    width:30px;height:30px;border-radius:8px;background:var(--boa-green);
     display:flex;align-items:center;justify-content:center;
-    font-weight:700;font-size:14px;flex-shrink:0;color:#fff;
+    font-weight:700;font-size:13px;color:#fff;margin-bottom:6px;flex-shrink:0;
   }
-  .sidebar-title{font-weight:700;font-size:14px;line-height:1.2;letter-spacing:.1px;color:var(--boa-navy);}
-  .sidebar-subtitle{font-size:11px;color:var(--boa-gray-text);}
+  .rail-btn{
+    width:36px;height:36px;border-radius:9px;border:none;background:none;
+    color:rgba(255,255,255,.55);cursor:pointer;display:flex;align-items:center;justify-content:center;
+    transition:background .12s,color .12s;
+  }
+  .rail-btn:hover{background:rgba(255,255,255,.08);color:#fff;}
+  .rail-btn.active{background:rgba(255,255,255,.12);color:#fff;}
+  .rail-spacer{flex:1;}
+  .rail-avatar{
+    width:28px;height:28px;border-radius:50%;background:var(--boa-green-light);color:var(--boa-green-dark);
+    display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;
+  }
 
-  .sidebar-nav{flex:1;padding:12px 8px;display:flex;flex-direction:column;gap:1px;}
+  .sidebar-panel{
+    width:228px;background:#fff;border-right:1px solid var(--boa-gray-border);
+    display:flex;flex-direction:column;overflow-y:auto;
+  }
+  .workspace-switch{
+    display:flex;align-items:center;gap:9px;padding:14px 14px 10px;cursor:pointer;
+  }
+  .workspace-dot{
+    width:26px;height:26px;border-radius:7px;background:var(--boa-navy);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;
+  }
+  .workspace-name{font-size:13px;font-weight:700;color:var(--boa-black);line-height:1.2;}
+  .workspace-sub{font-size:11px;color:var(--boa-gray-text);}
+
+  .sidebar-search{
+    margin:2px 14px 10px;padding:7px 10px;border-radius:7px;background:var(--boa-gray-bg);
+    display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:12.5px;
+  }
+
+  .sidebar-nav{flex:1;padding:4px 8px 12px;display:flex;flex-direction:column;gap:1px;}
+  .sidebar-section-label{
+    font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+    color:#a1a1aa;padding:14px 10px 6px;
+  }
   .nav-item{
     display:flex;align-items:center;gap:10px;
-    padding:9px 12px;border-radius:7px;
+    padding:8px 10px;border-radius:7px;
     color:#52525b;
     text-decoration:none;font-size:13px;font-weight:500;
     cursor:pointer;border:none;background:none;width:100%;text-align:left;
@@ -78,12 +106,11 @@
     font-weight:600;
   }
   .nav-item svg{flex-shrink:0;}
-
-  .sidebar-footer{
-    padding:14px 16px;border-top:1px solid var(--boa-gray-border);
-    font-size:11.5px;color:var(--boa-gray-text);
+  .space-icon{
+    width:18px;height:18px;border-radius:5px;background:var(--boa-green);color:#fff;
+    font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;
   }
-  .sidebar-footer strong{display:block;color:var(--boa-black);font-size:12.5px;margin-bottom:2px;}
+  .subitem-hash{color:#a1a1aa;font-weight:700;margin-right:1px;}
 
   /* Main */
   .main{flex:1;min-width:0;}
@@ -538,7 +565,7 @@
   .nav-subitems{display:none;}
   .nav-subitems.open{display:block;}
   .nav-group-toggle.active .nav-group-chevron{transform:rotate(180deg);}
-  .nav-subitem{padding-left:42px;font-size:12.5px;}
+  .nav-subitem{padding-left:32px;font-size:12.5px;}
 
   /* Paramètres */
   .settings-section{background:#fff;border:1px solid var(--boa-gray-border);border-radius:12px;padding:24px;max-width:680px;}
@@ -562,42 +589,65 @@
 <div class="layout">
   <!-- Sidebar -->
   <aside class="sidebar">
-    <div class="sidebar-header">
-      <div class="sidebar-logo">B</div>
-      <div>
-        <div class="sidebar-title">BOA Monitoring</div>
-        <div class="sidebar-subtitle">Suivi de projets</div>
-      </div>
+    <div class="rail">
+      <div class="rail-logo">B</div>
+      <button class="rail-btn active" data-view="dashboard" title="Tableau de bord">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+      </button>
+      <button class="rail-btn" data-view="run" title="Suivi du Run">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
+      </button>
+      <button class="rail-btn" data-view="settings" title="Paramètres">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+      </button>
+      <div class="rail-spacer"></div>
+      <div class="rail-avatar" title="Nadrey BOA">N</div>
     </div>
-    <nav class="sidebar-nav" id="sidebar-nav">
-      <button class="nav-item" data-view="dashboard">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
-        Tableau de bord
-      </button>
-      <div class="nav-group">
-        <button class="nav-item nav-group-toggle" id="nav-group-toggle-projects" onclick="toggleNavGroup('projects')">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>
-          Projets
-          <svg class="nav-group-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto;"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="nav-subitems" id="nav-subitems-projects">
-          <button class="nav-item nav-subitem" data-view="projects">Projet</button>
-          <button class="nav-item nav-subitem" data-view="mep">Demande de MEP</button>
-          <button class="nav-item nav-subitem" data-view="production">Points production</button>
+
+    <div class="sidebar-panel">
+      <div class="workspace-switch">
+        <span class="workspace-dot">B</span>
+        <div>
+          <div class="workspace-name">BOA Monitoring</div>
+          <div class="workspace-sub">Nadrey BOA</div>
         </div>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto;color:#9ca3af;"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
-      <button class="nav-item" data-view="run">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
-        Suivi du Run
-      </button>
-      <button class="nav-item" data-view="settings">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
-        Paramètres
-      </button>
-    </nav>
-    <div class="sidebar-footer">
-      <strong>Nadrey BOA</strong>
-      Chef de Projet Monétique
+
+      <div class="sidebar-search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <span>Rechercher...</span>
+      </div>
+
+      <nav class="sidebar-nav" id="sidebar-nav">
+        <button class="nav-item" data-view="dashboard">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          Accueil
+        </button>
+        <button class="nav-item" data-view="run">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
+          Suivi du Run
+        </button>
+        <button class="nav-item" data-view="settings">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+          Paramètres
+        </button>
+
+        <div class="sidebar-section-label">Espaces</div>
+
+        <div class="nav-group">
+          <button class="nav-item nav-group-toggle" id="nav-group-toggle-projects" onclick="toggleNavGroup('projects')">
+            <span class="space-icon">P</span>
+            Projets
+            <svg class="nav-group-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto;"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="nav-subitems" id="nav-subitems-projects">
+            <button class="nav-item nav-subitem" data-view="projects"><span class="subitem-hash">#</span>Projet</button>
+            <button class="nav-item nav-subitem" data-view="mep"><span class="subitem-hash">#</span>Demande de MEP</button>
+            <button class="nav-item nav-subitem" data-view="production"><span class="subitem-hash">#</span>Points production</button>
+          </div>
+        </div>
+      </nav>
     </div>
   </aside>
 
@@ -1180,7 +1230,7 @@ function toggleNavGroup(group){
 
 function navigate(view){
   if(!VIEWS[view]) view = 'dashboard';
-  document.querySelectorAll('.nav-item[data-view]').forEach(el=>{
+  document.querySelectorAll('.nav-item[data-view], .rail-btn[data-view]').forEach(el=>{
     el.classList.toggle('active', el.dataset.view === view);
   });
   Object.entries(NAV_GROUPS).forEach(([group, views])=>{
@@ -1196,7 +1246,7 @@ function navigate(view){
   location.hash = view;
 }
 
-document.querySelectorAll('.nav-item[data-view]').forEach(el=>{
+document.querySelectorAll('.nav-item[data-view], .rail-btn[data-view]').forEach(el=>{
   el.addEventListener('click', ()=> navigate(el.dataset.view));
 });
 document.getElementById('new-project-btn').addEventListener('click', e=>{
