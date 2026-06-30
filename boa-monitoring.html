@@ -519,37 +519,32 @@
     .grid-2{grid-template-columns:1fr;}
   }
 
-  /* ─── Tableau de bord : période & évolution annuelle ──────── */
-  .dash-period-bar{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
-  .dash-period-label{font-size:12.5px;font-weight:600;color:#6b7280;}
-  .year-chart{display:flex;align-items:flex-end;gap:18px;padding:16px 8px 4px;min-height:130px;}
-  .year-chart-col{display:flex;flex-direction:column;align-items:center;gap:6px;}
-  .year-chart-value{font-size:11.5px;font-weight:700;color:var(--boa-black);}
-  .year-chart-bar{width:34px;background:var(--boa-green);border-radius:5px 5px 0 0;transition:height .2s;}
-  .year-chart-label{font-size:11px;color:#9ca3af;}
-
-  /* ─── Tableau de bord : refonte ClickUp ─────────────────────── */
-  .dash-hero{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap;}
+  /* ─── Tableau de bord : Accueil façon ClickUp ──────────────── */
+  .dash-hero{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap;}
   .dash-hero-title{font-size:20px;font-weight:700;color:var(--boa-black);}
   .dash-hero-sub{font-size:12.5px;color:var(--boa-gray-text);margin-top:3px;}
 
-  .stat-strip{display:flex;gap:10px;flex-wrap:wrap;}
-  .stat-chip{
-    display:flex;align-items:center;gap:10px;
-    background:#fff;border:1px solid var(--boa-gray-border);border-radius:10px;
-    padding:10px 14px;flex:1;min-width:130px;
-  }
-  .stat-chip-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-  .stat-chip-value{font-size:17px;font-weight:700;color:var(--boa-black);line-height:1.2;}
-  .stat-chip-label{font-size:11px;color:var(--boa-gray-text);}
+  .home-section{margin-top:26px;}
+  .home-section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .home-section-head h2{font-size:14px;font-weight:700;color:var(--boa-black);}
+  .home-section-head .count{font-size:12px;color:#6b7280;text-decoration:none;display:flex;align-items:center;gap:2px;}
 
-  .widget-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;}
-  .priority-chip{
-    display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--boa-gray-border);
-    border-radius:10px;padding:8px 12px;flex:1;min-width:120px;
+  .project-card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;}
+  .project-card{
+    display:block;background:#fff;border:1px solid var(--boa-gray-border);border-radius:10px;
+    padding:14px;text-decoration:none;color:inherit;transition:border-color .12s,box-shadow .12s;
   }
-  .priority-chip-value{font-size:14px;font-weight:700;color:var(--boa-black);margin-left:auto;}
+  .project-card:hover{border-color:var(--boa-navy);box-shadow:0 2px 8px rgba(0,0,0,.06);}
+  .project-card-top{display:flex;align-items:center;gap:6px;margin-bottom:8px;}
+  .project-card-code{font-size:11px;color:#9ca3af;font-weight:600;}
+  .project-card-name{font-size:13.5px;font-weight:700;color:var(--boa-black);line-height:1.3;margin-bottom:4px;}
+  .project-card-meta{font-size:11px;color:var(--boa-gray-text);margin-bottom:10px;}
+  .project-card-progress{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+  .project-card-progress span{font-size:11px;font-weight:600;color:#374151;}
+  .project-card-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .project-card-due{font-size:10.5px;color:#9ca3af;}
 
+  .home-widget-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:26px;}
   .widget-card{background:#fff;border:1px solid var(--boa-gray-border);border-radius:10px;overflow:hidden;}
   .widget-head{
     padding:14px 16px;border-bottom:1px solid var(--boa-gray-border);
@@ -558,6 +553,15 @@
   .widget-head h2{font-size:13px;font-weight:600;color:#374151;display:flex;align-items:center;gap:8px;}
   .widget-head .count{font-size:11.5px;color:#9ca3af;}
   .alert-card{background:var(--boa-red-light);border-color:#f5c4bf;}
+  .task-dot{width:8px;height:8px;border-radius:50%;background:var(--boa-red);flex-shrink:0;}
+  .run-mini-stats{display:flex;padding:16px;gap:18px;}
+  .run-mini-stats > div{display:flex;flex-direction:column;gap:2px;}
+  .run-mini-value{font-size:18px;font-weight:700;color:var(--boa-black);}
+  .run-mini-label{font-size:11px;color:var(--boa-gray-text);}
+
+  @media (max-width:1100px){
+    .home-widget-grid{grid-template-columns:1fr;}
+  }
 
   /* ─── Sidebar : groupe déroulant ────────────────────────── */
   .nav-group-toggle{width:100%;display:flex;align-items:center;}
@@ -1606,9 +1610,12 @@ function renderDashboard(){
     ? allProjects
     : allProjects.filter(p=>projectYear(p) === Number(dashboardPeriod));
 
-  const stats = getProjectStats(projects);
   const openActions = getAllOpenActions(projects);
   const overdueActions = openActions.filter(a=>isOverdue(a.dueDate));
+  const upcomingActions = openActions
+    .filter(a=>!isOverdue(a.dueDate))
+    .sort((a,b)=> (a.dueDate||'').localeCompare(b.dueDate||''))
+    .slice(0,5);
   const criticalRisks = projects.flatMap(p=>
     p.risks.filter(r=>r.score>=6 && r.status!=='CLOS' && r.status!=='MITIGE')
       .map(r=>({...r, projectId:p.id, projectName:p.name, projectCode:p.code}))
@@ -1617,61 +1624,27 @@ function renderDashboard(){
     .flatMap(p=>p.journal.map(j=>({...j, projectId:p.id, projectName:p.name, projectCode:p.code})))
     .sort((a,b)=> b.date.localeCompare(a.date))
     .slice(0,5);
-  const attention = projects
-    .filter(p=> p.healthStatus !== 'VERT' || (p.status==='EN_COURS' && isOverdue(p.plannedEndDate)))
-    .sort((a,b)=> (a.healthStatus==='ROUGE' ? -1 : 1));
 
-  /* Priorité */
-  const priorityCounts = {};
-  Object.keys(PRIORITY_LABELS).forEach(k=> priorityCounts[k] = projects.filter(p=>p.priority===k).length);
+  /* Agenda : prochains jalons, toutes les échéances confondues */
+  const upcomingMilestones = projects
+    .flatMap(p=>(p.milestones||[])
+      .filter(m=>m.status!=='TERMINE' && m.plannedDate)
+      .map(m=>({...m, projectId:p.id, projectName:p.name, projectCode:p.code})))
+    .sort((a,b)=> (a.plannedDate||'').localeCompare(b.plannedDate||''))
+    .slice(0,5);
 
-  /* Status pie */
-  const statusCounts = {
-    EN_COURS: stats.enCours,
-    PLANIFIE: projects.filter(p=>p.status==='PLANIFIE').length,
-    TERMINE: stats.termine,
-    EN_PAUSE: projects.filter(p=>p.status==='EN_PAUSE').length,
-    ANNULE: projects.filter(p=>p.status==='ANNULE').length,
-  };
-  const statusEntries = Object.entries(statusCounts).filter(([,v])=>v>0);
-  const totalStatus = statusEntries.reduce((s,[,v])=>s+v,0) || 1;
-  let acc = 0;
-  const stops = statusEntries.map(([k,v])=>{
-    const start = (acc/totalStatus)*360;
-    acc += v;
-    const end = (acc/totalStatus)*360;
-    return `${STATUS_PIE_COLORS[k]} ${start}deg ${end}deg`;
-  }).join(', ');
-
-  /* Category bar */
-  const catCounts = {};
-  projects.forEach(p=> catCounts[p.category] = (catCounts[p.category]||0)+1);
-  const maxCat = Math.max(1, ...Object.values(catCounts));
-
-  /* Évolution par année (toutes années, indépendant du filtre) */
-  const yearCounts = {};
-  allProjects.forEach(p=>{ const y = projectYear(p); if(y) yearCounts[y] = (yearCounts[y]||0)+1; });
-  const yearSeries = Object.entries(yearCounts).sort(([a],[b])=>a-b);
-  const maxYear = Math.max(1, ...yearSeries.map(([,v])=>v));
-
-  /* Run summary */
   const runItems = loadRunItems();
   const runOpen = runItems.filter(it=>it.status!=='FERME');
   const runOverdue = runOpen.filter(it=>it.dueDate && isOverdue(it.dueDate));
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
-  const todoCount = overdueActions.length + attention.length;
+  const todoCount = overdueActions.length + criticalRisks.length;
 
-  const statChips = [
-    { name:'FolderOpen', color:'#1B2E5E', bg:'#eef1f8', value: stats.total, label:'Projets' },
-    { name:'Activity', color:'#1B7A4B', bg:'#e8f5ee', value: stats.enCours, label:'En cours' },
-    { name:'Clock', color:'#c0392b', bg:'#fdf0ef', value: stats.enRetard, label:'En retard' },
-    { name:'CheckCircle2', color:'#1B7A4B', bg:'#e8f5ee', value: stats.termine, label:'Terminés' },
-    { name:'Circle', color:'#16a34a', bg:'#e8f5ee', value: stats.vert, label:'Sains' },
-    { name:'Circle', color:'#d4830a', bg:'#fdf6e8', value: stats.orange, label:'À surveiller' },
-    { name:'Circle', color:'#c0392b', bg:'#fdf0ef', value: stats.rouge, label:'En danger' },
-  ];
+  const sortedProjects = [...projects].sort((a,b)=>{
+    const order = {ROUGE:0, ORANGE:1, VERT:2};
+    return (order[a.healthStatus] ?? 9) - (order[b.healthStatus] ?? 9);
+  });
 
   document.getElementById('content').innerHTML = `
     <div class="dash-hero">
@@ -1688,99 +1661,66 @@ function renderDashboard(){
       </div>
     </div>
 
-    <!-- Stat strip -->
-    <div class="stat-strip">
-      ${statChips.map(s=>`
-        <div class="stat-chip">
-          <div class="stat-chip-icon" style="background:${s.bg};color:${s.color};">${icon(s.name, s.color)}</div>
-          <div>
-            <div class="stat-chip-value">${s.value}</div>
-            <div class="stat-chip-label">${s.label}</div>
-          </div>
-        </div>`).join('')}
-    </div>
-
-    <!-- Priorité -->
-    <div class="widget-row">
-      ${Object.entries(PRIORITY_LABELS).map(([k,label])=>`
-        <div class="priority-chip">
-          <span class="badge" style="${PRIORITY_COLORS[k]}">${label}</span>
-          <span class="priority-chip-value">${priorityCounts[k]}</span>
-        </div>`).join('')}
-    </div>
-
-    <!-- Charts -->
-    <div class="grid grid-2 section">
-      <div class="widget-card chart-card">
-        <h2>Répartition par statut</h2>
-        ${statusEntries.length ? `
-        <div class="donut-wrap">
-          <div class="donut" style="--donut-stops:${stops};"></div>
-          <div class="legend">
-            ${statusEntries.map(([k,v])=>`
-              <div class="legend-item">
-                <span class="legend-swatch" style="background:${STATUS_PIE_COLORS[k]}"></span>
-                ${STATUS_LABELS[k]} (${v})
-              </div>`).join('')}
-          </div>
-        </div>` : `<div class="empty">Aucun projet</div>`}
+    <!-- Mes projets : cartes -->
+    <div class="home-section">
+      <div class="home-section-head">
+        <h2>Mes projets</h2>
+        <a class="count" href="#" onclick="navigate('projects');return false;">Tout voir ${icon('ChevronRight','#9ca3af')}</a>
       </div>
-      <div class="widget-card chart-card">
-        <h2>Projets par type${dashboardPeriod!=='all' ? ` — ${dashboardPeriod}` : ''}</h2>
-        ${Object.keys(catCounts).length ? `
-        <div class="bars">
-          ${Object.entries(catCounts).map(([cat,count])=>`
-            <div class="bar-row">
-              <div class="bar-label">${CATEGORY_LABELS[cat] ?? cat}</div>
-              <div class="bar-track"><div class="bar-fill" style="width:${(count/maxCat*100)}%"></div></div>
-              <div class="bar-value">${count}</div>
-            </div>`).join('')}
-        </div>` : `<div class="empty">Aucun projet</div>`}
-      </div>
+      ${sortedProjects.length===0 ? `<div class="empty">Aucun projet</div>` : `
+      <div class="project-card-grid">
+        ${sortedProjects.map(p=>`
+          <a class="project-card" href="#" onclick="viewProject('${p.id}');return false;">
+            <div class="project-card-top">
+              <span class="health-dot ${HEALTH_DOT_CLASS[p.healthStatus]}"></span>
+              <span class="project-card-code">${p.code}</span>
+            </div>
+            <div class="project-card-name">${escapeHtml(p.name)}</div>
+            <div class="project-card-meta">${CATEGORY_LABELS[p.category] ?? p.category} · ${STATUS_LABELS[p.status] ?? p.status}</div>
+            <div class="project-card-progress">
+              <div class="progress-track"><div class="progress-fill" style="width:${p.progress||0}%"></div></div>
+              <span>${p.progress||0}%</span>
+            </div>
+            <div class="project-card-foot">
+              <span class="badge" style="${PRIORITY_COLORS[p.priority]}">${PRIORITY_LABELS[p.priority] ?? p.priority}</span>
+              <span class="project-card-due">Fin : ${fmt(p.plannedEndDate)}</span>
+            </div>
+          </a>`).join('')}
+      </div>`}
     </div>
 
-    <!-- Évolution par année -->
-    <div class="section widget-card chart-card">
-      <h2>Évolution des projets par année</h2>
-      ${yearSeries.length ? `
-      <div class="year-chart">
-        ${yearSeries.map(([y,v])=>`
-          <div class="year-chart-col">
-            <div class="year-chart-value">${v}</div>
-            <div class="year-chart-bar" style="height:${Math.max(6,(v/maxYear)*100)}px;${Number(y)===Number(dashboardPeriod) ? 'background:var(--boa-navy);' : ''}"></div>
-            <div class="year-chart-label">${y}</div>
-          </div>`).join('')}
-      </div>` : `<div class="empty">Aucun projet</div>`}
-    </div>
-
-    <!-- Suivi du Run -->
-    <div class="section widget-card">
-      <div class="widget-head">
-        <h2>${icon('CheckCircle2','#1B7A4B')} Suivi du Run</h2>
-        <a class="count" href="#" onclick="navigate('run');return false;">Voir le Run ${icon('ChevronRight','#9ca3af')}</a>
-      </div>
-      <div class="stat-strip" style="padding:0 16px 16px;">
-        <div class="stat-chip"><div class="stat-chip-icon" style="background:#eef1f8;color:#1B2E5E;">${icon('FolderOpen','#1B2E5E')}</div><div><div class="stat-chip-value">${runOpen.length}</div><div class="stat-chip-label">Ouverts</div></div></div>
-        <div class="stat-chip"><div class="stat-chip-icon" style="background:#fdf0ef;color:#c0392b;">${icon('Clock','#c0392b')}</div><div><div class="stat-chip-value" style="${runOverdue.length?'color:var(--boa-red);':''}">${runOverdue.length}</div><div class="stat-chip-label">En retard</div></div></div>
-        <div class="stat-chip"><div class="stat-chip-icon" style="background:#e8f5ee;color:#1B7A4B;">${icon('CheckCircle2','#1B7A4B')}</div><div><div class="stat-chip-value">${runItems.filter(it=>it.status==='FERME').length}</div><div class="stat-chip-label">Clôturés</div></div></div>
-      </div>
-    </div>
-
-    <!-- Attention + Activité -->
-    <div class="grid grid-2 section">
+    <!-- Widgets : à faire / agenda / activité / run -->
+    <div class="home-widget-grid">
       <div class="widget-card">
         <div class="widget-head">
-          <h2>${icon('AlertCircle','#f97316')} Projets nécessitant attention</h2>
-          <span class="count">${attention.length} projets</span>
+          <h2>${icon('AlertTriangle','#c0392b')} À traiter</h2>
+          <span class="count">${overdueActions.length} en retard</span>
         </div>
         <div>
-          ${attention.length===0 ? `<div class="empty">Tous les projets sont sains ✓</div>` :
-            attention.slice(0,4).map(p=>`
+          ${overdueActions.length===0 ? `<div class="empty">Rien en retard ✓</div>` :
+            overdueActions.slice(0,5).map(a=>`
               <a class="list-row" href="#" onclick="return false;">
-                <span class="health-dot ${HEALTH_DOT_CLASS[p.healthStatus]}" style="box-shadow:none;width:10px;height:10px;"></span>
+                <span class="task-dot"></span>
                 <div class="flex1">
-                  <div class="title">${escapeHtml(p.name)}</div>
-                  <div class="meta">${p.code} · Fin prévue : ${fmt(p.plannedEndDate)}</div>
+                  <div class="title">${escapeHtml(a.description)}</div>
+                  <div class="meta">${a.projectCode} · ${escapeHtml(a.assignedTo)} · Échéance : ${fmt(a.dueDate)}</div>
+                </div>
+              </a>`).join('')
+          }
+        </div>
+      </div>
+
+      <div class="widget-card">
+        <div class="widget-head">
+          <h2>${icon('Calendar','#3b82f6')} Agenda — prochains jalons</h2>
+        </div>
+        <div>
+          ${upcomingMilestones.length===0 ? `<div class="empty">Aucun jalon à venir</div>` :
+            upcomingMilestones.map(m=>`
+              <a class="list-row" href="#" onclick="viewProject('${m.projectId}');setDetailTab('jalons');return false;">
+                <div class="flex1">
+                  <div class="title">${escapeHtml(m.name)}</div>
+                  <div class="meta">${m.projectCode} · ${fmt(m.plannedDate)}</div>
                 </div>
                 ${icon('ChevronRight','#d1d5db')}
               </a>`).join('')
@@ -1805,30 +1745,23 @@ function renderDashboard(){
           }
         </div>
       </div>
-    </div>
 
-    <!-- Actions en retard -->
-    ${overdueActions.length>0 ? `
-    <div class="section">
-      <div class="widget-card alert-card">
-        <h2 style="font-size:13px;font-weight:600;color:var(--boa-red);display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:16px 16px 0;">
-          ${icon('AlertTriangle','#c0392b')} ${overdueActions.length} action(s) en retard
-        </h2>
-        <div style="display:flex;flex-direction:column;gap:8px;padding:0 16px 16px;">
-          ${overdueActions.slice(0,5).map(a=>`
-            <div style="display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #f5c4bf;border-radius:8px;padding:10px 14px;">
-              <div class="flex1">
-                <div class="title">${escapeHtml(a.description)}</div>
-                <div class="meta">${a.projectCode} · ${escapeHtml(a.assignedTo)} · Échéance : ${fmt(a.dueDate)}</div>
-              </div>
-            </div>`).join('')}
+      <div class="widget-card">
+        <div class="widget-head">
+          <h2>${icon('CheckCircle2','#1B7A4B')} Suivi du Run</h2>
+          <a class="count" href="#" onclick="navigate('run');return false;">Voir le Run ${icon('ChevronRight','#9ca3af')}</a>
+        </div>
+        <div class="run-mini-stats">
+          <div><span class="run-mini-value">${runOpen.length}</span><span class="run-mini-label">Ouverts</span></div>
+          <div><span class="run-mini-value" style="${runOverdue.length?'color:var(--boa-red);':''}">${runOverdue.length}</span><span class="run-mini-label">En retard</span></div>
+          <div><span class="run-mini-value">${runItems.filter(it=>it.status==='FERME').length}</span><span class="run-mini-label">Clôturés</span></div>
         </div>
       </div>
-    </div>` : ''}
+    </div>
 
     <!-- Risques critiques -->
     ${criticalRisks.length>0 ? `
-    <div class="section widget-card">
+    <div class="home-section widget-card">
       <div class="widget-head">
         <h2>${icon('AlertTriangle','#c0392b')} Risques critiques / élevés</h2>
       </div>
@@ -1846,7 +1779,6 @@ function renderDashboard(){
     </div>` : ''}
   `;
 }
-
 /* ─── Vue Projets ────────────────────────────────────────────── */
 const projectsFilterState = { search:'', status:'', priority:'', category:'' };
 const projectsSortState = { key:'plannedEndDate', dir:'asc' };
@@ -3929,6 +3861,7 @@ function icon(name, color){
     AlertCircle:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
     Circle:`<svg width="15" height="15" viewBox="0 0 24 24" fill="${c}" stroke="none"><circle cx="12" cy="12" r="9"/></svg>`,
     TrendingUp:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>`,
+    Calendar:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
     AlertTriangle:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>`,
     ChevronRight:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>`,
     Search:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
