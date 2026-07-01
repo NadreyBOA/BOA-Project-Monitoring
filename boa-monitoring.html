@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <style>
   :root{
     --boa-green:#1B7A4B;
@@ -1773,20 +1774,105 @@ function exportCellValue(field, v){
   if(field.type === 'image') return 'Capture (voir application)';
   return String(v);
 }
-function exportTestBookXlsx(bookId){
-  if(typeof XLSX === 'undefined'){ alert("La librairie d'export Excel n'a pas pu être chargée (connexion internet requise)."); return; }
+/* ─── Export Excel mis en forme (ExcelJS) ─────────────────────────
+   Couleurs BOA, listes déroulantes pour Statut, bordures, largeurs
+   automatiques, pied de page avec taux de réalisation par feuille. ── */
+function xlColLetter(n){ let s=''; while(n>0){ s=String.fromCharCode(65+(n-1)%26)+s; n=Math.floor((n-1)/26); } return s; }
+const XL_COLORS = {
+  navy:        'FF1B2E5E',
+  navyLight:   'FFe8ecf5',
+  white:       'FFFFFFFF',
+  grayBg:      'FFf7f7f5',
+  graySurf:    'FFefefec',
+  grayBorder:  'FFdcdcd8',
+  greenLight:  'FFe8f5ee',
+  greenDark:   'FF145c38',
+  redLight:    'FFfdf0ef',
+  red:         'FFc0392b',
+  orangeLight: 'FFfdf6e8',
+  orange:      'FFd4830a',
+};
+const XL_STATUS_COLORS = {
+  NON_DEMARRE: { bg: XL_COLORS.graySurf,    fg: 'FF6b7280' },
+  EN_COURS:    { bg: XL_COLORS.orangeLight,  fg: XL_COLORS.orange },
+  OK:          { bg: XL_COLORS.greenLight,   fg: XL_COLORS.greenDark },
+  NOK:         { bg: XL_COLORS.redLight,     fg: XL_COLORS.red },
+  NA:          { bg: XL_COLORS.navyLight,    fg: XL_COLORS.navy },
+};
+const XL_CRIT_COLORS = {
+  CRITIQUE: { bg: XL_COLORS.redLight,     fg: XL_COLORS.red },
+  MAJEURE:  { bg: XL_COLORS.orangeLight,  fg: XL_COLORS.orange },
+  MINEURE:  { bg: XL_COLORS.graySurf,     fg: 'FF374151' },
+};
+function xlFill(argb){ return { type:'pattern', pattern:'solid', fgColor:{ argb } }; }
+function xlFont(bold, argb){ return { name:'Calibri', bold: !!bold, color:{ argb: argb||'FF1f2937' } }; }
+function xlBorder(style){ const s={ style }; return { top:s, bottom:s, left:s, right:s }; }
+function xlApplyBadge(cell, bgArgb, fgArgb){
+  cell.fill = xlFill(bgArgb);
+  cell.font = xlFont(true, fgArgb);
+  cell.alignment = { horizontal:'center', vertical:'middle', wrapText:false };
+}
+
+async function exportTestBookXlsx(bookId){
+  if(typeof ExcelJS === 'undefined'){
+    alert("La librairie d'export Excel n'a pas pu être chargée (connexion internet requise)."); return;
+  }
   const books = loadTestBooks();
   const book = books.find(b=>b.id===bookId);
   if(!book) return;
-  const wb = XLSX.utils.book_new();
-  book.sheets.forEach(sheet=>{
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'BOA Project Monitoring';
+  wb.created = new Date();
+
+  const usedSheetNames = new Set();
+  for(const sheet of book.sheets){
+    let wsName = (sheet.name||'Feuille').replace(/[\\/?*[\]:]/g,' ').trim().slice(0,31) || 'Feuille';
+    let suffix = 1;
+    while(usedSheetNames.has(wsName)){ wsName = ((sheet.name||'Feuille').slice(0,27)+' '+(++suffix)).slice(0,31); }
+    usedSheetNames.add(wsName);
+    const ws = wb.addWorksheet(wsName, { views:[{state:'frozen', ySplit:1}] });
+
     const maxDepth = sheetMaxDepth(sheet);
     const levelHeaders = Array.from({length:maxDepth}, (_,i)=> categoryDepthLabel(i, sheet));
-    const header = ['ID', ...levelHeaders, 'Description', 'Criticité', 'Statut', 'Assigné à', ...sheet.evidenceFields.map(f=>f.label), 'Commentaire'];
-    const rows = sheet.testCases.map(tc=>{
+    /* Ordre des colonnes : ID | niveaux hiérarchie | Description | Criticité | Statut | Assigné à | justificatifs... | Commentaire */
+    const colDefs = [
+      { header:'ID', key:'_id', width:12 },
+      ...levelHeaders.map((h,i)=>({ header:h, key:`_lvl${i}`, width:18 })),
+      { header:'Description', key:'_desc', width:40 },
+      { header:'Criticité',   key:'_crit', width:14 },
+      { header:'Statut',      key:'_stat', width:14 },
+      { header:'Assigné à',   key:'_assignee', width:20 },
+      ...sheet.evidenceFields.map(f=>({ header:f.label, key:`ev_${f.id}`, width:22 })),
+      { header:'Commentaire', key:'_comment', width:30 },
+    ];
+    ws.columns = colDefs;
+
+    /* ─── En-tête ─── */
+    const headerRow = ws.getRow(1);
+    headerRow.height = 22;
+    headerRow.eachCell(cell=>{
+      cell.fill = xlFill(XL_COLORS.navy);
+      cell.font = xlFont(true, XL_COLORS.white);
+      cell.alignment = { horizontal:'center', vertical:'middle', wrapText:false };
+      cell.border = xlBorder('thin');
+    });
+
+    /* Indices de colonnes utiles (1-based) */
+    const idxCrit    = 2 + maxDepth;    /* ID(1) + niveaux(maxDepth) + 1 = Description, +1 = Criticité */
+    const idxStat    = idxCrit + 1;
+    const statusLabelList = STATUS_LEVELS.map(s=>s.label).join(',');
+
+    /* ─── Lignes de données ─── */
+    let prevCatKey = null, rowColorFlip = false;
+    sheet.testCases.forEach((tc, rowIdx)=>{
       const path = categoryPathArray(sheet, tc.categoryId);
       const padded = [...path, ...Array(Math.max(0, maxDepth - path.length)).fill('')];
-      return [
+      const catKey = tc.categoryId;
+      if(catKey !== prevCatKey){ rowColorFlip = !rowColorFlip; prevCatKey = catKey; }
+      const baseBg = rowColorFlip ? XL_COLORS.white : XL_COLORS.grayBg;
+
+      const values = [
         caseDisplayId(sheet, tc),
         ...padded,
         tc.description || '',
@@ -1796,27 +1882,85 @@ function exportTestBookXlsx(bookId){
         ...sheet.evidenceFields.map(f=>exportCellValue(f, tc.evidence[f.id])),
         tc.comment || '',
       ];
+      const dr = ws.addRow(values);
+      dr.height = 18;
+      dr.eachCell({includeEmpty:true}, (cell, colNum)=>{
+        cell.fill = xlFill(baseBg);
+        cell.font = xlFont(false, 'FF1f2937');
+        cell.border = { bottom:{ style:'hair', color:{ argb: XL_COLORS.grayBorder } } };
+        cell.alignment = { vertical:'middle', wrapText: colNum === (maxDepth+2) };
+      });
+      /* Badge Criticité */
+      const critCol = dr.getCell(idxCrit);
+      const critC = XL_CRIT_COLORS[tc.criticality] || XL_CRIT_COLORS.MINEURE;
+      xlApplyBadge(critCol, critC.bg, critC.fg);
+      /* Badge Statut */
+      const statCol = dr.getCell(idxStat);
+      const statC = XL_STATUS_COLORS[tc.status] || XL_STATUS_COLORS.NON_DEMARRE;
+      xlApplyBadge(statCol, statC.bg, statC.fg);
     });
+
+    /* ─── Validation liste déroulante pour Statut ─── */
+    const lastDataRow = 1 + sheet.testCases.length;
+    if(sheet.testCases.length > 0){
+      const statColLetter = xlColLetter(idxStat);
+      ws.dataValidations.add(`${statColLetter}2:${statColLetter}${lastDataRow}`, {
+        type: 'list', allowBlank: true, showErrorMessage: false,
+        formulae: [`"${statusLabelList}"`],
+      });
+    }
+
+    /* ─── Pied de page : récapitulatif ─── */
     const total = sheet.testCases.length;
     const executedCount = sheet.testCases.filter(tc=>['OK','NOK','NA'].includes(tc.status)).length;
-    const pct = total>0 ? Math.round(executedCount/total*100) : 0;
-    const blankRow = Array(header.length).fill('');
-    const footerRows = [
-      blankRow,
-      [`Taux de réalisation : ${pct}%  (${executedCount}/${total} cas exécutés)`, ...Array(header.length-1).fill('')],
-      ['Statut', ...STATUS_LEVELS.map(s=>s.label), ...Array(Math.max(0,header.length-1-STATUS_LEVELS.length)).fill('')].slice(0,header.length),
-      ['Nombre', ...STATUS_LEVELS.map(s=>sheet.testCases.filter(tc=>tc.status===s.value).length), ...Array(Math.max(0,header.length-1-STATUS_LEVELS.length)).fill('')].slice(0,header.length),
-    ];
-    const ws = XLSX.utils.aoa_to_sheet([header, ...rows, ...footerRows]);
-    let base = (sheet.name || 'Feuille').replace(/[\\/?*[\]:]/g,' ').trim().slice(0,31) || 'Feuille';
-    let name = base, i = 1;
-    while(wb.SheetNames.includes(name)){ name = (base.slice(0,28) + '_' + (++i)).slice(0,31); }
-    XLSX.utils.book_append_sheet(wb, ws, name);
-  });
-  if(wb.SheetNames.length === 0){
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Aucune feuille dans ce cahier']]), 'Vide');
+    const pct = total > 0 ? Math.round(executedCount/total*100) : 0;
+
+    ws.addRow([]);                      /* ligne vide */
+
+    const titleRow = ws.addRow([`Taux de réalisation : ${pct}%  (${executedCount} / ${total} cas exécutés)`]);
+    titleRow.height = 20;
+    titleRow.getCell(1).fill = xlFill(XL_COLORS.navy);
+    titleRow.getCell(1).font = xlFont(true, XL_COLORS.white);
+    ws.mergeCells(titleRow.number, 1, titleRow.number, colDefs.length);
+
+    const hdr2 = ws.addRow(['Statut', ...STATUS_LEVELS.map(s=>s.label)]);
+    hdr2.eachCell(cell=>{ cell.fill = xlFill(XL_COLORS.navyLight); cell.font = xlFont(true, XL_COLORS.navy); cell.border = xlBorder('thin'); cell.alignment = {horizontal:'center',vertical:'middle'}; });
+
+    const cnt2 = ws.addRow(['Nombre', ...STATUS_LEVELS.map(s=>sheet.testCases.filter(tc=>tc.status===s.value).length)]);
+    cnt2.eachCell((cell,colNum)=>{
+      const sIdx = colNum - 2;
+      const sc = sIdx >= 0 && sIdx < STATUS_LEVELS.length ? XL_STATUS_COLORS[STATUS_LEVELS[sIdx].value] : null;
+      cell.fill = xlFill(sc ? sc.bg : XL_COLORS.graySurf);
+      cell.font = xlFont(colNum===1, sc ? sc.fg : 'FF374151');
+      cell.border = xlBorder('thin');
+      cell.alignment = { horizontal:'center', vertical:'middle' };
+    });
+
+    /* ─── Ajustement largeur colonnes (max contenu réel vs. def) ─── */
+    ws.columns.forEach(col=>{
+      let maxLen = col.header ? col.header.length : 10;
+      col.eachCell({ includeEmpty:false }, cell=>{
+        const v = cell.value !== null && cell.value !== undefined ? String(cell.value) : '';
+        if(v.length > maxLen) maxLen = v.length;
+      });
+      col.width = Math.min(60, Math.max(col.width||10, maxLen + 2));
+    });
   }
-  XLSX.writeFile(wb, `${(book.name||'Cahier_de_test').replace(/[^a-z0-9]+/gi,'_')}.xlsx`);
+
+  if(wb.worksheets.length === 0){
+    wb.addWorksheet('Vide').addRow(['Aucune feuille dans ce cahier']);
+  }
+
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${(book.name||'Cahier_de_test').replace(/[^a-z0-9]+/gi,'_')}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 /* ─── Import du classeur Excel modifié (exécution via Teams) ──────
