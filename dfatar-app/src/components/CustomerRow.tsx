@@ -29,12 +29,16 @@ export function CustomerRow({ customer }: { customer: CustomerWithBalance }) {
           {customer.last_activity ? `Dernière activité ${formatDate(customer.last_activity)}` : 'Aucune transaction'}
         </Text>
       </View>
-      <View style={styles.balanceBlock}>
-        <Text style={[styles.balance, owesMoney ? styles.balanceOwed : styles.balanceClear]}>
-          {formatAmount(customer.balance, customer.currency)}
-        </Text>
-        {owesMoney && <Text style={styles.balanceLabel}>dû</Text>}
-      </View>
+      {owesMoney ? (
+        <View style={styles.balanceBlock}>
+          <Text style={[styles.balance, styles.balanceOwed]}>{formatAmount(customer.balance, customer.currency)}</Text>
+          <Text style={styles.balanceLabel}>dû</Text>
+        </View>
+      ) : (
+        <View style={styles.settledBadge}>
+          <Text style={styles.settledBadgeText}>✓ Soldé</Text>
+        </View>
+      )}
       <ChevronRight color={colors.textMuted} size={18} />
     </Pressable>
   );
@@ -90,12 +94,22 @@ function createStyles(colors: typeof ColorsType) {
     balanceOwed: {
       color: colors.danger,
     },
-    balanceClear: {
-      color: colors.textMuted,
-    },
     balanceLabel: {
       fontSize: fontSize.xs,
       color: colors.textMuted,
+    },
+    settledBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: spacing.sm + 1,
+      paddingVertical: spacing.xs,
+      borderRadius: radius.full,
+      backgroundColor: colors.primaryMuted,
+    },
+    settledBadgeText: {
+      fontSize: fontSize.xs,
+      fontWeight: '700',
+      color: colors.primary,
     },
   });
 }

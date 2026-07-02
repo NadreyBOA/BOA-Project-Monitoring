@@ -7,7 +7,7 @@ import { EmptyState } from '../../src/components/EmptyState';
 import { TransactionRow } from '../../src/components/TransactionRow';
 import { deleteCustomer, getCustomerWithBalance } from '../../src/db/customers';
 import { getProfile, type Profile } from '../../src/db/settings';
-import { listTransactionsForCustomer } from '../../src/db/transactions';
+import { createTransaction, listTransactionsForCustomer } from '../../src/db/transactions';
 import type { CustomerWithBalance, Transaction } from '../../src/types';
 import { radius, spacing, fontSize, colors as ColorsType } from '../../src/utils/theme';
 import { useTheme } from '../../src/theme/ThemeContext';
@@ -61,6 +61,30 @@ export default function CustomerDetailScreen() {
     if (!customer || !customer.phone || !profile) return;
     const message = buildReminderMessage(customer.name, customer.balance, customer.currency, profile.displayName, profile.accountType);
     await openWhatsAppReminder(customer.phone, message);
+  }
+
+  function handleSettle() {
+    if (!customer || customer.balance <= 0) return;
+    Alert.alert(
+      'Solder la dette ?',
+      `Marquer ${formatAmount(customer.balance, customer.currency)} comme remboursé par ${customer.name} ?`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Confirmer',
+          onPress: async () => {
+            await createTransaction(db, {
+              customerId: customer.id,
+              type: 'payment',
+              amount: customer.balance,
+              date: new Date().toISOString(),
+              note: 'Soldé en un tap',
+            });
+            load();
+          },
+        },
+      ]
+    );
   }
 
   if (!customer) {
@@ -117,6 +141,12 @@ export default function CustomerDetailScreen() {
             <Text style={[styles.actionButtonText, { color: colors.payment }]}>Remboursement</Text>
           </Pressable>
         </View>
+
+        {owesMoney && (
+          <Pressable style={styles.settleButton} onPress={handleSettle}>
+            <Text style={styles.settleButtonText}>✓ Solder maintenant ({formatAmount(customer.balance, customer.currency)})</Text>
+          </Pressable>
+        )}
 
         {!!customer.phone && (
           <Pressable style={styles.reminderButton} onPress={handleReminder}>
@@ -212,6 +242,23 @@ function createStyles(colors: typeof ColorsType) {
     actionButtonText: {
       fontSize: fontSize.sm,
       fontWeight: '700',
+    },
+    settleButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.sm,
+      backgroundColor: colors.primaryMuted,
+      borderWidth: 1,
+      borderColor: colors.primary,
+      borderRadius: radius.md,
+      paddingVertical: spacing.md,
+      marginBottom: spacing.md,
+    },
+    settleButtonText: {
+      color: colors.primary,
+      fontWeight: '700',
+      fontSize: fontSize.sm,
     },
     reminderButton: {
       flexDirection: 'row',

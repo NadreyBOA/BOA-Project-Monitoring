@@ -5,7 +5,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { Briefcase, User, Search, ChevronLeft } from 'lucide-react-native';
 import { useTheme } from '../src/theme/ThemeContext';
 import { COUNTRIES } from '../src/data/countries';
-import { flagFromISO2 } from '../src/utils/flag';
+import { CodeBadge } from '../src/components/CodeBadge';
 import { completeOnboarding } from '../src/db/settings';
 import type { AccountType } from '../src/types';
 
@@ -120,7 +120,7 @@ export default function OnboardingScreen() {
             style={[styles.countryRow, { backgroundColor: colors.surface, borderRadius: radius.md }]}
             onPress={() => finish(item.cc, item.currency)}
           >
-            <Text style={styles.flag}>{flagFromISO2(item.cc)}</Text>
+            <CodeBadge code={item.cc} />
             <Text style={[styles.countryName, { color: colors.text, fontSize: fontSize.sm }]}>{item.name}</Text>
             <Text style={{ color: colors.textMuted, fontSize: fontSize.xs }}>{item.currency}</Text>
           </Pressable>
@@ -163,6 +163,5 @@ const styles = StyleSheet.create({
   search: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 4 },
   searchInput: { flex: 1, fontSize: 14 },
   countryRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, marginBottom: 6 },
-  flag: { fontSize: 19 },
   countryName: { flex: 1, fontWeight: '600' },
 });

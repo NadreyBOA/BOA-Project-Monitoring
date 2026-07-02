@@ -24,6 +24,7 @@ export default function PeopleScreen() {
   const [totals, setTotals] = useState<CurrencyTotal[]>([]);
   const [baseCurrency, setBaseCurrency] = useState('MAD');
   const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<'due' | 'all'>('due');
 
   useFocusEffect(
     useCallback(() => {
@@ -71,7 +72,11 @@ export default function PeopleScreen() {
     router.push('/customer/new');
   }
 
-  const filtered = customers.filter((c) => c.name.toLowerCase().includes(query.trim().toLowerCase()));
+  const dueCount = customers.filter((c) => c.balance > 0).length;
+  const filtered = customers
+    .filter((c) => (filter === 'due' ? c.balance > 0 : true))
+    .filter((c) => c.name.toLowerCase().includes(query.trim().toLowerCase()));
+  const noneOwe = customers.length > 0 && filter === 'due' && dueCount === 0 && !query.trim();
 
   return (
     <View style={styles.container}>
@@ -88,6 +93,25 @@ export default function PeopleScreen() {
             ))
           )}
         </View>
+      </View>
+
+      <View style={styles.filterRow}>
+        <Pressable
+          style={[styles.filterPill, filter === 'due' && styles.filterPillActive]}
+          onPress={() => setFilter('due')}
+        >
+          <Text style={[styles.filterPillText, filter === 'due' && styles.filterPillTextActive]}>
+            Doit de l'argent ({dueCount})
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[styles.filterPill, filter === 'all' && styles.filterPillActive]}
+          onPress={() => setFilter('all')}
+        >
+          <Text style={[styles.filterPillText, filter === 'all' && styles.filterPillTextActive]}>
+            Tous ({customers.length})
+          </Text>
+        </Pressable>
       </View>
 
       <View style={styles.searchBar}>
@@ -109,11 +133,13 @@ export default function PeopleScreen() {
         ListEmptyComponent={
           <EmptyState
             icon={Users}
-            title={customers.length === 0 ? 'Aucune personne pour le moment' : 'Aucun résultat'}
+            title={customers.length === 0 ? 'Aucune personne pour le moment' : noneOwe ? 'Personne ne vous doit rien' : 'Aucun résultat'}
             subtitle={
               customers.length === 0
                 ? 'Ajoutez la première personne qui vous doit de l\'argent.'
-                : 'Essayez un autre nom.'
+                : noneOwe
+                  ? 'Tout le monde est à jour. Consultez "Tous" pour voir l\'historique complet.'
+                  : 'Essayez un autre nom.'
             }
           />
         }
@@ -161,6 +187,32 @@ function createStyles(colors: typeof ColorsType) {
       fontSize: fontSize.lg,
       fontWeight: '700',
       color: colors.textMuted,
+    },
+    filterRow: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+      paddingHorizontal: spacing.md,
+      marginBottom: spacing.md,
+    },
+    filterPill: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs + 3,
+      borderRadius: radius.full,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    filterPillActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    filterPillText: {
+      fontSize: fontSize.xs,
+      fontWeight: '600',
+      color: colors.textMuted,
+    },
+    filterPillTextActive: {
+      color: '#fff',
     },
     searchBar: {
       flexDirection: 'row',

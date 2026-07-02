@@ -7,6 +7,7 @@ import { getProfile, setSetting, SETTINGS_KEYS, type Profile } from '../../src/d
 import { totalsByCurrency } from '../../src/db/customers';
 import { isPremium, PREMIUM_PRICE_LABEL } from '../../src/premium';
 import { CurrencyPicker } from '../../src/components/CurrencyPicker';
+import { CodeBadge } from '../../src/components/CodeBadge';
 import { currencyInfo } from '../../src/data/currencies';
 import { PALETTES } from '../../src/theme/palettes';
 import { useTheme } from '../../src/theme/ThemeContext';
@@ -140,10 +141,9 @@ export default function SettingsScreen() {
       />
 
       <Text style={styles.sectionDivider}>Devise de base</Text>
-      <Pressable style={styles.picker} onPress={() => setPickerOpen(true)}>
-        <Text style={styles.pickerText}>
-          {base.flag} {base.label}
-        </Text>
+      <Pressable style={[styles.picker, styles.pickerRow]} onPress={() => setPickerOpen(true)}>
+        <CodeBadge code={base.code} />
+        <Text style={styles.pickerText}>{base.label}</Text>
       </Pressable>
       <Text style={styles.hint}>Chaque personne peut avoir sa propre devise, choisie à sa création.</Text>
       {saved && <Text style={styles.savedText}>Enregistré</Text>}
@@ -319,6 +319,11 @@ function createStyles(colors: typeof ColorsType) {
       borderColor: colors.border,
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.sm + 4,
+    },
+    pickerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
     },
     pickerText: {
       fontSize: fontSize.md,

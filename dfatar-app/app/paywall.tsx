@@ -1,7 +1,7 @@
 import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { Crown, Infinity as InfinityIcon, Cloud, Palette } from 'lucide-react-native';
+import { Crown, Infinity as InfinityIcon, Cloud, Palette, X } from 'lucide-react-native';
 import { useTheme } from '../src/theme/ThemeContext';
 import { unlockPremium, FREE_CUSTOMER_LIMIT, PREMIUM_PRICE_LABEL } from '../src/premium';
 
@@ -18,7 +18,16 @@ export default function PaywallScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Stack.Screen options={{ title: 'Premium' }} />
+      <Stack.Screen
+        options={{
+          title: 'Premium',
+          headerLeft: () => (
+            <Pressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Fermer">
+              <X color={colors.text} size={22} />
+            </Pressable>
+          ),
+        }}
+      />
       <ScrollView contentContainerStyle={{ padding: spacing.md }}>
         <View style={styles.hero}>
           <View style={[styles.heroIcon, { backgroundColor: '#F7EFDD' }]}>
@@ -63,6 +72,9 @@ export default function PaywallScreen() {
         <Pressable style={[styles.priceBtn, { backgroundColor: '#B8862E', borderRadius: radius.md, marginTop: spacing.sm }]} onPress={handleUnlock}>
           <Text style={styles.priceBtnText}>Débloquer — {PREMIUM_PRICE_LABEL}</Text>
         </Pressable>
+        <Text style={[styles.note, { color: colors.textMuted }]}>
+          Paiement unique, à vie : les prochaines améliorations de ces fonctionnalités seront incluses, sans nouveau paiement.
+        </Text>
         <Text style={[styles.note, { color: colors.textMuted }]}>
           Démo : le déblocage est simulé pour l'instant (pas encore de compte développeur configuré), aucun montant n'est prélevé.
         </Text>

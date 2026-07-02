@@ -2,11 +2,12 @@ import { useCallback, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { ChevronRight } from 'lucide-react-native';
+import { ChevronRight, X } from 'lucide-react-native';
 import { createCustomer, getCustomer, updateCustomer } from '../../src/db/customers';
 import { createTransaction } from '../../src/db/transactions';
 import { getProfile } from '../../src/db/settings';
 import { CurrencyPicker } from '../../src/components/CurrencyPicker';
+import { CodeBadge } from '../../src/components/CodeBadge';
 import { currencyInfo } from '../../src/data/currencies';
 import { radius, spacing, fontSize, colors as ColorsType } from '../../src/utils/theme';
 import { useTheme } from '../../src/theme/ThemeContext';
@@ -79,7 +80,16 @@ export default function CustomerFormScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Stack.Screen options={{ title: isEdit ? 'Modifier la personne' : 'Nouvelle personne' }} />
+      <Stack.Screen
+        options={{
+          title: isEdit ? 'Modifier la personne' : 'Nouvelle personne',
+          headerLeft: () => (
+            <Pressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Fermer">
+              <X color={colors.text} size={22} />
+            </Pressable>
+          ),
+        }}
+      />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.label}>Nom *</Text>
         <TextInput
@@ -123,9 +133,10 @@ export default function CustomerFormScreen() {
 
         <Text style={styles.label}>Devise</Text>
         <Pressable style={styles.picker} onPress={() => setPickerOpen(true)}>
-          <Text style={styles.pickerText}>
-            {selectedCurrency.flag} {selectedCurrency.label}
-          </Text>
+          <View style={styles.pickerLeft}>
+            <CodeBadge code={selectedCurrency.code} />
+            <Text style={styles.pickerText}>{selectedCurrency.label}</Text>
+          </View>
           <ChevronRight color={colors.textMuted} size={18} />
         </Pressable>
 
@@ -223,6 +234,11 @@ function createStyles(colors: typeof ColorsType) {
       borderColor: colors.border,
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.sm + 4,
+    },
+    pickerLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
     },
     pickerText: {
       fontSize: fontSize.md,

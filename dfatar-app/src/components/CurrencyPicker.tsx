@@ -3,7 +3,7 @@ import { Modal, View, Text, TextInput, FlatList, Pressable, StyleSheet } from 'r
 import { ChevronLeft } from 'lucide-react-native';
 import { CURRENCIES } from '../data/currencies';
 import { COUNTRIES } from '../data/countries';
-import { flagFromISO2 } from '../utils/flag';
+import { CodeBadge } from './CodeBadge';
 import { useTheme } from '../theme/ThemeContext';
 
 interface Props {
@@ -62,9 +62,8 @@ export function CurrencyPicker({ visible, title = 'Choisir une devise', onClose,
             contentContainerStyle={{ paddingHorizontal: spacing.md, paddingBottom: spacing.xl }}
             renderItem={({ item }) => (
               <Pressable style={[styles.row, { backgroundColor: colors.surface, borderRadius: radius.md }]} onPress={() => handleSelect(item.code)}>
-                <Text style={styles.flag}>{item.flag}</Text>
+                <CodeBadge code={item.code} />
                 <Text style={[styles.rowText, { color: colors.text, fontSize: fontSize.sm }]}>{item.label}</Text>
-                <Text style={{ color: colors.textMuted, fontSize: fontSize.xs }}>{item.code}</Text>
               </Pressable>
             )}
             ListFooterComponent={
@@ -80,7 +79,7 @@ export function CurrencyPicker({ visible, title = 'Choisir une devise', onClose,
             contentContainerStyle={{ paddingHorizontal: spacing.md, paddingBottom: spacing.xl }}
             renderItem={({ item }) => (
               <Pressable style={[styles.row, { backgroundColor: colors.surface, borderRadius: radius.md }]} onPress={() => handleSelect(item.currency)}>
-                <Text style={styles.flag}>{flagFromISO2(item.cc)}</Text>
+                <CodeBadge code={item.cc} />
                 <Text style={[styles.rowText, { color: colors.text, fontSize: fontSize.sm }]}>{item.name}</Text>
                 <Text style={{ color: colors.textMuted, fontSize: fontSize.xs }}>{item.currency}</Text>
               </Pressable>
@@ -107,7 +106,6 @@ const styles = StyleSheet.create({
   title: { fontSize: 17, fontWeight: '700' },
   search: { borderWidth: 1, paddingHorizontal: 13, paddingVertical: 11, fontSize: 15 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, marginBottom: 6 },
-  flag: { fontSize: 19 },
   rowText: { flex: 1, fontWeight: '600' },
   footerLink: { alignItems: 'center', paddingVertical: 14 },
 });

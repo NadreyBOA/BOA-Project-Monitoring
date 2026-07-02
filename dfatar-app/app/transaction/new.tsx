@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
+import { X } from 'lucide-react-native';
 import { createTransaction } from '../../src/db/transactions';
 import { getCustomer } from '../../src/db/customers';
 import type { TransactionType } from '../../src/types';
@@ -49,7 +50,16 @@ export default function TransactionFormScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Stack.Screen options={{ title: currency ? `Nouvelle transaction (${currency})` : 'Nouvelle transaction' }} />
+      <Stack.Screen
+        options={{
+          title: currency ? `Nouvelle transaction (${currency})` : 'Nouvelle transaction',
+          headerLeft: () => (
+            <Pressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Fermer">
+              <X color={colors.text} size={22} />
+            </Pressable>
+          ),
+        }}
+      />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.label}>Type</Text>
         <View style={styles.segmented}>
