@@ -22,22 +22,9 @@ export async function countCustomers(db: SQLiteDatabase): Promise<number> {
   return row?.count ?? 0;
 }
 
-export interface CurrencyTotal {
-  currency: string;
-  amount: number;
-}
-
-export async function totalsByCurrency(db: SQLiteDatabase): Promise<CurrencyTotal[]> {
+export async function totalDue(db: SQLiteDatabase): Promise<number> {
   const rows = await listCustomersWithBalance(db);
-  const totals = new Map<string, number>();
-  for (const row of rows) {
-    const due = Math.max(row.balance, 0);
-    if (due <= 0) continue;
-    totals.set(row.currency, (totals.get(row.currency) ?? 0) + due);
-  }
-  return Array.from(totals.entries())
-    .map(([currency, amount]) => ({ currency, amount }))
-    .sort((a, b) => b.amount - a.amount);
+  return rows.reduce((sum, row) => sum + Math.max(row.balance, 0), 0);
 }
 
 export async function getCustomerWithBalance(
@@ -53,18 +40,17 @@ export async function getCustomerWithBalance(
 
 export async function createCustomer(
   db: SQLiteDatabase,
-  input: { name: string; phone: string | null; address: string | null; note: string | null; currency: string }
+  input: { name: string; phone: string | null; address: string | null; note: string | null }
 ): Promise<string> {
   const id = generateId();
   await db.runAsync(
-    'INSERT INTO customers (id, name, phone, address, note, currency, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    'INSERT INTO customers (id, name, phone, address, note, created_at) VALUES (?, ?, ?, ?, ?, ?)',
     [
       id,
       input.name.trim(),
       input.phone?.trim() || null,
       input.address?.trim() || null,
       input.note?.trim() || null,
-      input.currency,
       new Date().toISOString(),
     ]
   );
@@ -74,14 +60,13 @@ export async function createCustomer(
 export async function updateCustomer(
   db: SQLiteDatabase,
   id: string,
-  input: { name: string; phone: string | null; address: string | null; note: string | null; currency: string }
+  input: { name: string; phone: string | null; address: string | null; note: string | null }
 ): Promise<void> {
-  await db.runAsync('UPDATE customers SET name = ?, phone = ?, address = ?, note = ?, currency = ? WHERE id = ?', [
+  await db.runAsync('UPDATE customers SET name = ?, phone = ?, address = ?, note = ? WHERE id = ?', [
     input.name.trim(),
     input.phone?.trim() || null,
     input.address?.trim() || null,
     input.note?.trim() || null,
-    input.currency,
     id,
   ]);
 }

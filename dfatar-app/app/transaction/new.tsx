@@ -4,7 +4,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { X } from 'lucide-react-native';
 import { createTransaction } from '../../src/db/transactions';
-import { getCustomer } from '../../src/db/customers';
+import { getProfile } from '../../src/db/settings';
 import type { TransactionType } from '../../src/types';
 import { radius, spacing, fontSize, colors as ColorsType } from '../../src/utils/theme';
 import { useTheme } from '../../src/theme/ThemeContext';
@@ -24,9 +24,8 @@ export default function TransactionFormScreen() {
   const [currency, setCurrency] = useState('');
 
   useEffect(() => {
-    if (!customerId) return;
-    getCustomer(db, customerId).then((c) => setCurrency(c?.currency ?? ''));
-  }, [db, customerId]);
+    getProfile(db).then((p) => setCurrency(p.baseCurrency));
+  }, [db]);
 
   const parsedAmount = parseFloat(amount.replace(',', '.'));
   const canSave = customerId && !Number.isNaN(parsedAmount) && parsedAmount > 0 && !saving;

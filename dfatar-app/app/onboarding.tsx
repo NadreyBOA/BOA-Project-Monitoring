@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { Briefcase, User, Search, ChevronLeft } from 'lucide-react-native';
 import { useTheme } from '../src/theme/ThemeContext';
@@ -13,6 +13,8 @@ export default function OnboardingScreen() {
   const { colors, spacing, radius, fontSize } = useTheme();
   const db = useSQLiteContext();
   const router = useRouter();
+  const { review } = useLocalSearchParams<{ review?: string }>();
+  const isReview = review === '1';
 
   const [step, setStep] = useState(0);
   const [accountType, setAccountType] = useState<AccountType | null>(null);
@@ -29,6 +31,11 @@ export default function OnboardingScreen() {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+          {isReview && (
+            <Pressable onPress={() => router.back()} hitSlop={8}>
+              <ChevronLeft color={colors.text} size={22} />
+            </Pressable>
+          )}
           <Text style={[styles.headerTitle, { color: colors.text }]}>Bienvenue sur Dfatar</Text>
         </View>
         <View style={{ padding: spacing.md }}>
@@ -98,7 +105,7 @@ export default function OnboardingScreen() {
       </View>
       <View style={{ padding: spacing.md, paddingBottom: 0 }}>
         <Text style={[styles.hint, { color: colors.textMuted }]}>
-          Ça fixe votre devise de base (modifiable plus tard, et par personne).
+          Ça fixe la devise utilisée dans toute l'app (modifiable plus tard dans les paramètres).
         </Text>
         <View style={[styles.search, { borderColor: colors.border, backgroundColor: colors.surface, borderRadius: radius.md }]}>
           <Search color={colors.textMuted} size={16} />

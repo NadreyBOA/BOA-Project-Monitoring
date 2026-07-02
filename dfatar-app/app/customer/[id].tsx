@@ -57,9 +57,11 @@ export default function CustomerDetailScreen() {
     ]);
   }
 
+  const currency = profile?.baseCurrency ?? 'MAD';
+
   async function handleReminder() {
     if (!customer || !customer.phone || !profile) return;
-    const message = buildReminderMessage(customer.name, customer.balance, customer.currency, profile.displayName, profile.accountType);
+    const message = buildReminderMessage(customer.name, customer.balance, currency, profile.displayName, profile.accountType);
     await openWhatsAppReminder(customer.phone, message);
   }
 
@@ -67,7 +69,7 @@ export default function CustomerDetailScreen() {
     if (!customer || customer.balance <= 0) return;
     Alert.alert(
       'Solder la dette ?',
-      `Marquer ${formatAmount(customer.balance, customer.currency)} comme remboursé par ${customer.name} ?`,
+      `Marquer ${formatAmount(customer.balance, currency)} comme remboursé par ${customer.name} ?`,
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -119,7 +121,7 @@ export default function CustomerDetailScreen() {
         <View style={styles.balanceCard}>
           <Text style={styles.balanceLabel}>{owesMoney ? 'Solde dû' : 'Aucun solde dû'}</Text>
           <Text style={[styles.balanceAmount, owesMoney ? styles.balancePositive : styles.balanceZero]}>
-            {formatAmount(customer.balance, customer.currency)}
+            {formatAmount(customer.balance, currency)}
           </Text>
           {!!customer.phone && <Text style={styles.phone}>{customer.phone}</Text>}
           {!!customer.address && <Text style={styles.address}>{customer.address}</Text>}
@@ -144,7 +146,7 @@ export default function CustomerDetailScreen() {
 
         {owesMoney && (
           <Pressable style={styles.settleButton} onPress={handleSettle}>
-            <Text style={styles.settleButtonText}>✓ Solder maintenant ({formatAmount(customer.balance, customer.currency)})</Text>
+            <Text style={styles.settleButtonText}>✓ Solder maintenant ({formatAmount(customer.balance, currency)})</Text>
           </Pressable>
         )}
 
@@ -163,7 +165,7 @@ export default function CustomerDetailScreen() {
             subtitle="Ajoutez une dette ou un remboursement pour commencer l'historique."
           />
         ) : (
-          transactions.map((t) => <TransactionRow key={t.id} transaction={t} currency={customer.currency} />)
+          transactions.map((t) => <TransactionRow key={t.id} transaction={t} currency={currency} />)
         )}
       </ScrollView>
     </View>

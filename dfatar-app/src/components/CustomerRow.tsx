@@ -6,7 +6,7 @@ import { radius, spacing, fontSize, colors as ColorsType } from '../utils/theme'
 import { useTheme } from '../theme/ThemeContext';
 import { formatAmount, formatDate } from '../utils/currency';
 
-export function CustomerRow({ customer }: { customer: CustomerWithBalance }) {
+export function CustomerRow({ customer, currency }: { customer: CustomerWithBalance; currency: string }) {
   const { colors } = useTheme();
   const styles = createStyles(colors);
   const router = useRouter();
@@ -31,7 +31,7 @@ export function CustomerRow({ customer }: { customer: CustomerWithBalance }) {
       </View>
       {owesMoney ? (
         <View style={styles.balanceBlock}>
-          <Text style={[styles.balance, styles.balanceOwed]}>{formatAmount(customer.balance, customer.currency)}</Text>
+          <Text style={[styles.balance, styles.balanceOwed]}>{formatAmount(customer.balance, currency)}</Text>
           <Text style={styles.balanceLabel}>dû</Text>
         </View>
       ) : (

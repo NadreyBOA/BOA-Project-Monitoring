@@ -5,7 +5,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { Plus, Search, Users } from 'lucide-react-native';
 import { CustomerRow } from '../../src/components/CustomerRow';
 import { EmptyState } from '../../src/components/EmptyState';
-import { countCustomers, listCustomersWithBalance, totalsByCurrency, type CurrencyTotal } from '../../src/db/customers';
+import { countCustomers, listCustomersWithBalance, totalDue } from '../../src/db/customers';
 import { getProfile, isOnboardingComplete } from '../../src/db/settings';
 import { isPremium, FREE_CUSTOMER_LIMIT } from '../../src/premium';
 import type { CustomerWithBalance } from '../../src/types';
@@ -21,7 +21,7 @@ export default function PeopleScreen() {
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [customers, setCustomers] = useState<CustomerWithBalance[]>([]);
-  const [totals, setTotals] = useState<CurrencyTotal[]>([]);
+  const [total, setTotal] = useState(0);
   const [baseCurrency, setBaseCurrency] = useState('MAD');
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<'due' | 'all'>('due');
@@ -35,14 +35,14 @@ export default function PeopleScreen() {
         setNeedsOnboarding(!done);
         setOnboardingChecked(true);
         if (!done) return;
-        const [rows, totalsRows, profile] = await Promise.all([
+        const [rows, dueTotal, profile] = await Promise.all([
           listCustomersWithBalance(db),
-          totalsByCurrency(db),
+          totalDue(db),
           getProfile(db),
         ]);
         if (!cancelled) {
           setCustomers(rows);
-          setTotals(totalsRows);
+          setTotal(dueTotal);
           setBaseCurrency(profile.baseCurrency);
         }
       })();
@@ -82,17 +82,7 @@ export default function PeopleScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.totalLabel}>Total dû par vos personnes</Text>
-        <View style={styles.amountsRow}>
-          {totals.length === 0 ? (
-            <Text style={styles.totalAmount}>{formatAmount(0, baseCurrency)}</Text>
-          ) : (
-            totals.map((t, i) => (
-              <Text key={t.currency} style={i === 0 ? styles.totalAmount : styles.totalAmountSecondary}>
-                {formatAmount(t.amount, t.currency)}
-              </Text>
-            ))
-          )}
-        </View>
+        <Text style={styles.totalAmount}>{formatAmount(total, baseCurrency)}</Text>
       </View>
 
       <View style={styles.filterRow}>
@@ -129,7 +119,7 @@ export default function PeopleScreen() {
         data={filtered}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => <CustomerRow customer={item} />}
+        renderItem={({ item }) => <CustomerRow customer={item} currency={baseCurrency} />}
         ListEmptyComponent={
           <EmptyState
             icon={Users}
@@ -172,21 +162,10 @@ function createStyles(colors: typeof ColorsType) {
       color: colors.textMuted,
       marginBottom: spacing.xs,
     },
-    amountsRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      alignItems: 'baseline',
-      gap: spacing.sm,
-    },
     totalAmount: {
       fontSize: fontSize.xl,
       fontWeight: '800',
       color: colors.text,
-    },
-    totalAmountSecondary: {
-      fontSize: fontSize.lg,
-      fontWeight: '700',
-      color: colors.textMuted,
     },
     filterRow: {
       flexDirection: 'row',

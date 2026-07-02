@@ -2,13 +2,9 @@ import { useCallback, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { ChevronRight, X } from 'lucide-react-native';
+import { X } from 'lucide-react-native';
 import { createCustomer, getCustomer, updateCustomer } from '../../src/db/customers';
 import { createTransaction } from '../../src/db/transactions';
-import { getProfile } from '../../src/db/settings';
-import { CurrencyPicker } from '../../src/components/CurrencyPicker';
-import { CodeBadge } from '../../src/components/CodeBadge';
-import { currencyInfo } from '../../src/data/currencies';
 import { radius, spacing, fontSize, colors as ColorsType } from '../../src/utils/theme';
 import { useTheme } from '../../src/theme/ThemeContext';
 
@@ -24,27 +20,20 @@ export default function CustomerFormScreen() {
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [note, setNote] = useState('');
-  const [currency, setCurrency] = useState('MAD');
   const [debtAmount, setDebtAmount] = useState('');
   const [debtNote, setDebtNote] = useState('');
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
+      if (!id) return;
       (async () => {
-        if (id) {
-          const customer = await getCustomer(db, id);
-          if (customer) {
-            setName(customer.name);
-            setPhone(customer.phone ?? '');
-            setAddress(customer.address ?? '');
-            setNote(customer.note ?? '');
-            setCurrency(customer.currency);
-          }
-        } else {
-          const profile = await getProfile(db);
-          setCurrency(profile.baseCurrency);
+        const customer = await getCustomer(db, id);
+        if (customer) {
+          setName(customer.name);
+          setPhone(customer.phone ?? '');
+          setAddress(customer.address ?? '');
+          setNote(customer.note ?? '');
         }
       })();
     }, [db, id])
@@ -55,10 +44,10 @@ export default function CustomerFormScreen() {
     setSaving(true);
     try {
       if (isEdit && id) {
-        await updateCustomer(db, id, { name, phone: phone || null, address: address || null, note: note || null, currency });
+        await updateCustomer(db, id, { name, phone: phone || null, address: address || null, note: note || null });
         router.back();
       } else {
-        const newId = await createCustomer(db, { name, phone: phone || null, address: address || null, note: note || null, currency });
+        const newId = await createCustomer(db, { name, phone: phone || null, address: address || null, note: note || null });
         const parsedDebt = parseFloat(debtAmount.replace(',', '.'));
         if (!isNaN(parsedDebt) && parsedDebt > 0) {
           await createTransaction(db, {
@@ -75,8 +64,6 @@ export default function CustomerFormScreen() {
       setSaving(false);
     }
   }
-
-  const selectedCurrency = currencyInfo(currency);
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -131,15 +118,6 @@ export default function CustomerFormScreen() {
           multiline
         />
 
-        <Text style={styles.label}>Devise</Text>
-        <Pressable style={styles.picker} onPress={() => setPickerOpen(true)}>
-          <View style={styles.pickerLeft}>
-            <CodeBadge code={selectedCurrency.code} />
-            <Text style={styles.pickerText}>{selectedCurrency.label}</Text>
-          </View>
-          <ChevronRight color={colors.textMuted} size={18} />
-        </Pressable>
-
         {!isEdit && (
           <>
             <View style={styles.divider}>
@@ -175,16 +153,6 @@ export default function CustomerFormScreen() {
           <Text style={styles.saveButtonText}>{saving ? 'Enregistrement…' : 'Enregistrer'}</Text>
         </Pressable>
       </View>
-
-      <CurrencyPicker
-        visible={pickerOpen}
-        title="Devise de cette personne"
-        onClose={() => setPickerOpen(false)}
-        onSelect={(code) => {
-          setCurrency(code);
-          setPickerOpen(false);
-        }}
-      />
     </KeyboardAvoidingView>
   );
 }
@@ -223,26 +191,6 @@ function createStyles(colors: typeof ColorsType) {
       fontSize: fontSize.xs,
       color: colors.textMuted,
       marginTop: spacing.xs,
-    },
-    picker: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      backgroundColor: colors.surface,
-      borderRadius: radius.md,
-      borderWidth: 1,
-      borderColor: colors.border,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm + 4,
-    },
-    pickerLeft: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-    },
-    pickerText: {
-      fontSize: fontSize.md,
-      color: colors.text,
     },
     divider: {
       marginTop: spacing.lg,

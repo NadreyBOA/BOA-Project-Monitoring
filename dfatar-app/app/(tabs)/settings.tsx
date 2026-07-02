@@ -4,7 +4,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { ShieldCheck, Cloud, Bell, Crown, Lock } from 'lucide-react-native';
 import { getProfile, setSetting, SETTINGS_KEYS, type Profile } from '../../src/db/settings';
-import { totalsByCurrency } from '../../src/db/customers';
+import { totalDue } from '../../src/db/customers';
 import { isPremium, PREMIUM_PRICE_LABEL } from '../../src/premium';
 import { CurrencyPicker } from '../../src/components/CurrencyPicker';
 import { CodeBadge } from '../../src/components/CodeBadge';
@@ -96,12 +96,13 @@ export default function SettingsScreen() {
   }
 
   async function handleTestNotification() {
-    const totals = await totalsByCurrency(db);
-    const text =
-      totals.length === 0
-        ? 'Aucun montant à encaisser pour le moment.'
-        : `Vous avez ${totals.map((t) => formatAmount(t.amount, t.currency)).join(' · ')} à encaisser.`;
+    const due = await totalDue(db);
+    const text = due <= 0 ? 'Aucun montant à encaisser pour le moment.' : `Vous avez ${formatAmount(due, profile?.baseCurrency ?? 'MAD')} à encaisser.`;
     await sendTestReminderNotification(text);
+  }
+
+  function handleReviewOnboarding() {
+    router.push('/onboarding?review=1');
   }
 
   function handleCloudPress() {
@@ -139,13 +140,16 @@ export default function SettingsScreen() {
         placeholderTextColor={colors.textMuted}
         style={styles.input}
       />
+      <Pressable style={styles.ghostBtn} onPress={handleReviewOnboarding}>
+        <Text style={styles.ghostBtnText}>↺ Revoir l'onboarding</Text>
+      </Pressable>
 
-      <Text style={styles.sectionDivider}>Devise de base</Text>
+      <Text style={styles.sectionDivider}>Devise</Text>
       <Pressable style={[styles.picker, styles.pickerRow]} onPress={() => setPickerOpen(true)}>
         <CodeBadge code={base.code} />
         <Text style={styles.pickerText}>{base.label}</Text>
       </Pressable>
-      <Text style={styles.hint}>Chaque personne peut avoir sa propre devise, choisie à sa création.</Text>
+      <Text style={styles.hint}>Tous les montants de l'app sont affichés dans cette devise.</Text>
       {saved && <Text style={styles.savedText}>Enregistré</Text>}
 
       <Text style={styles.sectionDivider}>Thème</Text>

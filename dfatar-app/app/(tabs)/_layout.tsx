@@ -1,6 +1,17 @@
-import { Tabs } from 'expo-router';
-import { Users, Settings } from 'lucide-react-native';
+import { Pressable } from 'react-native';
+import { Tabs, useRouter } from 'expo-router';
+import { Users, Settings, ChevronLeft } from 'lucide-react-native';
 import { useTheme } from '../../src/theme/ThemeContext';
+
+function SettingsBackButton() {
+  const { colors } = useTheme();
+  const router = useRouter();
+  return (
+    <Pressable onPress={() => router.push('/')} hitSlop={8} accessibilityLabel="Retour">
+      <ChevronLeft color={colors.text} size={24} />
+    </Pressable>
+  );
+}
 
 export default function TabsLayout() {
   const { colors } = useTheme();
@@ -24,6 +35,7 @@ export default function TabsLayout() {
         options={{
           title: 'Paramètres',
           tabBarIcon: ({ color, size }) => <Settings color={color} size={size} />,
+          headerLeft: () => <SettingsBackButton />,
         }}
       />
     </Tabs>
