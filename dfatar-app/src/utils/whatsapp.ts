@@ -1,8 +1,19 @@
 import { Linking } from 'react-native';
 import { formatAmount } from './currency';
+import type { AccountType } from '../types';
 
-export function buildReminderMessage(customerName: string, balance: number, currency: string, shopName: string): string {
-  return `Bonjour ${customerName}, un petit rappel : vous avez un solde de ${formatAmount(balance, currency)} chez ${shopName}. Merci !`;
+export function buildReminderMessage(
+  customerName: string,
+  balance: number,
+  currency: string,
+  displayName: string,
+  accountType: AccountType
+): string {
+  const amount = formatAmount(balance, currency);
+  if (accountType === 'pro') {
+    return `Bonjour ${customerName}, un petit rappel : vous avez un solde de ${amount} chez ${displayName}. Merci !`;
+  }
+  return `Bonjour ${customerName}, petit rappel amical de la part de ${displayName} : il te reste ${amount} à me rembourser. Merci !`;
 }
 
 export async function openWhatsAppReminder(phone: string, message: string): Promise<boolean> {

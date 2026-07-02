@@ -2,10 +2,13 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ChevronRight } from 'lucide-react-native';
 import type { CustomerWithBalance } from '../types';
-import { colors, radius, spacing, fontSize } from '../utils/theme';
+import { radius, spacing, fontSize, colors as ColorsType } from '../utils/theme';
+import { useTheme } from '../theme/ThemeContext';
 import { formatAmount, formatDate } from '../utils/currency';
 
-export function CustomerRow({ customer, currency }: { customer: CustomerWithBalance; currency: string }) {
+export function CustomerRow({ customer }: { customer: CustomerWithBalance }) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const router = useRouter();
   const initial = customer.name.trim().charAt(0).toUpperCase() || '?';
   const owesMoney = customer.balance > 0;
@@ -28,7 +31,7 @@ export function CustomerRow({ customer, currency }: { customer: CustomerWithBala
       </View>
       <View style={styles.balanceBlock}>
         <Text style={[styles.balance, owesMoney ? styles.balanceOwed : styles.balanceClear]}>
-          {formatAmount(customer.balance, currency)}
+          {formatAmount(customer.balance, customer.currency)}
         </Text>
         {owesMoney && <Text style={styles.balanceLabel}>dû</Text>}
       </View>
@@ -37,60 +40,62 @@ export function CustomerRow({ customer, currency }: { customer: CustomerWithBala
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    gap: spacing.md,
-  },
-  rowPressed: {
-    opacity: 0.7,
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.full,
-    backgroundColor: colors.primaryMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    color: colors.primary,
-    fontSize: fontSize.md,
-    fontWeight: '700',
-  },
-  info: {
-    flex: 1,
-  },
-  name: {
-    fontSize: fontSize.md,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  meta: {
-    fontSize: fontSize.xs,
-    color: colors.textMuted,
-    marginTop: 2,
-  },
-  balanceBlock: {
-    alignItems: 'flex-end',
-  },
-  balance: {
-    fontSize: fontSize.sm,
-    fontWeight: '700',
-  },
-  balanceOwed: {
-    color: colors.danger,
-  },
-  balanceClear: {
-    color: colors.textMuted,
-  },
-  balanceLabel: {
-    fontSize: fontSize.xs,
-    color: colors.textMuted,
-  },
-});
+function createStyles(colors: typeof ColorsType) {
+  return StyleSheet.create({
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: radius.md,
+      padding: spacing.md,
+      marginBottom: spacing.sm,
+      gap: spacing.md,
+    },
+    rowPressed: {
+      opacity: 0.7,
+    },
+    avatar: {
+      width: 44,
+      height: 44,
+      borderRadius: radius.full,
+      backgroundColor: colors.primaryMuted,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarText: {
+      color: colors.primary,
+      fontSize: fontSize.md,
+      fontWeight: '700',
+    },
+    info: {
+      flex: 1,
+    },
+    name: {
+      fontSize: fontSize.md,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    meta: {
+      fontSize: fontSize.xs,
+      color: colors.textMuted,
+      marginTop: 2,
+    },
+    balanceBlock: {
+      alignItems: 'flex-end',
+    },
+    balance: {
+      fontSize: fontSize.sm,
+      fontWeight: '700',
+    },
+    balanceOwed: {
+      color: colors.danger,
+    },
+    balanceClear: {
+      color: colors.textMuted,
+    },
+    balanceLabel: {
+      fontSize: fontSize.xs,
+      color: colors.textMuted,
+    },
+  });
+}

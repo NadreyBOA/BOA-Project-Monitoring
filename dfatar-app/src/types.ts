@@ -1,10 +1,14 @@
 export type TransactionType = 'credit' | 'payment';
 
+export type AccountType = 'pro' | 'particulier';
+
 export interface Customer {
   id: string;
   name: string;
   phone: string | null;
+  address: string | null;
   note: string | null;
+  currency: string;
   created_at: string;
 }
 

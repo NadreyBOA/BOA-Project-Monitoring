@@ -4,7 +4,7 @@ import type { Customer, CustomerWithBalance } from '../types';
 
 const BALANCE_SELECT = `
   SELECT
-    c.id, c.name, c.phone, c.note, c.created_at,
+    c.id, c.name, c.phone, c.address, c.note, c.currency, c.created_at,
     COALESCE(SUM(CASE WHEN t.type = 'credit' THEN t.amount ELSE -t.amount END), 0) AS balance,
     MAX(t.date) AS last_activity
   FROM customers c
@@ -15,6 +15,29 @@ export async function listCustomersWithBalance(db: SQLiteDatabase): Promise<Cust
   return db.getAllAsync<CustomerWithBalance>(
     `${BALANCE_SELECT} GROUP BY c.id ORDER BY balance DESC, c.name ASC`
   );
+}
+
+export async function countCustomers(db: SQLiteDatabase): Promise<number> {
+  const row = await db.getFirstAsync<{ count: number }>('SELECT COUNT(*) AS count FROM customers');
+  return row?.count ?? 0;
+}
+
+export interface CurrencyTotal {
+  currency: string;
+  amount: number;
+}
+
+export async function totalsByCurrency(db: SQLiteDatabase): Promise<CurrencyTotal[]> {
+  const rows = await listCustomersWithBalance(db);
+  const totals = new Map<string, number>();
+  for (const row of rows) {
+    const due = Math.max(row.balance, 0);
+    if (due <= 0) continue;
+    totals.set(row.currency, (totals.get(row.currency) ?? 0) + due);
+  }
+  return Array.from(totals.entries())
+    .map(([currency, amount]) => ({ currency, amount }))
+    .sort((a, b) => b.amount - a.amount);
 }
 
 export async function getCustomerWithBalance(
@@ -30,12 +53,20 @@ export async function getCustomerWithBalance(
 
 export async function createCustomer(
   db: SQLiteDatabase,
-  input: { name: string; phone: string | null; note: string | null }
+  input: { name: string; phone: string | null; address: string | null; note: string | null; currency: string }
 ): Promise<string> {
   const id = generateId();
   await db.runAsync(
-    'INSERT INTO customers (id, name, phone, note, created_at) VALUES (?, ?, ?, ?, ?)',
-    [id, input.name.trim(), input.phone?.trim() || null, input.note?.trim() || null, new Date().toISOString()]
+    'INSERT INTO customers (id, name, phone, address, note, currency, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [
+      id,
+      input.name.trim(),
+      input.phone?.trim() || null,
+      input.address?.trim() || null,
+      input.note?.trim() || null,
+      input.currency,
+      new Date().toISOString(),
+    ]
   );
   return id;
 }
@@ -43,12 +74,14 @@ export async function createCustomer(
 export async function updateCustomer(
   db: SQLiteDatabase,
   id: string,
-  input: { name: string; phone: string | null; note: string | null }
+  input: { name: string; phone: string | null; address: string | null; note: string | null; currency: string }
 ): Promise<void> {
-  await db.runAsync('UPDATE customers SET name = ?, phone = ?, note = ? WHERE id = ?', [
+  await db.runAsync('UPDATE customers SET name = ?, phone = ?, address = ?, note = ?, currency = ? WHERE id = ?', [
     input.name.trim(),
     input.phone?.trim() || null,
+    input.address?.trim() || null,
     input.note?.trim() || null,
+    input.currency,
     id,
   ]);
 }

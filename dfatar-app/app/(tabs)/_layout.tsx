@@ -1,8 +1,9 @@
 import { Tabs } from 'expo-router';
 import { Users, Settings } from 'lucide-react-native';
-import { colors } from '../../src/utils/theme';
+import { useTheme } from '../../src/theme/ThemeContext';
 
 export default function TabsLayout() {
+  const { colors } = useTheme();
   return (
     <Tabs
       screenOptions={{
@@ -14,7 +15,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Clients',
+          title: 'Personnes',
           tabBarIcon: ({ color, size }) => <Users color={color} size={size} />,
         }}
       />
