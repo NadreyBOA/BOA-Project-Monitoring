@@ -1,0 +1,96 @@
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { ChevronRight } from 'lucide-react-native';
+import type { CustomerWithBalance } from '../types';
+import { colors, radius, spacing, fontSize } from '../utils/theme';
+import { formatAmount, formatDate } from '../utils/currency';
+
+export function CustomerRow({ customer, currency }: { customer: CustomerWithBalance; currency: string }) {
+  const router = useRouter();
+  const initial = customer.name.trim().charAt(0).toUpperCase() || '?';
+  const owesMoney = customer.balance > 0;
+
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+      onPress={() => router.push(`/customer/${customer.id}`)}
+    >
+      <View style={styles.avatar}>
+        <Text style={styles.avatarText}>{initial}</Text>
+      </View>
+      <View style={styles.info}>
+        <Text style={styles.name} numberOfLines={1}>
+          {customer.name}
+        </Text>
+        <Text style={styles.meta} numberOfLines={1}>
+          {customer.last_activity ? `Dernière activité ${formatDate(customer.last_activity)}` : 'Aucune transaction'}
+        </Text>
+      </View>
+      <View style={styles.balanceBlock}>
+        <Text style={[styles.balance, owesMoney ? styles.balanceOwed : styles.balanceClear]}>
+          {formatAmount(customer.balance, currency)}
+        </Text>
+        {owesMoney && <Text style={styles.balanceLabel}>dû</Text>}
+      </View>
+      <ChevronRight color={colors.textMuted} size={18} />
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    gap: spacing.md,
+  },
+  rowPressed: {
+    opacity: 0.7,
+  },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.full,
+    backgroundColor: colors.primaryMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    color: colors.primary,
+    fontSize: fontSize.md,
+    fontWeight: '700',
+  },
+  info: {
+    flex: 1,
+  },
+  name: {
+    fontSize: fontSize.md,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  meta: {
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  balanceBlock: {
+    alignItems: 'flex-end',
+  },
+  balance: {
+    fontSize: fontSize.sm,
+    fontWeight: '700',
+  },
+  balanceOwed: {
+    color: colors.danger,
+  },
+  balanceClear: {
+    color: colors.textMuted,
+  },
+  balanceLabel: {
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+  },
+});
