@@ -2,9 +2,10 @@ import { useCallback, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { ShieldCheck, Cloud, Bell, Crown, Lock } from 'lucide-react-native';
+import { ShieldCheck, Cloud, Bell, Crown, Lock, Briefcase, User } from 'lucide-react-native';
 import { getProfile, setSetting, SETTINGS_KEYS, getReminderOffsetDays, setReminderOffsetDays, type Profile } from '../../src/db/settings';
 import { totalDue } from '../../src/db/customers';
+import { getCurrentSpace, renameSpace, type Space } from '../../src/db/spaces';
 import { isPremium, PREMIUM_PRICE_LABEL } from '../../src/premium';
 import { CurrencyPicker } from '../../src/components/CurrencyPicker';
 import { CodeBadge } from '../../src/components/CodeBadge';
@@ -33,6 +34,7 @@ export default function SettingsScreen() {
   const router = useRouter();
 
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [currentSpace, setCurrentSpace] = useState<Space | null>(null);
   const [displayName, setDisplayName] = useState('');
   const [premium, setPremium] = useState(false);
   const [notificationsOn, setNotificationsOn] = useState(false);
@@ -43,14 +45,16 @@ export default function SettingsScreen() {
   useFocusEffect(
     useCallback(() => {
       (async () => {
-        const [profileRow, premiumFlag, notifGranted, offsetDays] = await Promise.all([
+        const [profileRow, space, premiumFlag, notifGranted, offsetDays] = await Promise.all([
           getProfile(db),
+          getCurrentSpace(db),
           isPremium(db),
           getNotificationPermissionGranted(),
           getReminderOffsetDays(db),
         ]);
         setProfile(profileRow);
-        setDisplayName(profileRow.displayName);
+        setCurrentSpace(space);
+        setDisplayName(space?.name ?? '');
         setPremium(premiumFlag);
         setNotificationsOn(notifGranted);
         setReminderOffsetDaysState(offsetDays);
@@ -64,17 +68,11 @@ export default function SettingsScreen() {
   }
 
   async function persistDisplayName() {
-    if (!profile) return;
-    const value = displayName.trim() || profile.displayName;
-    await setSetting(db, SETTINGS_KEYS.displayName, value);
-    setProfile({ ...profile, displayName: value });
+    if (!currentSpace) return;
+    const value = displayName.trim() || currentSpace.name;
+    await renameSpace(db, currentSpace.id, value);
+    setCurrentSpace({ ...currentSpace, name: value });
     flashSaved();
-  }
-
-  async function changeAccountType(type: 'pro' | 'particulier') {
-    if (!profile) return;
-    await setSetting(db, SETTINGS_KEYS.accountType, type);
-    setProfile({ ...profile, accountType: type });
   }
 
   async function changeBaseCurrency(code: string) {
@@ -106,7 +104,8 @@ export default function SettingsScreen() {
   }
 
   async function handleTestNotification() {
-    const due = await totalDue(db);
+    if (!currentSpace) return;
+    const due = await totalDue(db, currentSpace.id);
     const text = due <= 0 ? 'Aucun montant à encaisser pour le moment.' : `Vous avez ${formatAmount(due, profile?.baseCurrency ?? 'MAD')} à encaisser.`;
     await sendTestReminderNotification(text);
   }
@@ -124,30 +123,22 @@ export default function SettingsScreen() {
     if (!premium) router.push('/paywall');
   }
 
-  if (!profile) return <View style={styles.container} />;
+  if (!profile || !currentSpace) return <View style={styles.container} />;
 
-  const isPro = profile.accountType === 'pro';
+  const isPro = currentSpace.accountType === 'pro';
   const base = currencyInfo(profile.baseCurrency);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.sectionDivider}>Profil</Text>
-      <View style={styles.fieldRow}>
-        <Pressable
-          style={[styles.segment, isPro && styles.segmentActivePayment]}
-          onPress={() => changeAccountType('pro')}
-        >
-          <Text style={[styles.segmentText, isPro && styles.segmentTextActive]}>Professionnel</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.segment, !isPro && styles.segmentActiveCredit]}
-          onPress={() => changeAccountType('particulier')}
-        >
-          <Text style={[styles.segmentText, !isPro && styles.segmentTextActive]}>Particulier</Text>
-        </Pressable>
+      <Text style={styles.sectionDivider}>Profil — {currentSpace.name}</Text>
+      <View style={styles.typeBadgeRow}>
+        {isPro ? <Briefcase color={colors.text} size={16} /> : <User color={colors.text} size={16} />}
+        <Text style={styles.typeBadgeText}>{isPro ? 'Professionnel' : 'Particulier'}</Text>
+        <Lock color={colors.textMuted} size={13} />
       </View>
+      <Text style={styles.hint}>Le type de cet espace a été fixé à sa création et ne peut plus changer.</Text>
 
-      <Text style={styles.label}>{isPro ? "Nom de l'entreprise" : 'Votre nom'}</Text>
+      <Text style={[styles.label, { marginTop: spacing.md }]}>{isPro ? "Nom de l'entreprise" : 'Votre nom'}</Text>
       <TextInput
         value={displayName}
         onChangeText={setDisplayName}
@@ -304,34 +295,21 @@ function createStyles(colors: typeof ColorsType) {
       marginTop: spacing.lg,
       marginBottom: spacing.sm,
     },
-    fieldRow: {
+    typeBadgeRow: {
       flexDirection: 'row',
-      gap: spacing.sm,
-      marginBottom: spacing.md,
-    },
-    segment: {
-      flex: 1,
-      paddingVertical: spacing.sm + 4,
-      borderRadius: radius.md,
+      alignItems: 'center',
+      gap: spacing.xs,
+      alignSelf: 'flex-start',
+      backgroundColor: colors.surface,
+      borderRadius: radius.full,
       borderWidth: 1,
       borderColor: colors.border,
-      backgroundColor: colors.surface,
-      alignItems: 'center',
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs + 3,
     },
-    segmentActiveCredit: {
-      backgroundColor: colors.dangerMuted,
-      borderColor: colors.danger,
-    },
-    segmentActivePayment: {
-      backgroundColor: colors.primaryMuted,
-      borderColor: colors.primary,
-    },
-    segmentText: {
+    typeBadgeText: {
       fontSize: fontSize.xs,
-      fontWeight: '600',
-      color: colors.textMuted,
-    },
-    segmentTextActive: {
+      fontWeight: '700',
       color: colors.text,
     },
     label: {

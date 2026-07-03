@@ -5,15 +5,29 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { X } from 'lucide-react-native';
 import { createTransaction } from '../../src/db/transactions';
 import { getProfile, getReminderOffsetDays } from '../../src/db/settings';
-import { getCustomer } from '../../src/db/customers';
+import { getCustomer, getCustomerWithBalance } from '../../src/db/customers';
 import { scheduleDebtReminder } from '../../src/notifications';
 import type { TransactionType } from '../../src/types';
 import { radius, spacing, fontSize, colors as ColorsType } from '../../src/utils/theme';
 import { useTheme } from '../../src/theme/ThemeContext';
-import { formatDate } from '../../src/utils/currency';
+import { formatAmount } from '../../src/utils/currency';
+
+const PAYMENT_CHANNELS = ['Espèces', 'Virement bancaire', 'Mobile money', 'Chèque', 'Autre'];
 
 function isValidDate(value: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function isValidTime(value: string): boolean {
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+}
+
+function todayDateInput(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function nowTimeInput(): string {
+  return new Date().toTimeString().slice(0, 5);
 }
 
 export default function TransactionFormScreen() {
@@ -27,23 +41,49 @@ export default function TransactionFormScreen() {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [creditDate, setCreditDate] = useState(todayDateInput());
+  const [creditTime, setCreditTime] = useState(nowTimeInput());
+  const [paymentDate, setPaymentDate] = useState(todayDateInput());
+  const [paymentChannel, setPaymentChannel] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [currency, setCurrency] = useState('');
+  const [customerBalance, setCustomerBalance] = useState<number | null>(null);
 
   useEffect(() => {
     getProfile(db).then((p) => setCurrency(p.baseCurrency));
   }, [db]);
 
+  useEffect(() => {
+    if (!customerId) return;
+    getCustomerWithBalance(db, customerId).then((c) => setCustomerBalance(c?.balance ?? null));
+  }, [db, customerId]);
+
   const parsedAmount = parseFloat(amount.replace(',', '.'));
+  const amountEntered = !Number.isNaN(parsedAmount) && parsedAmount > 0;
+  const exceedsBalance =
+    type === 'payment' && amountEntered && customerBalance !== null && parsedAmount > customerBalance;
+
   const trimmedDueDate = dueDate.trim();
-  const dueDateValid = !trimmedDueDate || isValidDate(trimmedDueDate);
-  const canSave = customerId && !Number.isNaN(parsedAmount) && parsedAmount > 0 && dueDateValid && !saving;
+  const dueDateValid = type !== 'credit' || isValidDate(trimmedDueDate);
+  const creditDateValid = type !== 'credit' || isValidDate(creditDate.trim());
+  const creditTimeValid = type !== 'credit' || isValidTime(creditTime.trim());
+  const paymentDateValid = type !== 'payment' || isValidDate(paymentDate.trim());
+
+  const canSave =
+    customerId &&
+    amountEntered &&
+    !exceedsBalance &&
+    dueDateValid &&
+    creditDateValid &&
+    creditTimeValid &&
+    paymentDateValid &&
+    !saving;
 
   async function handleSave() {
     if (!canSave || !customerId) return;
     setSaving(true);
     try {
-      const effectiveDueDate = type === 'credit' && trimmedDueDate ? trimmedDueDate : null;
+      const effectiveDueDate = type === 'credit' ? trimmedDueDate : null;
       let notificationId: string | null = null;
       if (effectiveDueDate) {
         const [customer, offsetDays] = await Promise.all([
@@ -57,14 +97,19 @@ export default function TransactionFormScreen() {
           offsetDays
         );
       }
+      const date =
+        type === 'credit'
+          ? `${creditDate.trim()}T${creditTime.trim()}:00`
+          : `${paymentDate.trim()}T00:00:00`;
       await createTransaction(db, {
         customerId,
         type,
         amount: parsedAmount,
-        date: new Date().toISOString(),
+        date,
         note: note || null,
         dueDate: effectiveDueDate,
         notificationId,
+        paymentChannel: type === 'payment' ? paymentChannel : null,
       });
       router.back();
     } finally {
@@ -108,16 +153,39 @@ export default function TransactionFormScreen() {
           placeholder="0.00"
           placeholderTextColor={colors.textMuted}
           keyboardType="decimal-pad"
-          style={styles.input}
+          style={[styles.input, exceedsBalance && styles.inputError]}
           autoFocus
         />
+        {exceedsBalance && customerBalance !== null && (
+          <Text style={styles.errorText}>
+            Le remboursement ne peut pas dépasser le solde dû ({formatAmount(customerBalance, currency)}).
+          </Text>
+        )}
 
-        <Text style={styles.label}>Date</Text>
-        <Text style={styles.dateText}>{formatDate(new Date().toISOString())} (aujourd'hui)</Text>
-
-        {type === 'credit' && (
+        {type === 'credit' ? (
           <>
-            <Text style={styles.label}>Échéance prévue (facultatif)</Text>
+            <Text style={styles.label}>Date de prise du crédit</Text>
+            <View style={styles.row}>
+              <TextInput
+                value={creditDate}
+                onChangeText={setCreditDate}
+                placeholder="AAAA-MM-JJ"
+                placeholderTextColor={colors.textMuted}
+                style={[styles.input, styles.rowInput, !creditDateValid && styles.inputError]}
+              />
+              <TextInput
+                value={creditTime}
+                onChangeText={setCreditTime}
+                placeholder="HH:MM"
+                placeholderTextColor={colors.textMuted}
+                style={[styles.input, styles.rowInput, !creditTimeValid && styles.inputError]}
+              />
+            </View>
+            {(!creditDateValid || !creditTimeValid) && (
+              <Text style={styles.errorText}>Format attendu : AAAA-MM-JJ et HH:MM</Text>
+            )}
+
+            <Text style={styles.label}>Échéance prévue *</Text>
             <TextInput
               value={dueDate}
               onChangeText={setDueDate}
@@ -125,7 +193,36 @@ export default function TransactionFormScreen() {
               placeholderTextColor={colors.textMuted}
               style={[styles.input, !dueDateValid && styles.inputError]}
             />
-            {!dueDateValid && <Text style={styles.errorText}>Format attendu : AAAA-MM-JJ</Text>}
+            {!dueDateValid && (
+              <Text style={styles.errorText}>
+                {trimmedDueDate ? 'Format attendu : AAAA-MM-JJ' : "L'échéance est obligatoire pour une dette."}
+              </Text>
+            )}
+          </>
+        ) : (
+          <>
+            <Text style={styles.label}>Date du remboursement</Text>
+            <TextInput
+              value={paymentDate}
+              onChangeText={setPaymentDate}
+              placeholder="AAAA-MM-JJ"
+              placeholderTextColor={colors.textMuted}
+              style={[styles.input, !paymentDateValid && styles.inputError]}
+            />
+            {!paymentDateValid && <Text style={styles.errorText}>Format attendu : AAAA-MM-JJ</Text>}
+
+            <Text style={styles.label}>Canal (facultatif)</Text>
+            <View style={styles.chipsRow}>
+              {PAYMENT_CHANNELS.map((c) => (
+                <Pressable
+                  key={c}
+                  style={[styles.chip, paymentChannel === c && styles.chipActive]}
+                  onPress={() => setPaymentChannel(paymentChannel === c ? null : c)}
+                >
+                  <Text style={[styles.chipText, paymentChannel === c && styles.chipTextActive]}>{c}</Text>
+                </Pressable>
+              ))}
+            </View>
           </>
         )}
 
@@ -181,6 +278,38 @@ function createStyles(colors: typeof ColorsType) {
       borderColor: colors.border,
       backgroundColor: colors.surface,
       alignItems: 'center',
+    },
+    row: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    rowInput: {
+      flex: 1,
+    },
+    chipsRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+    },
+    chip: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs + 3,
+      borderRadius: radius.full,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    chipActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    chipText: {
+      fontSize: fontSize.xs,
+      fontWeight: '600',
+      color: colors.textMuted,
+    },
+    chipTextActive: {
+      color: '#fff',
     },
     segmentActiveCredit: {
       backgroundColor: colors.dangerMuted,

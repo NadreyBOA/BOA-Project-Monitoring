@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { generateId } from '../utils/id';
-import type { Transaction, TransactionType } from '../types';
+import type { Transaction, TransactionEdit, TransactionType } from '../types';
 
 export async function listTransactionsForCustomer(
   db: SQLiteDatabase,
@@ -10,6 +10,11 @@ export async function listTransactionsForCustomer(
     'SELECT * FROM transactions WHERE customer_id = ? ORDER BY date DESC, created_at DESC',
     [customerId]
   );
+}
+
+export async function getTransaction(db: SQLiteDatabase, id: string): Promise<Transaction | null> {
+  const row = await db.getFirstAsync<Transaction>('SELECT * FROM transactions WHERE id = ?', [id]);
+  return row ?? null;
 }
 
 export async function createTransaction(
@@ -22,11 +27,12 @@ export async function createTransaction(
     note: string | null;
     dueDate?: string | null;
     notificationId?: string | null;
+    paymentChannel?: string | null;
   }
 ): Promise<string> {
   const id = generateId();
   await db.runAsync(
-    'INSERT INTO transactions (id, customer_id, type, amount, date, note, due_date, notification_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    'INSERT INTO transactions (id, customer_id, type, amount, date, note, due_date, notification_id, payment_channel, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [
       id,
       input.customerId,
@@ -36,6 +42,7 @@ export async function createTransaction(
       input.note?.trim() || null,
       input.dueDate || null,
       input.notificationId || null,
+      input.paymentChannel || null,
       new Date().toISOString(),
     ]
   );
@@ -44,4 +51,72 @@ export async function createTransaction(
 
 export async function deleteTransaction(db: SQLiteDatabase, id: string): Promise<void> {
   await db.runAsync('DELETE FROM transactions WHERE id = ?', [id]);
+}
+
+async function logTransactionEdit(
+  db: SQLiteDatabase,
+  input: {
+    transactionId: string;
+    field: string;
+    oldValue: string | null;
+    newValue: string | null;
+    reason?: string | null;
+    reasonOther?: string | null;
+  }
+): Promise<void> {
+  const id = generateId();
+  await db.runAsync(
+    'INSERT INTO transaction_edits (id, transaction_id, field, old_value, new_value, reason, reason_other, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    [
+      id,
+      input.transactionId,
+      input.field,
+      input.oldValue,
+      input.newValue,
+      input.reason ?? null,
+      input.reasonOther ?? null,
+      new Date().toISOString(),
+    ]
+  );
+}
+
+export async function listTransactionEdits(db: SQLiteDatabase, transactionId: string): Promise<TransactionEdit[]> {
+  return db.getAllAsync<TransactionEdit>(
+    'SELECT * FROM transaction_edits WHERE transaction_id = ? ORDER BY created_at DESC',
+    [transactionId]
+  );
+}
+
+export async function updateTransactionAmount(
+  db: SQLiteDatabase,
+  transaction: Transaction,
+  newAmount: number
+): Promise<void> {
+  if (newAmount === transaction.amount) return;
+  await db.runAsync('UPDATE transactions SET amount = ? WHERE id = ?', [newAmount, transaction.id]);
+  await logTransactionEdit(db, {
+    transactionId: transaction.id,
+    field: 'amount',
+    oldValue: String(transaction.amount),
+    newValue: String(newAmount),
+  });
+}
+
+export async function updateTransactionDueDate(
+  db: SQLiteDatabase,
+  transaction: Transaction,
+  newDueDate: string | null,
+  reason: string,
+  reasonOther: string | null
+): Promise<void> {
+  if (newDueDate === transaction.due_date) return;
+  await db.runAsync('UPDATE transactions SET due_date = ? WHERE id = ?', [newDueDate, transaction.id]);
+  await logTransactionEdit(db, {
+    transactionId: transaction.id,
+    field: 'due_date',
+    oldValue: transaction.due_date,
+    newValue: newDueDate,
+    reason,
+    reasonOther,
+  });
 }

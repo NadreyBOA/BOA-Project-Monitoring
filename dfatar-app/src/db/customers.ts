@@ -11,19 +11,23 @@ const BALANCE_SELECT = `
   LEFT JOIN transactions t ON t.customer_id = c.id
 `;
 
-export async function listCustomersWithBalance(db: SQLiteDatabase): Promise<CustomerWithBalance[]> {
+export async function listCustomersWithBalance(db: SQLiteDatabase, spaceId: string): Promise<CustomerWithBalance[]> {
   return db.getAllAsync<CustomerWithBalance>(
-    `${BALANCE_SELECT} GROUP BY c.id ORDER BY balance DESC, c.name ASC`
+    `${BALANCE_SELECT} WHERE c.space_id = ? GROUP BY c.id ORDER BY balance DESC, c.name ASC`,
+    [spaceId]
   );
 }
 
-export async function countCustomers(db: SQLiteDatabase): Promise<number> {
-  const row = await db.getFirstAsync<{ count: number }>('SELECT COUNT(*) AS count FROM customers');
+export async function countCustomers(db: SQLiteDatabase, spaceId: string): Promise<number> {
+  const row = await db.getFirstAsync<{ count: number }>(
+    'SELECT COUNT(*) AS count FROM customers WHERE space_id = ?',
+    [spaceId]
+  );
   return row?.count ?? 0;
 }
 
-export async function totalDue(db: SQLiteDatabase): Promise<number> {
-  const rows = await listCustomersWithBalance(db);
+export async function totalDue(db: SQLiteDatabase, spaceId: string): Promise<number> {
+  const rows = await listCustomersWithBalance(db, spaceId);
   return rows.reduce((sum, row) => sum + Math.max(row.balance, 0), 0);
 }
 
@@ -40,17 +44,19 @@ export async function getCustomerWithBalance(
 
 export async function createCustomer(
   db: SQLiteDatabase,
+  spaceId: string,
   input: { name: string; phone: string | null; address: string | null; note: string | null }
 ): Promise<string> {
   const id = generateId();
   await db.runAsync(
-    'INSERT INTO customers (id, name, phone, address, note, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+    'INSERT INTO customers (id, name, phone, address, note, space_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
     [
       id,
       input.name.trim(),
       input.phone?.trim() || null,
       input.address?.trim() || null,
       input.note?.trim() || null,
+      spaceId,
       new Date().toISOString(),
     ]
   );

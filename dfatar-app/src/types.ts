@@ -9,6 +9,7 @@ export interface Customer {
   address: string | null;
   note: string | null;
   currency: string;
+  space_id: string;
   created_at: string;
 }
 
@@ -26,5 +27,17 @@ export interface Transaction {
   note: string | null;
   due_date: string | null;
   notification_id: string | null;
+  payment_channel: string | null;
+  created_at: string;
+}
+
+export interface TransactionEdit {
+  id: string;
+  transaction_id: string;
+  field: string;
+  old_value: string | null;
+  new_value: string | null;
+  reason: string | null;
+  reason_other: string | null;
   created_at: string;
 }

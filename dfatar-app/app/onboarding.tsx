@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -6,7 +6,8 @@ import { Briefcase, User, Search, ChevronLeft } from 'lucide-react-native';
 import { useTheme } from '../src/theme/ThemeContext';
 import { COUNTRIES } from '../src/data/countries';
 import { CodeBadge } from '../src/components/CodeBadge';
-import { completeOnboarding } from '../src/db/settings';
+import { setSetting, SETTINGS_KEYS } from '../src/db/settings';
+import { completeOnboarding, getCurrentSpace, renameSpace } from '../src/db/spaces';
 import type { AccountType } from '../src/types';
 
 export default function OnboardingScreen() {
@@ -16,14 +17,33 @@ export default function OnboardingScreen() {
   const { review } = useLocalSearchParams<{ review?: string }>();
   const isReview = review === '1';
 
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(isReview ? 1 : 0);
   const [accountType, setAccountType] = useState<AccountType | null>(null);
   const [displayName, setDisplayName] = useState('');
   const [query, setQuery] = useState('');
+  const [currentSpaceId, setCurrentSpaceId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isReview) return;
+    (async () => {
+      const space = await getCurrentSpace(db);
+      if (space) {
+        setAccountType(space.accountType);
+        setDisplayName(space.name);
+        setCurrentSpaceId(space.id);
+      }
+    })();
+  }, [isReview, db]);
 
   async function finish(countryCode: string, currency: string) {
     if (!accountType) return;
-    await completeOnboarding(db, { accountType, displayName: displayName.trim(), countryCode, baseCurrency: currency });
+    if (isReview) {
+      if (currentSpaceId) await renameSpace(db, currentSpaceId, displayName.trim());
+      await setSetting(db, SETTINGS_KEYS.countryCode, countryCode);
+      await setSetting(db, SETTINGS_KEYS.baseCurrency, currency);
+    } else {
+      await completeOnboarding(db, { accountType, displayName: displayName.trim(), countryCode, baseCurrency: currency });
+    }
     router.replace('/');
   }
 
@@ -64,13 +84,21 @@ export default function OnboardingScreen() {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-          <Pressable onPress={() => setStep(0)} hitSlop={8}><ChevronLeft color={colors.text} size={22} /></Pressable>
+          <Pressable onPress={() => (isReview ? router.back() : setStep(0))} hitSlop={8}>
+            <ChevronLeft color={colors.text} size={22} />
+          </Pressable>
           <Text style={[styles.headerTitle, { color: colors.text }]}>{isPro ? 'Votre entreprise' : 'Votre nom'}</Text>
         </View>
         <View style={{ padding: spacing.md, flex: 1 }}>
           <Text style={[styles.label, { color: colors.text }]}>
             {isPro ? "Quel est le nom de votre entreprise ?" : 'Quel est votre nom ?'}
           </Text>
+          {isReview && (
+            <Text style={[styles.hint, { color: colors.textMuted, marginBottom: spacing.sm }]}>
+              Le type de compte ({isPro ? 'Professionnel' : 'Particulier'}) est fixé à la création de cet espace et ne
+              peut plus changer.
+            </Text>
+          )}
           <TextInput
             value={displayName}
             onChangeText={setDisplayName}

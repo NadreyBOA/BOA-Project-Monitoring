@@ -2,13 +2,22 @@ import { useCallback, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View, ActivityIndicator } from 'react-native';
 import { Redirect, useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { Plus, Search, Users } from 'lucide-react-native';
+import { ChevronDown, Plus, Search, Users } from 'lucide-react-native';
 import { CustomerRow } from '../../src/components/CustomerRow';
 import { EmptyState } from '../../src/components/EmptyState';
+import { SpacePicker } from '../../src/components/SpacePicker';
 import { countCustomers, listCustomersWithBalance, totalDue } from '../../src/db/customers';
 import { getProfile, isOnboardingComplete } from '../../src/db/settings';
+import {
+  createSpace,
+  getCurrentSpace,
+  listSpaces,
+  setCurrentSpaceId,
+  MAX_FREE_SPACES,
+  type Space,
+} from '../../src/db/spaces';
 import { isPremium, FREE_CUSTOMER_LIMIT } from '../../src/premium';
-import type { CustomerWithBalance } from '../../src/types';
+import type { AccountType, CustomerWithBalance } from '../../src/types';
 import { radius, spacing, fontSize, colors as ColorsType } from '../../src/utils/theme';
 import { useTheme } from '../../src/theme/ThemeContext';
 import { formatAmount } from '../../src/utils/currency';
@@ -25,6 +34,25 @@ export default function PeopleScreen() {
   const [baseCurrency, setBaseCurrency] = useState('MAD');
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<'due' | 'all'>('due');
+  const [currentSpace, setCurrentSpaceState] = useState<Space | null>(null);
+  const [spaces, setSpaces] = useState<Space[]>([]);
+  const [premium, setPremium] = useState(false);
+  const [spacePickerOpen, setSpacePickerOpen] = useState(false);
+
+  async function loadSpaceData(spaceId: string) {
+    const [rows, dueTotal, profile, spaceList, premiumFlag] = await Promise.all([
+      listCustomersWithBalance(db, spaceId),
+      totalDue(db, spaceId),
+      getProfile(db),
+      listSpaces(db),
+      isPremium(db),
+    ]);
+    setCustomers(rows);
+    setTotal(dueTotal);
+    setBaseCurrency(profile.baseCurrency);
+    setSpaces(spaceList);
+    setPremium(premiumFlag);
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -35,16 +63,10 @@ export default function PeopleScreen() {
         setNeedsOnboarding(!done);
         setOnboardingChecked(true);
         if (!done) return;
-        const [rows, dueTotal, profile] = await Promise.all([
-          listCustomersWithBalance(db),
-          totalDue(db),
-          getProfile(db),
-        ]);
-        if (!cancelled) {
-          setCustomers(rows);
-          setTotal(dueTotal);
-          setBaseCurrency(profile.baseCurrency);
-        }
+        const space = await getCurrentSpace(db);
+        if (!space || cancelled) return;
+        setCurrentSpaceState(space);
+        await loadSpaceData(space.id);
       })();
       return () => {
         cancelled = true;
@@ -62,15 +84,46 @@ export default function PeopleScreen() {
   if (needsOnboarding) {
     return <Redirect href="/onboarding" />;
   }
+  if (!currentSpace) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   async function handleAddPress() {
-    const [count, premium] = await Promise.all([countCustomers(db), isPremium(db)]);
-    if (!premium && count >= FREE_CUSTOMER_LIMIT) {
+    const [count, premiumFlag] = await Promise.all([countCustomers(db, currentSpace!.id), isPremium(db)]);
+    if (!premiumFlag && count >= FREE_CUSTOMER_LIMIT) {
       router.push('/paywall?fromLimit=1');
       return;
     }
     router.push('/customer/new');
   }
+
+  async function handleSelectSpace(id: string) {
+    await setCurrentSpaceId(db, id);
+    setSpacePickerOpen(false);
+    const space = await getCurrentSpace(db);
+    setCurrentSpaceState(space);
+    if (space) await loadSpaceData(space.id);
+  }
+
+  async function handleCreateSpace(name: string, accountType: AccountType) {
+    const id = await createSpace(db, { name, accountType });
+    await setCurrentSpaceId(db, id);
+    setSpacePickerOpen(false);
+    const space = await getCurrentSpace(db);
+    setCurrentSpaceState(space);
+    if (space) await loadSpaceData(space.id);
+  }
+
+  function handleLockedCreatePress() {
+    setSpacePickerOpen(false);
+    router.push('/paywall');
+  }
+
+  const canCreateSpace = premium || spaces.length < MAX_FREE_SPACES;
 
   const dueCount = customers.filter((c) => c.balance > 0).length;
   const filteredCustomers = customers
@@ -91,6 +144,13 @@ export default function PeopleScreen() {
 
   return (
     <View style={styles.container}>
+      <Pressable style={styles.spaceSwitcher} onPress={() => setSpacePickerOpen(true)}>
+        <Text style={styles.spaceSwitcherText} numberOfLines={1}>
+          {currentSpace.name}
+        </Text>
+        <ChevronDown color={colors.textMuted} size={16} />
+      </Pressable>
+
       <View style={styles.header}>
         <Text style={styles.totalLabel}>Total dû par vos personnes</Text>
         <Text style={styles.totalAmount}>{formatAmount(total, baseCurrency)}</Text>
@@ -155,6 +215,17 @@ export default function PeopleScreen() {
       <Pressable style={styles.fab} onPress={handleAddPress} accessibilityLabel="Nouvelle personne">
         <Plus color="#fff" size={26} />
       </Pressable>
+
+      <SpacePicker
+        visible={spacePickerOpen}
+        spaces={spaces}
+        currentSpaceId={currentSpace.id}
+        canCreateSpace={canCreateSpace}
+        onClose={() => setSpacePickerOpen(false)}
+        onSelect={handleSelectSpace}
+        onCreate={handleCreateSpace}
+        onLockedCreatePress={handleLockedCreatePress}
+      />
     </View>
   );
 }
@@ -169,9 +240,29 @@ function createStyles(colors: typeof ColorsType) {
       alignItems: 'center',
       justifyContent: 'center',
     },
+    spaceSwitcher: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      gap: spacing.xs,
+      marginHorizontal: spacing.md,
+      marginTop: spacing.md,
+      paddingHorizontal: spacing.sm + 2,
+      paddingVertical: spacing.xs,
+      borderRadius: radius.full,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      maxWidth: '80%',
+    },
+    spaceSwitcherText: {
+      fontSize: fontSize.xs,
+      fontWeight: '700',
+      color: colors.text,
+    },
     header: {
       paddingHorizontal: spacing.md,
-      paddingTop: spacing.md,
+      paddingTop: spacing.sm,
       paddingBottom: spacing.lg,
     },
     totalLabel: {

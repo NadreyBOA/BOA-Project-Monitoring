@@ -1,5 +1,6 @@
-import { StyleSheet, Text, View } from 'react-native';
-import { ArrowDownLeft, ArrowUpRight } from 'lucide-react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { ArrowDownLeft, ArrowUpRight, ChevronRight } from 'lucide-react-native';
 import type { Transaction } from '../types';
 import { radius, spacing, fontSize, colors as ColorsType } from '../utils/theme';
 import { useTheme } from '../theme/ThemeContext';
@@ -8,9 +9,10 @@ import { formatAmount, formatDate } from '../utils/currency';
 export function TransactionRow({ transaction, currency }: { transaction: Transaction; currency: string }) {
   const { colors } = useTheme();
   const styles = createStyles(colors);
+  const router = useRouter();
   const isCredit = transaction.type === 'credit';
   return (
-    <View style={styles.row}>
+    <Pressable style={styles.row} onPress={() => router.push(`/transaction/${transaction.id}`)}>
       <View style={[styles.iconWrap, { backgroundColor: isCredit ? colors.dangerMuted : colors.primaryMuted }]}>
         {isCredit ? (
           <ArrowUpRight color={colors.credit} size={18} />
@@ -31,12 +33,18 @@ export function TransactionRow({ transaction, currency }: { transaction: Transac
             Échéance : {formatDate(transaction.due_date)}
           </Text>
         )}
+        {!!transaction.payment_channel && (
+          <Text style={styles.note} numberOfLines={1}>
+            Canal : {transaction.payment_channel}
+          </Text>
+        )}
       </View>
       <Text style={[styles.amount, { color: isCredit ? colors.credit : colors.payment }]}>
         {isCredit ? '+' : '-'}
         {formatAmount(transaction.amount, currency)}
       </Text>
-    </View>
+      <ChevronRight color={colors.textMuted} size={16} />
+    </Pressable>
   );
 }
 

@@ -7,6 +7,7 @@ import { EmptyState } from '../../src/components/EmptyState';
 import { TransactionRow } from '../../src/components/TransactionRow';
 import { deleteCustomer, getCustomerWithBalance } from '../../src/db/customers';
 import { getProfile, type Profile } from '../../src/db/settings';
+import { getCurrentSpace, type Space } from '../../src/db/spaces';
 import { createTransaction, listTransactionsForCustomer } from '../../src/db/transactions';
 import type { CustomerWithBalance, Transaction } from '../../src/types';
 import { radius, spacing, fontSize, colors as ColorsType } from '../../src/utils/theme';
@@ -23,17 +24,20 @@ export default function CustomerDetailScreen() {
   const [customer, setCustomer] = useState<CustomerWithBalance | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [space, setSpace] = useState<Space | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
-    const [customerRow, txRows, profileRow] = await Promise.all([
+    const [customerRow, txRows, profileRow, spaceRow] = await Promise.all([
       getCustomerWithBalance(db, id),
       listTransactionsForCustomer(db, id),
       getProfile(db),
+      getCurrentSpace(db),
     ]);
     setCustomer(customerRow);
     setTransactions(txRows);
     setProfile(profileRow);
+    setSpace(spaceRow);
   }, [db, id]);
 
   useFocusEffect(
@@ -60,8 +64,8 @@ export default function CustomerDetailScreen() {
   const currency = profile?.baseCurrency ?? 'MAD';
 
   async function handleReminder() {
-    if (!customer || !customer.phone || !profile) return;
-    const message = buildReminderMessage(customer.name, customer.balance, currency, profile.displayName, profile.accountType);
+    if (!customer || !customer.phone || !space) return;
+    const message = buildReminderMessage(customer.name, customer.balance, currency, space.name, space.accountType);
     await openWhatsAppReminder(customer.phone, message);
   }
 

@@ -6,12 +6,25 @@ import { X } from 'lucide-react-native';
 import { createCustomer, getCustomer, updateCustomer } from '../../src/db/customers';
 import { createTransaction } from '../../src/db/transactions';
 import { getReminderOffsetDays } from '../../src/db/settings';
+import { getCurrentSpaceId } from '../../src/db/spaces';
 import { scheduleDebtReminder } from '../../src/notifications';
 import { radius, spacing, fontSize, colors as ColorsType } from '../../src/utils/theme';
 import { useTheme } from '../../src/theme/ThemeContext';
 
 function isValidDate(value: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function isValidTime(value: string): boolean {
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+}
+
+function todayDateInput(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function nowTimeInput(): string {
+  return new Date().toTimeString().slice(0, 5);
 }
 
 export default function CustomerFormScreen() {
@@ -29,10 +42,17 @@ export default function CustomerFormScreen() {
   const [debtAmount, setDebtAmount] = useState('');
   const [debtNote, setDebtNote] = useState('');
   const [debtDueDate, setDebtDueDate] = useState('');
+  const [creditDate, setCreditDate] = useState(todayDateInput());
+  const [creditTime, setCreditTime] = useState(nowTimeInput());
   const [saving, setSaving] = useState(false);
 
+  const parsedDebt = parseFloat(debtAmount.replace(',', '.'));
+  const hasInitialDebt = !isNaN(parsedDebt) && parsedDebt > 0;
   const trimmedDebtDueDate = debtDueDate.trim();
-  const debtDueDateValid = !trimmedDebtDueDate || isValidDate(trimmedDebtDueDate);
+  const debtDueDateValid = hasInitialDebt ? isValidDate(trimmedDebtDueDate) : !trimmedDebtDueDate || isValidDate(trimmedDebtDueDate);
+  const creditDateValid = !hasInitialDebt || isValidDate(creditDate.trim());
+  const creditTimeValid = !hasInitialDebt || isValidTime(creditTime.trim());
+  const formValid = debtDueDateValid && creditDateValid && creditTimeValid;
 
   useFocusEffect(
     useCallback(() => {
@@ -50,27 +70,25 @@ export default function CustomerFormScreen() {
   );
 
   async function handleSave() {
-    if (!name.trim() || !debtDueDateValid || saving) return;
+    if (!name.trim() || !formValid || saving) return;
     setSaving(true);
     try {
       if (isEdit && id) {
         await updateCustomer(db, id, { name, phone: phone || null, address: address || null, note: note || null });
         router.back();
       } else {
-        const newId = await createCustomer(db, { name, phone: phone || null, address: address || null, note: note || null });
-        const parsedDebt = parseFloat(debtAmount.replace(',', '.'));
-        if (!isNaN(parsedDebt) && parsedDebt > 0) {
-          const effectiveDueDate = debtDueDateValid && trimmedDebtDueDate ? trimmedDebtDueDate : null;
-          let notificationId: string | null = null;
-          if (effectiveDueDate) {
-            const offsetDays = await getReminderOffsetDays(db);
-            notificationId = await scheduleDebtReminder(name, parsedDebt, effectiveDueDate, offsetDays);
-          }
+        const spaceId = await getCurrentSpaceId(db);
+        if (!spaceId) return;
+        const newId = await createCustomer(db, spaceId, { name, phone: phone || null, address: address || null, note: note || null });
+        if (hasInitialDebt) {
+          const effectiveDueDate = trimmedDebtDueDate;
+          const offsetDays = await getReminderOffsetDays(db);
+          const notificationId = await scheduleDebtReminder(name, parsedDebt, effectiveDueDate, offsetDays);
           await createTransaction(db, {
             customerId: newId,
             type: 'credit',
             amount: parsedDebt,
-            date: new Date().toISOString(),
+            date: `${creditDate.trim()}T${creditTime.trim()}:00`,
             note: debtNote || null,
             dueDate: effectiveDueDate,
             notificationId,
@@ -158,7 +176,7 @@ export default function CustomerFormScreen() {
               placeholderTextColor={colors.textMuted}
               style={styles.input}
             />
-            <Text style={styles.label}>Échéance prévue (facultatif)</Text>
+            <Text style={styles.label}>Échéance prévue {hasInitialDebt ? '*' : '(facultatif)'}</Text>
             <TextInput
               value={debtDueDate}
               onChangeText={setDebtDueDate}
@@ -166,16 +184,45 @@ export default function CustomerFormScreen() {
               placeholderTextColor={colors.textMuted}
               style={[styles.input, !debtDueDateValid && styles.inputError]}
             />
-            {!debtDueDateValid && <Text style={styles.errorText}>Format attendu : AAAA-MM-JJ</Text>}
+            {!debtDueDateValid && (
+              <Text style={styles.errorText}>
+                {hasInitialDebt && !trimmedDebtDueDate ? "L'échéance est obligatoire pour une dette." : 'Format attendu : AAAA-MM-JJ'}
+              </Text>
+            )}
+
+            {hasInitialDebt && (
+              <>
+                <Text style={styles.label}>Date de prise du crédit</Text>
+                <View style={styles.row}>
+                  <TextInput
+                    value={creditDate}
+                    onChangeText={setCreditDate}
+                    placeholder="AAAA-MM-JJ"
+                    placeholderTextColor={colors.textMuted}
+                    style={[styles.input, styles.rowInput, !creditDateValid && styles.inputError]}
+                  />
+                  <TextInput
+                    value={creditTime}
+                    onChangeText={setCreditTime}
+                    placeholder="HH:MM"
+                    placeholderTextColor={colors.textMuted}
+                    style={[styles.input, styles.rowInput, !creditTimeValid && styles.inputError]}
+                  />
+                </View>
+                {(!creditDateValid || !creditTimeValid) && (
+                  <Text style={styles.errorText}>Format attendu : AAAA-MM-JJ et HH:MM</Text>
+                )}
+              </>
+            )}
           </>
         )}
       </ScrollView>
 
       <View style={styles.footer}>
         <Pressable
-          style={[styles.saveButton, (!name.trim() || !debtDueDateValid || saving) && styles.saveButtonDisabled]}
+          style={[styles.saveButton, (!name.trim() || !formValid || saving) && styles.saveButtonDisabled]}
           onPress={handleSave}
-          disabled={!name.trim() || !debtDueDateValid || saving}
+          disabled={!name.trim() || !formValid || saving}
         >
           <Text style={styles.saveButtonText}>{saving ? 'Enregistrement…' : 'Enregistrer'}</Text>
         </Pressable>
@@ -213,6 +260,13 @@ function createStyles(colors: typeof ColorsType) {
     multiline: {
       minHeight: 70,
       textAlignVertical: 'top',
+    },
+    row: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    rowInput: {
+      flex: 1,
     },
     inputError: {
       borderColor: colors.danger,

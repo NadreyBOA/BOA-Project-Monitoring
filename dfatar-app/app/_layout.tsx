@@ -42,6 +42,10 @@ export default function RootLayout() {
               options={{ headerShown: true, presentation: 'modal', title: 'Transaction' }}
             />
             <Stack.Screen
+              name="transaction/[id]"
+              options={{ headerShown: true, presentation: 'modal', title: 'Transaction' }}
+            />
+            <Stack.Screen
               name="paywall"
               options={{ headerShown: true, presentation: 'modal', title: 'Premium' }}
             />
