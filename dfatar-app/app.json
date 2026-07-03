@@ -1,19 +1,19 @@
 {
   "expo": {
-    "name": "Dfatar",
-    "slug": "dfatar-app",
-    "scheme": "dfatar",
+    "name": "Bankee",
+    "slug": "bankee-app",
+    "scheme": "bankee",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "plugins": ["expo-router", "expo-notifications"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.dfatar.app"
+      "bundleIdentifier": "com.bankee.app"
     },
     "android": {
-      "package": "com.dfatar.app",
+      "package": "com.bankee.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",

@@ -50,7 +50,7 @@ export async function getProfile(db: SQLiteDatabase): Promise<Profile> {
   );
   const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
   return {
-    countryCode: map[SETTINGS_KEYS.countryCode] ?? 'MA',
-    baseCurrency: map[SETTINGS_KEYS.baseCurrency] ?? 'MAD',
+    countryCode: map[SETTINGS_KEYS.countryCode] ?? 'US',
+    baseCurrency: map[SETTINGS_KEYS.baseCurrency] ?? 'USD',
   };
 }

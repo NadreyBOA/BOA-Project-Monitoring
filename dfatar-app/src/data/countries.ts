@@ -40,4 +40,6 @@ const RAW: [string, string, string][] = [
   ['Australie', 'AU', 'AUD'], ['Nouvelle-Zélande', 'NZ', 'NZD'], ['Fidji', 'FJ', 'FJD'], ['Papouasie-Nouvelle-Guinée', 'PG', 'PGK'],
 ];
 
-export const COUNTRIES: CountryInfo[] = RAW.map(([name, cc, currency]) => ({ name, cc, currency }));
+export const COUNTRIES: CountryInfo[] = RAW.map(([name, cc, currency]) => ({ name, cc, currency })).sort((a, b) =>
+  a.name.localeCompare(b.name, 'fr')
+);

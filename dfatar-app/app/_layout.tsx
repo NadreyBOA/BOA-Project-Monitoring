@@ -5,7 +5,7 @@ import { SQLiteProvider } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
 import { DATABASE_NAME, migrateDbIfNeeded } from '../src/db/client';
 import { colors } from '../src/utils/theme';
-import { ThemeProvider } from '../src/theme/ThemeContext';
+import { ThemeProvider, useTheme } from '../src/theme/ThemeContext';
 
 function LoadingScreen() {
   return (
@@ -15,41 +15,53 @@ function LoadingScreen() {
   );
 }
 
+function RootNavigator() {
+  const { colors: themeColors, isDark } = useTheme();
+  return (
+    <>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: themeColors.background },
+          headerStyle: { backgroundColor: themeColors.surface },
+          headerTintColor: themeColors.text,
+          headerShadowVisible: false,
+        }}
+      >
+        <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen
+          name="customer/[id]"
+          options={{ headerShown: true, title: 'Personne', headerBackTitle: 'Personnes' }}
+        />
+        <Stack.Screen
+          name="customer/new"
+          options={{ headerShown: true, presentation: 'modal', title: 'Personne' }}
+        />
+        <Stack.Screen
+          name="transaction/new"
+          options={{ headerShown: true, presentation: 'modal', title: 'Transaction' }}
+        />
+        <Stack.Screen
+          name="transaction/[id]"
+          options={{ headerShown: true, presentation: 'modal', title: 'Transaction' }}
+        />
+        <Stack.Screen
+          name="paywall"
+          options={{ headerShown: true, presentation: 'modal', title: 'Premium' }}
+        />
+      </Stack>
+    </>
+  );
+}
+
 export default function RootLayout() {
   return (
     <Suspense fallback={<LoadingScreen />}>
       <SQLiteProvider databaseName={DATABASE_NAME} onInit={migrateDbIfNeeded} useSuspense>
         <ThemeProvider>
-          <StatusBar style="dark" />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: colors.background },
-            }}
-          >
-            <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen
-              name="customer/[id]"
-              options={{ headerShown: true, title: 'Personne', headerBackTitle: 'Personnes' }}
-            />
-            <Stack.Screen
-              name="customer/new"
-              options={{ headerShown: true, presentation: 'modal', title: 'Personne' }}
-            />
-            <Stack.Screen
-              name="transaction/new"
-              options={{ headerShown: true, presentation: 'modal', title: 'Transaction' }}
-            />
-            <Stack.Screen
-              name="transaction/[id]"
-              options={{ headerShown: true, presentation: 'modal', title: 'Transaction' }}
-            />
-            <Stack.Screen
-              name="paywall"
-              options={{ headerShown: true, presentation: 'modal', title: 'Premium' }}
-            />
-          </Stack>
+          <RootNavigator />
         </ThemeProvider>
       </SQLiteProvider>
     </Suspense>

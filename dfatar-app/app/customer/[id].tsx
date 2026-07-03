@@ -5,6 +5,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { MessageCircle, Pencil, Trash2, Minus, Plus } from 'lucide-react-native';
 import { EmptyState } from '../../src/components/EmptyState';
 import { TransactionRow } from '../../src/components/TransactionRow';
+import { WhatsAppIcon } from '../../src/components/WhatsAppIcon';
 import { deleteCustomer, getCustomerWithBalance } from '../../src/db/customers';
 import { getProfile, type Profile } from '../../src/db/settings';
 import { getCurrentSpace, type Space } from '../../src/db/spaces';
@@ -61,7 +62,7 @@ export default function CustomerDetailScreen() {
     ]);
   }
 
-  const currency = profile?.baseCurrency ?? 'MAD';
+  const currency = profile?.baseCurrency ?? 'USD';
 
   async function handleReminder() {
     if (!customer || !customer.phone || !space) return;
@@ -123,7 +124,7 @@ export default function CustomerDetailScreen() {
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.balanceCard}>
-          <Text style={styles.balanceLabel}>{owesMoney ? 'Solde dû' : 'Aucun solde dû'}</Text>
+          <Text style={styles.balanceLabel}>{owesMoney ? `${customer.name} me doit` : `${customer.name} ne doit rien`}</Text>
           <Text style={[styles.balanceAmount, owesMoney ? styles.balancePositive : styles.balanceZero]}>
             {formatAmount(customer.balance, currency)}
           </Text>
@@ -157,7 +158,7 @@ export default function CustomerDetailScreen() {
 
         {!!customer.phone && owesMoney && (
           <Pressable style={styles.reminderButton} onPress={handleReminder}>
-            <MessageCircle color="#fff" size={18} />
+            <WhatsAppIcon color="#fff" size={18} />
             <Text style={styles.reminderButtonText}>Envoyer un rappel WhatsApp</Text>
           </Pressable>
         )}

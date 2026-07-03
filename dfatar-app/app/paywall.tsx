@@ -30,10 +30,10 @@ export default function PaywallScreen() {
       />
       <ScrollView contentContainerStyle={{ padding: spacing.md }}>
         <View style={styles.hero}>
-          <View style={[styles.heroIcon, { backgroundColor: '#F7EFDD' }]}>
-            <Crown color="#B8862E" size={30} />
+          <View style={[styles.heroIcon, { backgroundColor: colors.primaryMuted }]}>
+            <Crown color={colors.primary} size={30} />
           </View>
-          <Text style={[styles.heroTitle, { color: colors.text }]}>Débloquer Dfatar Premium</Text>
+          <Text style={[styles.heroTitle, { color: colors.text }]}>Passez à la version premium !</Text>
           <Text style={[styles.heroSubtitle, { color: colors.textMuted }]}>
             {fromLimit
               ? `Vous avez atteint la limite de ${FREE_CUSTOMER_LIMIT} personnes en version gratuite.`
@@ -42,7 +42,7 @@ export default function PaywallScreen() {
         </View>
 
         <Benefit
-          icon={<InfinityIcon color="#B8862E" size={18} />}
+          icon={<InfinityIcon color={colors.primary} size={18} />}
           title="Personnes illimitées"
           desc={`Plus de limite de ${FREE_CUSTOMER_LIMIT} personnes suivies.`}
           colors={colors}
@@ -51,16 +51,16 @@ export default function PaywallScreen() {
           fontSize={fontSize}
         />
         <Benefit
-          icon={<Cloud color="#B8862E" size={18} />}
+          icon={<Cloud color={colors.primary} size={18} />}
           title="Sauvegarde en ligne"
-          desc="Vos données protégées même si vous perdez votre téléphone."
+          desc="Disponible sur n'importe quel appareil, même si vous perdez votre téléphone."
           colors={colors}
           spacing={spacing}
           radius={radius}
           fontSize={fontSize}
         />
         <Benefit
-          icon={<Palette color="#B8862E" size={18} />}
+          icon={<Palette color={colors.primary} size={18} />}
           title="Thèmes de personnalisation"
           desc="Changez les couleurs de l'app selon vos goûts."
           colors={colors}
@@ -69,14 +69,14 @@ export default function PaywallScreen() {
           fontSize={fontSize}
         />
 
-        <Pressable style={[styles.priceBtn, { backgroundColor: '#B8862E', borderRadius: radius.md, marginTop: spacing.sm }]} onPress={handleUnlock}>
+        <Pressable style={[styles.priceBtn, { backgroundColor: colors.primary, borderRadius: radius.md, marginTop: spacing.sm }]} onPress={handleUnlock}>
           <Text style={styles.priceBtnText}>Débloquer — {PREMIUM_PRICE_LABEL}</Text>
         </Pressable>
         <Text style={[styles.note, { color: colors.textMuted }]}>
-          Paiement unique, à vie : les prochaines améliorations de ces fonctionnalités seront incluses, sans nouveau paiement.
+          Paiement unique — les futures mises à jour de ces fonctionnalités sont incluses.
         </Text>
         <Text style={[styles.note, { color: colors.textMuted }]}>
-          Démo : le déblocage est simulé pour l'instant (pas encore de compte développeur configuré), aucun montant n'est prélevé.
+          Démo : le déblocage est simulé, aucun montant n'est prélevé.
         </Text>
       </ScrollView>
     </View>
@@ -86,7 +86,7 @@ export default function PaywallScreen() {
 function Benefit({ icon, title, desc, colors, spacing, radius, fontSize }: any) {
   return (
     <View style={[styles.benefitRow, { backgroundColor: colors.surface, borderRadius: radius.md, marginBottom: spacing.sm }]}>
-      <View style={[styles.benefitIcon, { backgroundColor: '#F7EFDD' }]}>{icon}</View>
+      <View style={[styles.benefitIcon, { backgroundColor: colors.primaryMuted }]}>{icon}</View>
       <View style={{ flex: 1 }}>
         <Text style={[styles.benefitTitle, { color: colors.text, fontSize: fontSize.sm }]}>{title}</Text>
         <Text style={[styles.benefitDesc, { color: colors.textMuted, fontSize: fontSize.xs }]}>{desc}</Text>

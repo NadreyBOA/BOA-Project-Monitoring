@@ -56,7 +56,7 @@ export default function OnboardingScreen() {
               <ChevronLeft color={colors.text} size={22} />
             </Pressable>
           )}
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Bienvenue sur Dfatar</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Bienvenue sur Bankee</Text>
         </View>
         <View style={{ padding: spacing.md }}>
           <Text style={[styles.intro, { color: colors.textMuted }]}>Pour commencer, dites-nous qui vous êtes.</Text>
@@ -102,7 +102,7 @@ export default function OnboardingScreen() {
           <TextInput
             value={displayName}
             onChangeText={setDisplayName}
-            placeholder={isPro ? 'Ex: Épicerie Al Amal' : 'Ex: Yasmine Idrissi'}
+            placeholder={isPro ? 'Ex: Corner Store' : 'Ex: Jamie Lee'}
             placeholderTextColor={colors.textMuted}
             style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface, borderRadius: radius.md }]}
             autoFocus

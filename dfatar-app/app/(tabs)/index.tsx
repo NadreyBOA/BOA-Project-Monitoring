@@ -31,7 +31,7 @@ export default function PeopleScreen() {
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [customers, setCustomers] = useState<CustomerWithBalance[]>([]);
   const [total, setTotal] = useState(0);
-  const [baseCurrency, setBaseCurrency] = useState('MAD');
+  const [baseCurrency, setBaseCurrency] = useState('USD');
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<'due' | 'all'>('due');
   const [currentSpace, setCurrentSpaceState] = useState<Space | null>(null);
@@ -152,7 +152,7 @@ export default function PeopleScreen() {
       </Pressable>
 
       <View style={styles.header}>
-        <Text style={styles.totalLabel}>Total dû par vos personnes</Text>
+        <Text style={styles.totalLabel}>On vous doit au total</Text>
         <Text style={styles.totalAmount}>{formatAmount(total, baseCurrency)}</Text>
       </View>
 

@@ -32,7 +32,7 @@ export function CustomerRow({ customer, currency }: { customer: CustomerWithBala
       {owesMoney ? (
         <View style={styles.balanceBlock}>
           <Text style={[styles.balance, styles.balanceOwed]}>{formatAmount(customer.balance, currency)}</Text>
-          <Text style={styles.balanceLabel}>dû</Text>
+          <Text style={styles.balanceLabel}>me doit</Text>
         </View>
       ) : (
         <View style={styles.settledBadge}>

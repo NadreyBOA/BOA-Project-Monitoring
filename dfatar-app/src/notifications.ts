@@ -21,7 +21,7 @@ export async function requestNotificationPermission(): Promise<boolean> {
 
 export async function sendTestReminderNotification(body: string): Promise<void> {
   await Notifications.scheduleNotificationAsync({
-    content: { title: 'Dfatar', body },
+    content: { title: 'Bankee', body },
     trigger: null,
   });
 }
@@ -46,7 +46,7 @@ export async function scheduleDebtReminder(
 
   return Notifications.scheduleNotificationAsync({
     content: {
-      title: 'Dfatar — échéance',
+      title: 'Bankee — échéance',
       body: `${customerName} doit ${amount} — échéance le ${dueDate}.`,
     },
     trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: fireDate },

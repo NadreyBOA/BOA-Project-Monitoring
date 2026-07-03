@@ -8,6 +8,7 @@ import { createTransaction } from '../../src/db/transactions';
 import { getReminderOffsetDays } from '../../src/db/settings';
 import { getCurrentSpaceId } from '../../src/db/spaces';
 import { scheduleDebtReminder } from '../../src/notifications';
+import { PAYMENT_CHANNELS } from '../../src/data/paymentChannels';
 import { radius, spacing, fontSize, colors as ColorsType } from '../../src/utils/theme';
 import { useTheme } from '../../src/theme/ThemeContext';
 
@@ -44,6 +45,7 @@ export default function CustomerFormScreen() {
   const [debtDueDate, setDebtDueDate] = useState('');
   const [creditDate, setCreditDate] = useState(todayDateInput());
   const [creditTime, setCreditTime] = useState(nowTimeInput());
+  const [debtChannel, setDebtChannel] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const parsedDebt = parseFloat(debtAmount.replace(',', '.'));
@@ -92,6 +94,7 @@ export default function CustomerFormScreen() {
             note: debtNote || null,
             dueDate: effectiveDueDate,
             notificationId,
+            paymentChannel: debtChannel,
           });
         }
         router.replace(`/customer/${newId}`);
@@ -118,7 +121,7 @@ export default function CustomerFormScreen() {
         <TextInput
           value={name}
           onChangeText={setName}
-          placeholder="Ex: Ahmed Benali"
+          placeholder="Ex: Alex Morgan"
           placeholderTextColor={colors.textMuted}
           style={styles.input}
           autoFocus={!isEdit}
@@ -128,7 +131,7 @@ export default function CustomerFormScreen() {
         <TextInput
           value={phone}
           onChangeText={setPhone}
-          placeholder="Ex: 0612345678"
+          placeholder="Ex: +1 555 123 4567"
           placeholderTextColor={colors.textMuted}
           keyboardType="phone-pad"
           style={styles.input}
@@ -139,7 +142,7 @@ export default function CustomerFormScreen() {
         <TextInput
           value={address}
           onChangeText={setAddress}
-          placeholder="Ex: Quartier Maarif, Casablanca"
+          placeholder="Ex: 123 Main Street"
           placeholderTextColor={colors.textMuted}
           style={styles.input}
         />
@@ -212,6 +215,19 @@ export default function CustomerFormScreen() {
                 {(!creditDateValid || !creditTimeValid) && (
                   <Text style={styles.errorText}>Format attendu : AAAA-MM-JJ et HH:MM</Text>
                 )}
+
+                <Text style={styles.label}>Canal (facultatif)</Text>
+                <View style={styles.chipsRow}>
+                  {PAYMENT_CHANNELS.map((c) => (
+                    <Pressable
+                      key={c}
+                      style={[styles.chip, debtChannel === c && styles.chipActive]}
+                      onPress={() => setDebtChannel(debtChannel === c ? null : c)}
+                    >
+                      <Text style={[styles.chipText, debtChannel === c && styles.chipTextActive]}>{c}</Text>
+                    </Pressable>
+                  ))}
+                </View>
               </>
             )}
           </>
@@ -267,6 +283,31 @@ function createStyles(colors: typeof ColorsType) {
     },
     rowInput: {
       flex: 1,
+    },
+    chipsRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+    },
+    chip: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs + 3,
+      borderRadius: radius.full,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    chipActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    chipText: {
+      fontSize: fontSize.xs,
+      fontWeight: '600',
+      color: colors.textMuted,
+    },
+    chipTextActive: {
+      color: '#fff',
     },
     inputError: {
       borderColor: colors.danger,

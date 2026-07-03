@@ -2,7 +2,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { getSetting, setSetting, SETTINGS_KEYS } from './db/settings';
 
 export const FREE_CUSTOMER_LIMIT = 20;
-export const PREMIUM_PRICE_LABEL = '49 MAD (≈ 4,99 $)';
+export const PREMIUM_PRICE_LABEL = '$4.99';
 
 export async function isPremium(db: SQLiteDatabase): Promise<boolean> {
   return (await getSetting(db, SETTINGS_KEYS.isPremium)) === '1';

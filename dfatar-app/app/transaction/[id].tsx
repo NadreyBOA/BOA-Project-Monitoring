@@ -8,9 +8,13 @@ import {
   listTransactionEdits,
   updateTransactionAmount,
   updateTransactionDueDate,
+  updateTransactionDate,
+  updateTransactionChannel,
+  updateTransactionNote,
 } from '../../src/db/transactions';
 import { getCustomerWithBalance } from '../../src/db/customers';
 import { getProfile } from '../../src/db/settings';
+import { PAYMENT_CHANNELS } from '../../src/data/paymentChannels';
 import type { Transaction, TransactionEdit } from '../../src/types';
 import { radius, spacing, fontSize, colors as ColorsType } from '../../src/utils/theme';
 import { useTheme } from '../../src/theme/ThemeContext';
@@ -18,19 +22,25 @@ import { formatAmount, formatDate } from '../../src/utils/currency';
 
 const DUE_DATE_REASONS = ['À la demande du débiteur', 'Entente mutuelle', 'Erreur de saisie', 'Autre'];
 
+const FIELD_LABELS: Record<string, string> = {
+  amount: 'Montant',
+  due_date: 'Échéance',
+  date: 'Date',
+  channel: 'Canal',
+  note: 'Note',
+};
+
 function isValidDate(value: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
-function fieldLabel(field: string): string {
-  if (field === 'amount') return 'Montant';
-  if (field === 'due_date') return 'Échéance';
-  return field;
+function isValidTime(value: string): boolean {
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 }
 
 function displayValue(field: string, value: string | null): string {
   if (value === null) return '—';
-  if (field === 'due_date') return formatDate(value);
+  if (field === 'due_date' || field === 'date') return formatDate(value);
   return value;
 }
 
@@ -43,11 +53,15 @@ export default function TransactionDetailScreen() {
 
   const [transaction, setTransaction] = useState<Transaction | null>(null);
   const [edits, setEdits] = useState<TransactionEdit[]>([]);
-  const [currency, setCurrency] = useState('MAD');
+  const [currency, setCurrency] = useState('USD');
   const [maxPaymentAmount, setMaxPaymentAmount] = useState<number | null>(null);
 
   const [amount, setAmount] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [datePart, setDatePart] = useState('');
+  const [timePart, setTimePart] = useState('');
+  const [channel, setChannel] = useState<string | null>(null);
+  const [note, setNote] = useState('');
   const [reason, setReason] = useState<string | null>(null);
   const [reasonOther, setReasonOther] = useState('');
   const [saving, setSaving] = useState(false);
@@ -60,6 +74,10 @@ export default function TransactionDetailScreen() {
     setCurrency(profile.baseCurrency);
     setAmount(tx ? String(tx.amount) : '');
     setDueDate(tx?.due_date ?? '');
+    setDatePart(tx ? tx.date.slice(0, 10) : '');
+    setTimePart(tx && tx.date.length > 15 ? tx.date.slice(11, 16) : '00:00');
+    setChannel(tx?.payment_channel ?? null);
+    setNote(tx?.note ?? '');
     if (tx && tx.type === 'payment') {
       const customer = await getCustomerWithBalance(db, tx.customer_id);
       setMaxPaymentAmount(customer ? customer.balance + tx.amount : null);
@@ -95,7 +113,21 @@ export default function TransactionDetailScreen() {
   const dueDateValid = !isCredit || isValidDate(trimmedDueDate);
   const reasonValid = !dueDateChanged || (reason !== null && (reason !== 'Autre' || reasonOther.trim().length > 0));
 
-  const canSave = amountValid && dueDateValid && reasonValid && (amountChanged || dueDateChanged) && !saving;
+  const datePartValid = isValidDate(datePart.trim());
+  const timePartValid = !isCredit || isValidTime(timePart.trim());
+  const newDate = `${datePart.trim()}T${(isCredit ? timePart.trim() : '00:00') || '00:00'}:00`;
+  const dateChanged = newDate !== transaction.date;
+  const channelChanged = (channel || null) !== (transaction.payment_channel || null);
+  const noteChanged = (note.trim() || null) !== (transaction.note || null);
+
+  const canSave =
+    amountValid &&
+    dueDateValid &&
+    reasonValid &&
+    datePartValid &&
+    timePartValid &&
+    (amountChanged || dueDateChanged || dateChanged || channelChanged || noteChanged) &&
+    !saving;
 
   async function handleSave() {
     if (!canSave || !transaction) return;
@@ -106,6 +138,15 @@ export default function TransactionDetailScreen() {
       }
       if (dueDateChanged) {
         await updateTransactionDueDate(db, transaction, trimmedDueDate || null, reason ?? 'Autre', reason === 'Autre' ? reasonOther.trim() : null);
+      }
+      if (dateChanged) {
+        await updateTransactionDate(db, transaction, newDate);
+      }
+      if (channelChanged) {
+        await updateTransactionChannel(db, transaction, channel);
+      }
+      if (noteChanged) {
+        await updateTransactionNote(db, transaction, note);
       }
       setReason(null);
       setReasonOther('');
@@ -182,22 +223,56 @@ export default function TransactionDetailScreen() {
           </>
         )}
 
-        <Text style={styles.label}>Date</Text>
-        <Text style={styles.readOnlyText}>{formatDate(transaction.date)}</Text>
-
-        {!!transaction.payment_channel && (
-          <>
-            <Text style={styles.label}>Canal</Text>
-            <Text style={styles.readOnlyText}>{transaction.payment_channel}</Text>
-          </>
+        <View style={styles.row}>
+          <View style={styles.rowField}>
+            <Text style={styles.label}>{isCredit ? 'Date de prise du crédit' : 'Date du remboursement'}</Text>
+            <TextInput
+              value={datePart}
+              onChangeText={setDatePart}
+              placeholder="AAAA-MM-JJ"
+              placeholderTextColor={colors.textMuted}
+              style={[styles.input, !datePartValid && styles.inputError]}
+            />
+          </View>
+          {isCredit && (
+            <View style={styles.rowField}>
+              <Text style={styles.label}>Heure</Text>
+              <TextInput
+                value={timePart}
+                onChangeText={setTimePart}
+                placeholder="HH:MM"
+                placeholderTextColor={colors.textMuted}
+                style={[styles.input, !timePartValid && styles.inputError]}
+              />
+            </View>
+          )}
+        </View>
+        {(!datePartValid || !timePartValid) && (
+          <Text style={styles.errorText}>Format attendu : AAAA-MM-JJ{isCredit ? ' et HH:MM' : ''}</Text>
         )}
 
-        {!!transaction.note && (
-          <>
-            <Text style={styles.label}>Note</Text>
-            <Text style={styles.readOnlyText}>{transaction.note}</Text>
-          </>
-        )}
+        <Text style={styles.label}>Canal (facultatif)</Text>
+        <View style={styles.chipsRow}>
+          {PAYMENT_CHANNELS.map((c) => (
+            <Pressable
+              key={c}
+              style={[styles.chip, channel === c && styles.chipActive]}
+              onPress={() => setChannel(channel === c ? null : c)}
+            >
+              <Text style={[styles.chipText, channel === c && styles.chipTextActive]}>{c}</Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <Text style={styles.label}>Note</Text>
+        <TextInput
+          value={note}
+          onChangeText={setNote}
+          placeholder="Ex: sac de riz, dépannage..."
+          placeholderTextColor={colors.textMuted}
+          style={[styles.input, styles.multiline]}
+          multiline
+        />
 
         <Text style={styles.sectionTitle}>Historique des modifications</Text>
         {edits.length === 0 ? (
@@ -205,7 +280,7 @@ export default function TransactionDetailScreen() {
         ) : (
           edits.map((e) => (
             <View key={e.id} style={styles.editRow}>
-              <Text style={styles.editField}>{fieldLabel(e.field)}</Text>
+              <Text style={styles.editField}>{FIELD_LABELS[e.field] ?? e.field}</Text>
               <Text style={styles.editChange}>
                 {displayValue(e.field, e.old_value)} → {displayValue(e.field, e.new_value)}
               </Text>
@@ -269,6 +344,17 @@ function createStyles(colors: typeof ColorsType) {
       fontSize: fontSize.md,
       color: colors.text,
       paddingVertical: spacing.sm,
+    },
+    row: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    rowField: {
+      flex: 1,
+    },
+    multiline: {
+      minHeight: 70,
+      textAlignVertical: 'top',
     },
     chipsRow: {
       flexDirection: 'row',

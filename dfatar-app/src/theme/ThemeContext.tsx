@@ -6,6 +6,7 @@ import { DEFAULT_PALETTE_ID, paletteById } from './palettes';
 
 interface ThemeContextValue {
   themeId: string;
+  isDark: boolean;
   colors: typeof baseColors;
   spacing: typeof spacing;
   radius: typeof radius;
@@ -36,7 +37,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const palette = paletteById(themeId);
   const value: ThemeContextValue = {
     themeId,
-    colors: { ...baseColors, primary: palette.primary, primaryMuted: palette.primaryMuted, payment: palette.primary },
+    isDark: palette.isDark,
+    colors: {
+      ...baseColors,
+      background: palette.background,
+      surface: palette.surface,
+      border: palette.border,
+      text: palette.text,
+      textMuted: palette.textMuted,
+      primary: palette.primary,
+      primaryMuted: palette.primaryMuted,
+      payment: palette.primary,
+    },
     spacing,
     radius,
     fontSize,

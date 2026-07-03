@@ -120,3 +120,49 @@ export async function updateTransactionDueDate(
     reasonOther,
   });
 }
+
+export async function updateTransactionDate(
+  db: SQLiteDatabase,
+  transaction: Transaction,
+  newDate: string
+): Promise<void> {
+  if (newDate === transaction.date) return;
+  await db.runAsync('UPDATE transactions SET date = ? WHERE id = ?', [newDate, transaction.id]);
+  await logTransactionEdit(db, {
+    transactionId: transaction.id,
+    field: 'date',
+    oldValue: transaction.date,
+    newValue: newDate,
+  });
+}
+
+export async function updateTransactionChannel(
+  db: SQLiteDatabase,
+  transaction: Transaction,
+  newChannel: string | null
+): Promise<void> {
+  if (newChannel === transaction.payment_channel) return;
+  await db.runAsync('UPDATE transactions SET payment_channel = ? WHERE id = ?', [newChannel, transaction.id]);
+  await logTransactionEdit(db, {
+    transactionId: transaction.id,
+    field: 'channel',
+    oldValue: transaction.payment_channel,
+    newValue: newChannel,
+  });
+}
+
+export async function updateTransactionNote(
+  db: SQLiteDatabase,
+  transaction: Transaction,
+  newNote: string
+): Promise<void> {
+  const normalized = newNote.trim() || null;
+  if (normalized === transaction.note) return;
+  await db.runAsync('UPDATE transactions SET note = ? WHERE id = ?', [normalized, transaction.id]);
+  await logTransactionEdit(db, {
+    transactionId: transaction.id,
+    field: 'note',
+    oldValue: transaction.note,
+    newValue: normalized,
+  });
+}

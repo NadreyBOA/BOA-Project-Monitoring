@@ -7,12 +7,11 @@ import { createTransaction } from '../../src/db/transactions';
 import { getProfile, getReminderOffsetDays } from '../../src/db/settings';
 import { getCustomer, getCustomerWithBalance } from '../../src/db/customers';
 import { scheduleDebtReminder } from '../../src/notifications';
+import { PAYMENT_CHANNELS } from '../../src/data/paymentChannels';
 import type { TransactionType } from '../../src/types';
 import { radius, spacing, fontSize, colors as ColorsType } from '../../src/utils/theme';
 import { useTheme } from '../../src/theme/ThemeContext';
 import { formatAmount } from '../../src/utils/currency';
-
-const PAYMENT_CHANNELS = ['Espèces', 'Virement bancaire', 'Mobile money', 'Chèque', 'Autre'];
 
 function isValidDate(value: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
@@ -109,7 +108,7 @@ export default function TransactionFormScreen() {
         note: note || null,
         dueDate: effectiveDueDate,
         notificationId,
-        paymentChannel: type === 'payment' ? paymentChannel : null,
+        paymentChannel,
       });
       router.back();
     } finally {
@@ -210,21 +209,21 @@ export default function TransactionFormScreen() {
               style={[styles.input, !paymentDateValid && styles.inputError]}
             />
             {!paymentDateValid && <Text style={styles.errorText}>Format attendu : AAAA-MM-JJ</Text>}
-
-            <Text style={styles.label}>Canal (facultatif)</Text>
-            <View style={styles.chipsRow}>
-              {PAYMENT_CHANNELS.map((c) => (
-                <Pressable
-                  key={c}
-                  style={[styles.chip, paymentChannel === c && styles.chipActive]}
-                  onPress={() => setPaymentChannel(paymentChannel === c ? null : c)}
-                >
-                  <Text style={[styles.chipText, paymentChannel === c && styles.chipTextActive]}>{c}</Text>
-                </Pressable>
-              ))}
-            </View>
           </>
         )}
+
+        <Text style={styles.label}>Canal (facultatif)</Text>
+        <View style={styles.chipsRow}>
+          {PAYMENT_CHANNELS.map((c) => (
+            <Pressable
+              key={c}
+              style={[styles.chip, paymentChannel === c && styles.chipActive]}
+              onPress={() => setPaymentChannel(paymentChannel === c ? null : c)}
+            >
+              <Text style={[styles.chipText, paymentChannel === c && styles.chipTextActive]}>{c}</Text>
+            </Pressable>
+          ))}
+        </View>
 
         <Text style={styles.label}>Note</Text>
         <TextInput

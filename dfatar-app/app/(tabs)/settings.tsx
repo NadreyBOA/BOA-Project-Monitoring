@@ -106,7 +106,7 @@ export default function SettingsScreen() {
   async function handleTestNotification() {
     if (!currentSpace) return;
     const due = await totalDue(db, currentSpace.id);
-    const text = due <= 0 ? 'Aucun montant à encaisser pour le moment.' : `Vous avez ${formatAmount(due, profile?.baseCurrency ?? 'MAD')} à encaisser.`;
+    const text = due <= 0 ? 'Aucun montant à encaisser pour le moment.' : `Vous avez ${formatAmount(due, profile?.baseCurrency ?? 'USD')} à encaisser.`;
     await sendTestReminderNotification(text);
   }
 
@@ -165,9 +165,9 @@ export default function SettingsScreen() {
           const selected = themeId === p.id;
           return (
             <Pressable key={p.id} style={styles.themeSwatch} onPress={() => handleThemeTap(p.id, p.free)}>
-              <View style={[styles.themeDot, { backgroundColor: p.primary }, selected && styles.themeDotSelected]}>
+              <View style={[styles.themeDot, { backgroundColor: p.swatch }, selected && styles.themeDotSelected]}>
                 {locked && (
-                  <View style={styles.themeLock}>
+                  <View style={[styles.themeLock, { backgroundColor: colors.primary }]}>
                     <Lock color="#fff" size={10} />
                   </View>
                 )}
@@ -220,12 +220,12 @@ export default function SettingsScreen() {
         <View style={{ flex: 1 }}>
           <Text style={styles.rowTitle}>Sauvegarde en ligne</Text>
           <Text style={styles.rowDesc}>
-            {premium ? 'Bientôt disponible dans une prochaine mise à jour.' : 'Protégez vos données même si vous perdez votre téléphone.'}
+            {premium ? 'Bientôt disponible dans une prochaine mise à jour.' : "Disponible sur n'importe quel appareil, même si vous perdez votre téléphone."}
           </Text>
         </View>
         {!premium && (
-          <View style={styles.lockBadge}>
-            <Lock color="#B8862E" size={12} />
+          <View style={[styles.lockBadge, { backgroundColor: colors.primaryMuted }]}>
+            <Lock color={colors.primary} size={12} />
           </View>
         )}
       </Pressable>
@@ -236,15 +236,15 @@ export default function SettingsScreen() {
           <Text style={styles.premiumActiveText}>Premium actif</Text>
         </View>
       ) : (
-        <View style={styles.premiumCard}>
+        <View style={[styles.premiumCard, { backgroundColor: colors.primaryMuted }]}>
           <View style={styles.premiumCardTitle}>
-            <Crown color="#B8862E" size={18} />
-            <Text style={styles.premiumCardTitleText}>Passer à Premium</Text>
+            <Crown color={colors.primary} size={18} />
+            <Text style={styles.premiumCardTitleText}>Passez à la version premium !</Text>
           </View>
           <Bullet text="Personnes illimitées" colors={colors} />
           <Bullet text="Sauvegarde en ligne" colors={colors} />
           <Bullet text="Tous les thèmes" colors={colors} />
-          <Pressable style={styles.priceBtn} onPress={() => router.push('/paywall')}>
+          <Pressable style={[styles.priceBtn, { backgroundColor: colors.primary }]} onPress={() => router.push('/paywall')}>
             <Text style={styles.priceBtnText}>Débloquer — {PREMIUM_PRICE_LABEL}</Text>
           </Pressable>
         </View>
@@ -253,8 +253,7 @@ export default function SettingsScreen() {
       <View style={styles.privacyCard}>
         <ShieldCheck color={colors.primary} size={20} />
         <Text style={styles.privacyText}>
-          Vos données (personnes, transactions) restent stockées uniquement sur cet appareil, sauf si vous activez
-          la sauvegarde en ligne.
+          Vos données restent sur cet appareil, sauf si vous activez la sauvegarde en ligne.
         </Text>
       </View>
 
@@ -271,7 +270,7 @@ export default function SettingsScreen() {
 function Bullet({ text, colors }: { text: string; colors: typeof ColorsType }) {
   return (
     <Text style={{ fontSize: fontSize.xs, color: colors.text, marginBottom: 4 }}>
-      <Text style={{ color: '#B8862E', fontWeight: '700' }}>✓ </Text>
+      <Text style={{ color: colors.primary, fontWeight: '700' }}>✓ </Text>
       {text}
     </Text>
   );
@@ -371,7 +370,7 @@ function createStyles(colors: typeof ColorsType) {
       height: 44,
       borderRadius: radius.full,
       borderWidth: 2.5,
-      borderColor: 'transparent',
+      borderColor: colors.border,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -385,7 +384,6 @@ function createStyles(colors: typeof ColorsType) {
       width: 18,
       height: 18,
       borderRadius: 9,
-      backgroundColor: '#B8862E',
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -476,7 +474,6 @@ function createStyles(colors: typeof ColorsType) {
       width: 22,
       height: 22,
       borderRadius: 11,
-      backgroundColor: '#F7EFDD',
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -494,7 +491,6 @@ function createStyles(colors: typeof ColorsType) {
       fontSize: fontSize.sm,
     },
     premiumCard: {
-      backgroundColor: '#F7EFDD',
       borderRadius: radius.lg,
       padding: spacing.md,
     },
@@ -510,7 +506,6 @@ function createStyles(colors: typeof ColorsType) {
       color: colors.text,
     },
     priceBtn: {
-      backgroundColor: '#B8862E',
       borderRadius: radius.md,
       paddingVertical: spacing.sm + 4,
       alignItems: 'center',
