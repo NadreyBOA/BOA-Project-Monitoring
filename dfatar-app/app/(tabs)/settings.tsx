@@ -1,12 +1,14 @@
 import { useCallback, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { ShieldCheck, Cloud, Bell, Crown, Lock, Briefcase, User } from 'lucide-react-native';
-import { getProfile, setSetting, SETTINGS_KEYS, getReminderOffsetDays, setReminderOffsetDays, type Profile } from '../../src/db/settings';
+import { getProfile, getSetting, setSetting, SETTINGS_KEYS, getReminderOffsetDays, setReminderOffsetDays, type Profile } from '../../src/db/settings';
 import { totalDue } from '../../src/db/customers';
 import { getCurrentSpace, renameSpace, type Space } from '../../src/db/spaces';
 import { isPremium, PREMIUM_PRICE_LABEL } from '../../src/premium';
+import { getCloudUser, signOutCloud, type CloudUser } from '../../src/cloud/auth';
+import { pushAllToCloud } from '../../src/cloud/sync';
 import { CurrencyPicker } from '../../src/components/CurrencyPicker';
 import { CodeBadge } from '../../src/components/CodeBadge';
 import { currencyInfo } from '../../src/data/currencies';
@@ -41,16 +43,21 @@ export default function SettingsScreen() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [saved, setSaved] = useState(false);
   const [reminderOffsetDays, setReminderOffsetDaysState] = useState(1);
+  const [cloudUser, setCloudUser] = useState<CloudUser | null>(null);
+  const [lastBackupAt, setLastBackupAt] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       (async () => {
-        const [profileRow, space, premiumFlag, notifGranted, offsetDays] = await Promise.all([
+        const [profileRow, space, premiumFlag, notifGranted, offsetDays, user, backupAt] = await Promise.all([
           getProfile(db),
           getCurrentSpace(db),
           isPremium(db),
           getNotificationPermissionGranted(),
           getReminderOffsetDays(db),
+          getCloudUser(),
+          getSetting(db, SETTINGS_KEYS.lastBackupAt),
         ]);
         setProfile(profileRow);
         setCurrentSpace(space);
@@ -58,6 +65,8 @@ export default function SettingsScreen() {
         setPremium(premiumFlag);
         setNotificationsOn(notifGranted);
         setReminderOffsetDaysState(offsetDays);
+        setCloudUser(user);
+        setLastBackupAt(backupAt);
       })();
     }, [db])
   );
@@ -120,7 +129,33 @@ export default function SettingsScreen() {
   }
 
   function handleCloudPress() {
-    if (!premium) router.push('/paywall');
+    if (!premium) {
+      router.push('/paywall');
+      return;
+    }
+    if (!cloudUser) router.push('/backup-auth');
+  }
+
+  async function handleManualSync() {
+    if (!cloudUser || syncing) return;
+    setSyncing(true);
+    try {
+      await pushAllToCloud(db, cloudUser.id);
+      setLastBackupAt(await getSetting(db, SETTINGS_KEYS.lastBackupAt));
+      flashSaved();
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  async function handleSignOut() {
+    await signOutCloud();
+    setCloudUser(null);
+  }
+
+  function formatBackupDate(iso: string): string {
+    const d = new Date(iso);
+    return d.toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   }
 
   if (!profile || !currentSpace) return <View style={styles.container} />;
@@ -215,13 +250,22 @@ export default function SettingsScreen() {
       </View>
 
       <Text style={styles.sectionDivider}>Compte</Text>
-      <Pressable style={styles.settingsRow} onPress={handleCloudPress}>
+      <Pressable style={styles.settingsRow} onPress={handleCloudPress} disabled={premium && !!cloudUser}>
         <Cloud color={colors.primary} size={18} />
         <View style={{ flex: 1 }}>
           <Text style={styles.rowTitle}>Sauvegarde en ligne</Text>
           <Text style={styles.rowDesc}>
-            {premium ? 'Bientôt disponible dans une prochaine mise à jour.' : "Disponible sur n'importe quel appareil, même si vous perdez votre téléphone."}
+            {!premium
+              ? "Disponible sur n'importe quel appareil, même si vous perdez votre téléphone."
+              : cloudUser
+                ? cloudUser.email
+                : 'Connectez-vous pour activer la sauvegarde.'}
           </Text>
+          {premium && cloudUser && (
+            <Text style={styles.rowDesc}>
+              {lastBackupAt ? `Dernière sauvegarde : ${formatBackupDate(lastBackupAt)}` : 'Aucune sauvegarde effectuée pour le moment.'}
+            </Text>
+          )}
         </View>
         {!premium && (
           <View style={[styles.lockBadge, { backgroundColor: colors.primaryMuted }]}>
@@ -229,6 +273,18 @@ export default function SettingsScreen() {
           </View>
         )}
       </Pressable>
+      {premium && cloudUser && (
+        <View style={styles.chipsRow}>
+          <Pressable style={styles.ghostBtnSmall} onPress={handleManualSync} disabled={syncing}>
+            {syncing ? <ActivityIndicator size="small" color={colors.primary} /> : (
+              <Text style={styles.ghostBtnText}>Sauvegarder maintenant</Text>
+            )}
+          </Pressable>
+          <Pressable style={styles.ghostBtnSmall} onPress={handleSignOut}>
+            <Text style={styles.ghostBtnText}>Se déconnecter</Text>
+          </Pressable>
+        </View>
+      )}
 
       {premium ? (
         <View style={styles.premiumActive}>
@@ -464,6 +520,16 @@ function createStyles(colors: typeof ColorsType) {
       paddingVertical: spacing.sm + 4,
       alignItems: 'center',
       marginBottom: spacing.sm,
+    },
+    ghostBtnSmall: {
+      flex: 1,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radius.md,
+      paddingVertical: spacing.sm + 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 38,
     },
     ghostBtnText: {
       fontSize: fontSize.sm,

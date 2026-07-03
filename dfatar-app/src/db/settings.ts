@@ -9,6 +9,7 @@ export const SETTINGS_KEYS = {
   notificationsEnabled: 'notifications_enabled',
   reminderOffsetDays: 'reminder_offset_days',
   currentSpaceId: 'current_space_id',
+  lastBackupAt: 'last_backup_at',
 } as const;
 
 export const DEFAULT_REMINDER_OFFSET_DAYS = 1;
