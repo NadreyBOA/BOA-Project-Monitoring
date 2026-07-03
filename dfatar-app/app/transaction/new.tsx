@@ -4,11 +4,17 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { X } from 'lucide-react-native';
 import { createTransaction } from '../../src/db/transactions';
-import { getProfile } from '../../src/db/settings';
+import { getProfile, getReminderOffsetDays } from '../../src/db/settings';
+import { getCustomer } from '../../src/db/customers';
+import { scheduleDebtReminder } from '../../src/notifications';
 import type { TransactionType } from '../../src/types';
 import { radius, spacing, fontSize, colors as ColorsType } from '../../src/utils/theme';
 import { useTheme } from '../../src/theme/ThemeContext';
 import { formatDate } from '../../src/utils/currency';
+
+function isValidDate(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
 
 export default function TransactionFormScreen() {
   const { colors } = useTheme();
@@ -20,6 +26,7 @@ export default function TransactionFormScreen() {
   const [type, setType] = useState<TransactionType>(initialType === 'payment' ? 'payment' : 'credit');
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
+  const [dueDate, setDueDate] = useState('');
   const [saving, setSaving] = useState(false);
   const [currency, setCurrency] = useState('');
 
@@ -28,18 +35,36 @@ export default function TransactionFormScreen() {
   }, [db]);
 
   const parsedAmount = parseFloat(amount.replace(',', '.'));
-  const canSave = customerId && !Number.isNaN(parsedAmount) && parsedAmount > 0 && !saving;
+  const trimmedDueDate = dueDate.trim();
+  const dueDateValid = !trimmedDueDate || isValidDate(trimmedDueDate);
+  const canSave = customerId && !Number.isNaN(parsedAmount) && parsedAmount > 0 && dueDateValid && !saving;
 
   async function handleSave() {
     if (!canSave || !customerId) return;
     setSaving(true);
     try {
+      const effectiveDueDate = type === 'credit' && trimmedDueDate ? trimmedDueDate : null;
+      let notificationId: string | null = null;
+      if (effectiveDueDate) {
+        const [customer, offsetDays] = await Promise.all([
+          getCustomer(db, customerId),
+          getReminderOffsetDays(db),
+        ]);
+        notificationId = await scheduleDebtReminder(
+          customer?.name ?? '',
+          parsedAmount,
+          effectiveDueDate,
+          offsetDays
+        );
+      }
       await createTransaction(db, {
         customerId,
         type,
         amount: parsedAmount,
         date: new Date().toISOString(),
         note: note || null,
+        dueDate: effectiveDueDate,
+        notificationId,
       });
       router.back();
     } finally {
@@ -89,6 +114,20 @@ export default function TransactionFormScreen() {
 
         <Text style={styles.label}>Date</Text>
         <Text style={styles.dateText}>{formatDate(new Date().toISOString())} (aujourd'hui)</Text>
+
+        {type === 'credit' && (
+          <>
+            <Text style={styles.label}>Échéance prévue (facultatif)</Text>
+            <TextInput
+              value={dueDate}
+              onChangeText={setDueDate}
+              placeholder="AAAA-MM-JJ"
+              placeholderTextColor={colors.textMuted}
+              style={[styles.input, !dueDateValid && styles.inputError]}
+            />
+            {!dueDateValid && <Text style={styles.errorText}>Format attendu : AAAA-MM-JJ</Text>}
+          </>
+        )}
 
         <Text style={styles.label}>Note</Text>
         <TextInput
@@ -172,6 +211,14 @@ function createStyles(colors: typeof ColorsType) {
     multiline: {
       minHeight: 80,
       textAlignVertical: 'top',
+    },
+    inputError: {
+      borderColor: colors.danger,
+    },
+    errorText: {
+      fontSize: fontSize.xs,
+      color: colors.danger,
+      marginTop: spacing.xs,
     },
     dateText: {
       fontSize: fontSize.md,

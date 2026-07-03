@@ -15,14 +15,14 @@ export function CustomerRow({ customer, currency }: { customer: CustomerWithBala
 
   return (
     <Pressable
-      style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+      style={({ pressed }) => [styles.row, !owesMoney && styles.rowSettled, pressed && styles.rowPressed]}
       onPress={() => router.push(`/customer/${customer.id}`)}
     >
-      <View style={styles.avatar}>
-        <Text style={styles.avatarText}>{initial}</Text>
+      <View style={[styles.avatar, !owesMoney && styles.avatarSettled]}>
+        <Text style={[styles.avatarText, !owesMoney && styles.avatarTextSettled]}>{initial}</Text>
       </View>
       <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={1}>
+        <Text style={[styles.name, !owesMoney && styles.nameSettled]} numberOfLines={1}>
           {customer.name}
         </Text>
         <Text style={styles.meta} numberOfLines={1}>
@@ -58,6 +58,9 @@ function createStyles(colors: typeof ColorsType) {
     rowPressed: {
       opacity: 0.7,
     },
+    rowSettled: {
+      opacity: 0.55,
+    },
     avatar: {
       width: 44,
       height: 44,
@@ -66,10 +69,16 @@ function createStyles(colors: typeof ColorsType) {
       alignItems: 'center',
       justifyContent: 'center',
     },
+    avatarSettled: {
+      backgroundColor: colors.border,
+    },
     avatarText: {
       color: colors.primary,
       fontSize: fontSize.md,
       fontWeight: '700',
+    },
+    avatarTextSettled: {
+      color: colors.textMuted,
     },
     info: {
       flex: 1,
@@ -78,6 +87,9 @@ function createStyles(colors: typeof ColorsType) {
       fontSize: fontSize.md,
       fontWeight: '600',
       color: colors.text,
+    },
+    nameSettled: {
+      color: colors.textMuted,
     },
     meta: {
       fontSize: fontSize.xs,

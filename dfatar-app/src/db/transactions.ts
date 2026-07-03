@@ -14,12 +14,30 @@ export async function listTransactionsForCustomer(
 
 export async function createTransaction(
   db: SQLiteDatabase,
-  input: { customerId: string; type: TransactionType; amount: number; date: string; note: string | null }
+  input: {
+    customerId: string;
+    type: TransactionType;
+    amount: number;
+    date: string;
+    note: string | null;
+    dueDate?: string | null;
+    notificationId?: string | null;
+  }
 ): Promise<string> {
   const id = generateId();
   await db.runAsync(
-    'INSERT INTO transactions (id, customer_id, type, amount, date, note, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    [id, input.customerId, input.type, input.amount, input.date, input.note?.trim() || null, new Date().toISOString()]
+    'INSERT INTO transactions (id, customer_id, type, amount, date, note, due_date, notification_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [
+      id,
+      input.customerId,
+      input.type,
+      input.amount,
+      input.date,
+      input.note?.trim() || null,
+      input.dueDate || null,
+      input.notificationId || null,
+      new Date().toISOString(),
+    ]
   );
   return id;
 }

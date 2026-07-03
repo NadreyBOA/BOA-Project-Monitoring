@@ -136,11 +136,12 @@ export default function CustomerDetailScreen() {
             <Text style={[styles.actionButtonText, { color: colors.credit }]}>Dette</Text>
           </Pressable>
           <Pressable
-            style={[styles.actionButton, styles.paymentButton]}
-            onPress={() => router.push(`/transaction/new?customerId=${customer.id}&type=payment`)}
+            style={[styles.actionButton, styles.paymentButton, !owesMoney && styles.actionButtonDisabled]}
+            disabled={!owesMoney}
+            onPress={() => owesMoney && router.push(`/transaction/new?customerId=${customer.id}&type=payment`)}
           >
-            <Minus color={colors.payment} size={18} />
-            <Text style={[styles.actionButtonText, { color: colors.payment }]}>Remboursement</Text>
+            <Minus color={owesMoney ? colors.payment : colors.textMuted} size={18} />
+            <Text style={[styles.actionButtonText, { color: owesMoney ? colors.payment : colors.textMuted }]}>Remboursement</Text>
           </Pressable>
         </View>
 
@@ -150,7 +151,7 @@ export default function CustomerDetailScreen() {
           </Pressable>
         )}
 
-        {!!customer.phone && (
+        {!!customer.phone && owesMoney && (
           <Pressable style={styles.reminderButton} onPress={handleReminder}>
             <MessageCircle color="#fff" size={18} />
             <Text style={styles.reminderButtonText}>Envoyer un rappel WhatsApp</Text>
@@ -240,6 +241,11 @@ function createStyles(colors: typeof ColorsType) {
     paymentButton: {
       backgroundColor: colors.primaryMuted,
       borderColor: colors.primaryMuted,
+    },
+    actionButtonDisabled: {
+      backgroundColor: colors.border,
+      borderColor: colors.border,
+      opacity: 0.6,
     },
     actionButtonText: {
       fontSize: fontSize.sm,

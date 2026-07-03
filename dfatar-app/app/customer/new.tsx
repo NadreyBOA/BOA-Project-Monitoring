@@ -5,8 +5,14 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { X } from 'lucide-react-native';
 import { createCustomer, getCustomer, updateCustomer } from '../../src/db/customers';
 import { createTransaction } from '../../src/db/transactions';
+import { getReminderOffsetDays } from '../../src/db/settings';
+import { scheduleDebtReminder } from '../../src/notifications';
 import { radius, spacing, fontSize, colors as ColorsType } from '../../src/utils/theme';
 import { useTheme } from '../../src/theme/ThemeContext';
+
+function isValidDate(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
 
 export default function CustomerFormScreen() {
   const { colors } = useTheme();
@@ -22,7 +28,11 @@ export default function CustomerFormScreen() {
   const [note, setNote] = useState('');
   const [debtAmount, setDebtAmount] = useState('');
   const [debtNote, setDebtNote] = useState('');
+  const [debtDueDate, setDebtDueDate] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const trimmedDebtDueDate = debtDueDate.trim();
+  const debtDueDateValid = !trimmedDebtDueDate || isValidDate(trimmedDebtDueDate);
 
   useFocusEffect(
     useCallback(() => {
@@ -40,7 +50,7 @@ export default function CustomerFormScreen() {
   );
 
   async function handleSave() {
-    if (!name.trim() || saving) return;
+    if (!name.trim() || !debtDueDateValid || saving) return;
     setSaving(true);
     try {
       if (isEdit && id) {
@@ -50,12 +60,20 @@ export default function CustomerFormScreen() {
         const newId = await createCustomer(db, { name, phone: phone || null, address: address || null, note: note || null });
         const parsedDebt = parseFloat(debtAmount.replace(',', '.'));
         if (!isNaN(parsedDebt) && parsedDebt > 0) {
+          const effectiveDueDate = debtDueDateValid && trimmedDebtDueDate ? trimmedDebtDueDate : null;
+          let notificationId: string | null = null;
+          if (effectiveDueDate) {
+            const offsetDays = await getReminderOffsetDays(db);
+            notificationId = await scheduleDebtReminder(name, parsedDebt, effectiveDueDate, offsetDays);
+          }
           await createTransaction(db, {
             customerId: newId,
             type: 'credit',
             amount: parsedDebt,
             date: new Date().toISOString(),
             note: debtNote || null,
+            dueDate: effectiveDueDate,
+            notificationId,
           });
         }
         router.replace(`/customer/${newId}`);
@@ -140,15 +158,24 @@ export default function CustomerFormScreen() {
               placeholderTextColor={colors.textMuted}
               style={styles.input}
             />
+            <Text style={styles.label}>Échéance prévue (facultatif)</Text>
+            <TextInput
+              value={debtDueDate}
+              onChangeText={setDebtDueDate}
+              placeholder="AAAA-MM-JJ"
+              placeholderTextColor={colors.textMuted}
+              style={[styles.input, !debtDueDateValid && styles.inputError]}
+            />
+            {!debtDueDateValid && <Text style={styles.errorText}>Format attendu : AAAA-MM-JJ</Text>}
           </>
         )}
       </ScrollView>
 
       <View style={styles.footer}>
         <Pressable
-          style={[styles.saveButton, (!name.trim() || saving) && styles.saveButtonDisabled]}
+          style={[styles.saveButton, (!name.trim() || !debtDueDateValid || saving) && styles.saveButtonDisabled]}
           onPress={handleSave}
-          disabled={!name.trim() || saving}
+          disabled={!name.trim() || !debtDueDateValid || saving}
         >
           <Text style={styles.saveButtonText}>{saving ? 'Enregistrement…' : 'Enregistrer'}</Text>
         </Pressable>
@@ -186,6 +213,14 @@ function createStyles(colors: typeof ColorsType) {
     multiline: {
       minHeight: 70,
       textAlignVertical: 'top',
+    },
+    inputError: {
+      borderColor: colors.danger,
+    },
+    errorText: {
+      fontSize: fontSize.xs,
+      color: colors.danger,
+      marginTop: spacing.xs,
     },
     hint: {
       fontSize: fontSize.xs,

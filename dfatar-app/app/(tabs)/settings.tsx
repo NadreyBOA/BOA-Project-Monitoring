@@ -3,7 +3,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { ShieldCheck, Cloud, Bell, Crown, Lock } from 'lucide-react-native';
-import { getProfile, setSetting, SETTINGS_KEYS, type Profile } from '../../src/db/settings';
+import { getProfile, setSetting, SETTINGS_KEYS, getReminderOffsetDays, setReminderOffsetDays, type Profile } from '../../src/db/settings';
 import { totalDue } from '../../src/db/customers';
 import { isPremium, PREMIUM_PRICE_LABEL } from '../../src/premium';
 import { CurrencyPicker } from '../../src/components/CurrencyPicker';
@@ -19,6 +19,13 @@ import {
   sendTestReminderNotification,
 } from '../../src/notifications';
 
+const REMINDER_OFFSETS = [
+  { value: 7, label: '1 semaine avant' },
+  { value: 1, label: '1 jour avant' },
+  { value: 0, label: "Le jour de l'échéance" },
+  { value: -1, label: 'Après l\'échéance' },
+];
+
 export default function SettingsScreen() {
   const { colors, themeId, setThemeId } = useTheme();
   const styles = createStyles(colors);
@@ -31,19 +38,22 @@ export default function SettingsScreen() {
   const [notificationsOn, setNotificationsOn] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [reminderOffsetDays, setReminderOffsetDaysState] = useState(1);
 
   useFocusEffect(
     useCallback(() => {
       (async () => {
-        const [profileRow, premiumFlag, notifGranted] = await Promise.all([
+        const [profileRow, premiumFlag, notifGranted, offsetDays] = await Promise.all([
           getProfile(db),
           isPremium(db),
           getNotificationPermissionGranted(),
+          getReminderOffsetDays(db),
         ]);
         setProfile(profileRow);
         setDisplayName(profileRow.displayName);
         setPremium(premiumFlag);
         setNotificationsOn(notifGranted);
+        setReminderOffsetDaysState(offsetDays);
       })();
     }, [db])
   );
@@ -99,6 +109,11 @@ export default function SettingsScreen() {
     const due = await totalDue(db);
     const text = due <= 0 ? 'Aucun montant à encaisser pour le moment.' : `Vous avez ${formatAmount(due, profile?.baseCurrency ?? 'MAD')} à encaisser.`;
     await sendTestReminderNotification(text);
+  }
+
+  async function changeReminderOffset(days: number) {
+    setReminderOffsetDaysState(days);
+    await setReminderOffsetDays(db, days);
   }
 
   function handleReviewOnboarding() {
@@ -188,6 +203,25 @@ export default function SettingsScreen() {
           <Text style={styles.ghostBtnText}>Tester la notification maintenant</Text>
         </Pressable>
       )}
+
+      <Text style={styles.label}>Quand recevoir le rappel d'une échéance ?</Text>
+      <Text style={styles.hint}>
+        S'applique par défaut à toutes les dettes avec une échéance prévue, pour ne pas vous spammer.
+      </Text>
+      <View style={styles.chipsRow}>
+        {REMINDER_OFFSETS.map((o) => {
+          const active = reminderOffsetDays === o.value;
+          return (
+            <Pressable
+              key={o.value}
+              style={[styles.chip, active && styles.chipActive]}
+              onPress={() => changeReminderOffset(o.value)}
+            >
+              <Text style={[styles.chipText, active && styles.chipTextActive]}>{o.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
 
       <Text style={styles.sectionDivider}>Compte</Text>
       <Pressable style={styles.settingsRow} onPress={handleCloudPress}>
@@ -381,6 +415,33 @@ function createStyles(colors: typeof ColorsType) {
       fontSize: fontSize.xs,
       fontWeight: '600',
       color: colors.textMuted,
+    },
+    chipsRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+      marginTop: spacing.sm,
+      marginBottom: spacing.md,
+    },
+    chip: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs + 3,
+      borderRadius: radius.full,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    chipActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    chipText: {
+      fontSize: fontSize.xs,
+      fontWeight: '600',
+      color: colors.textMuted,
+    },
+    chipTextActive: {
+      color: '#fff',
     },
     settingsRow: {
       flexDirection: 'row',

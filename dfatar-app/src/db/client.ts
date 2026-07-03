@@ -2,7 +2,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 export const DATABASE_NAME = 'dfatar.db';
 
-const DATABASE_VERSION = 2;
+const DATABASE_VERSION = 3;
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
@@ -51,6 +51,14 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       ALTER TABLE customers ADD COLUMN address TEXT;
     `);
     currentVersion = 2;
+  }
+
+  if (currentVersion === 2) {
+    await db.execAsync(`
+      ALTER TABLE transactions ADD COLUMN due_date TEXT;
+      ALTER TABLE transactions ADD COLUMN notification_id TEXT;
+    `);
+    currentVersion = 3;
   }
 
   await db.execAsync(`PRAGMA user_version = ${currentVersion}`);

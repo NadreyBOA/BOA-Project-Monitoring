@@ -10,7 +10,19 @@ export const SETTINGS_KEYS = {
   isPremium: 'is_premium',
   themeId: 'theme_id',
   notificationsEnabled: 'notifications_enabled',
+  reminderOffsetDays: 'reminder_offset_days',
 } as const;
+
+export const DEFAULT_REMINDER_OFFSET_DAYS = 1;
+
+export async function getReminderOffsetDays(db: SQLiteDatabase): Promise<number> {
+  const value = await getSetting(db, SETTINGS_KEYS.reminderOffsetDays);
+  return value === null ? DEFAULT_REMINDER_OFFSET_DAYS : Number(value);
+}
+
+export async function setReminderOffsetDays(db: SQLiteDatabase, days: number): Promise<void> {
+  await setSetting(db, SETTINGS_KEYS.reminderOffsetDays, String(days));
+}
 
 export async function getSetting(db: SQLiteDatabase, key: string): Promise<string | null> {
   const row = await db.getFirstAsync<{ value: string }>('SELECT value FROM settings WHERE key = ?', [key]);

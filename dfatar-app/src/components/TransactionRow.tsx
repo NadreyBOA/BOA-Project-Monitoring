@@ -26,6 +26,11 @@ export function TransactionRow({ transaction, currency }: { transaction: Transac
             {transaction.note}
           </Text>
         )}
+        {!!transaction.due_date && (
+          <Text style={styles.note} numberOfLines={1}>
+            Échéance : {formatDate(transaction.due_date)}
+          </Text>
+        )}
       </View>
       <Text style={[styles.amount, { color: isCredit ? colors.credit : colors.payment }]}>
         {isCredit ? '+' : '-'}

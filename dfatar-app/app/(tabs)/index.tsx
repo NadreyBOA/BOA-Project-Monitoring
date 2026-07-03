@@ -73,10 +73,21 @@ export default function PeopleScreen() {
   }
 
   const dueCount = customers.filter((c) => c.balance > 0).length;
-  const filtered = customers
+  const filteredCustomers = customers
     .filter((c) => (filter === 'due' ? c.balance > 0 : true))
     .filter((c) => c.name.toLowerCase().includes(query.trim().toLowerCase()));
   const noneOwe = customers.length > 0 && filter === 'due' && dueCount === 0 && !query.trim();
+
+  type Row = { kind: 'divider'; label: string } | { kind: 'customer'; customer: CustomerWithBalance };
+  const rows: Row[] = [];
+  let dividerAdded = false;
+  filteredCustomers.forEach((c) => {
+    if (filter === 'all' && c.balance <= 0 && !dividerAdded) {
+      dividerAdded = true;
+      rows.push({ kind: 'divider', label: 'Soldées' });
+    }
+    rows.push({ kind: 'customer', customer: c });
+  });
 
   return (
     <View style={styles.container}>
@@ -116,10 +127,16 @@ export default function PeopleScreen() {
       </View>
 
       <FlatList
-        data={filtered}
-        keyExtractor={(item) => item.id}
+        data={rows}
+        keyExtractor={(item, index) => (item.kind === 'divider' ? `divider-${index}` : item.customer.id)}
         contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => <CustomerRow customer={item} currency={baseCurrency} />}
+        renderItem={({ item }) =>
+          item.kind === 'divider' ? (
+            <Text style={styles.listDivider}>{item.label}</Text>
+          ) : (
+            <CustomerRow customer={item.customer} currency={baseCurrency} />
+          )
+        }
         ListEmptyComponent={
           <EmptyState
             icon={Users}
@@ -215,6 +232,18 @@ function createStyles(colors: typeof ColorsType) {
       paddingHorizontal: spacing.md,
       paddingBottom: spacing.xl * 2,
       flexGrow: 1,
+    },
+    listDivider: {
+      fontSize: fontSize.xs,
+      fontWeight: '700',
+      letterSpacing: 0.5,
+      textTransform: 'uppercase',
+      color: colors.textMuted,
+      marginTop: spacing.md,
+      marginBottom: spacing.sm,
+      paddingTop: spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
     },
     fab: {
       position: 'absolute',

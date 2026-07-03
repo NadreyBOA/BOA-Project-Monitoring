@@ -24,5 +24,7 @@ export interface Transaction {
   amount: number;
   date: string;
   note: string | null;
+  due_date: string | null;
+  notification_id: string | null;
   created_at: string;
 }
