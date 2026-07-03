@@ -1,0 +1,32 @@
+name: EAS Build (Android preview APK)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dfatar-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Link EAS project
+        run: npx eas-cli init --non-interactive --force
+
+      - name: Build Android APK
+        run: npx eas-cli build --platform android --profile preview --non-interactive
