@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800&display=swap" rel="stylesheet">
+<meta name="design_doc_mode" content="canvas">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+</style>
+</helmet>
+
+<!-- ===== SVG ICON DEFS ===== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="ic-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></symbol>
+  <symbol id="ic-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></symbol>
+  <symbol id="ic-minus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path></symbol>
+  <symbol id="ic-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></symbol>
+  <symbol id="ic-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></symbol>
+  <symbol id="ic-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></symbol>
+  <symbol id="ic-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"></path></symbol>
+  <symbol id="ic-dots" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="5" cy="12" r="1.6"></circle><circle cx="12" cy="12" r="1.6"></circle><circle cx="19" cy="12" r="1.6"></circle></symbol>
+  <symbol id="ic-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5"></rect><path d="M3 9h18M8 3v3M16 3v3"></path></symbol>
+  <symbol id="ic-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0112 0c0 5 2 6 2 6H4s2-1 2-6"></path><path d="M10 20a2 2 0 004 0"></path></symbol>
+  <symbol id="ic-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"></circle><path d="M12 2.5v2.6M12 18.9v2.6M21.5 12h-2.6M5.1 12H2.5M18.7 5.3l-1.8 1.8M7.1 16.9l-1.8 1.8M18.7 18.7l-1.8-1.8M7.1 7.1L5.3 5.3"></path></symbol>
+  <symbol id="ic-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-6 8 6"></path><path d="M6 10v9h12v-9"></path></symbol>
+  <symbol id="ic-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11a2 2 0 012 2v14H7a2 2 0 01-2-2z"></path><path d="M9 4v14"></path></symbol>
+  <symbol id="ic-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"></circle><path d="M5 20a7 7 0 0114 0"></path></symbol>
+  <symbol id="ic-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"></circle><path d="M2.5 20a6.5 6.5 0 0113 0"></path><path d="M16 5.2a3.2 3.2 0 010 5.6M22 20a6.5 6.5 0 00-4.5-6.2"></path></symbol>
+  <symbol id="ic-cloud" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a4 4 0 01-.5-7.97A5.5 5.5 0 0117.5 11 3.5 3.5 0 0117 18z"></path></symbol>
+  <symbol id="ic-droplet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3s6 5.5 6 10a6 6 0 01-12 0c0-4.5 6-10 6-10z"></path></symbol>
+  <symbol id="ic-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4.5 4.5L19 7"></path></symbol>
+  <symbol id="ic-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"></path><path d="M14 6l4 4"></path></symbol>
+  <symbol id="ic-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5h6v2M6.5 7l1 12h9l1-12"></path></symbol>
+  <symbol id="ic-cash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6.5" width="19" height="11" rx="2"></rect><circle cx="12" cy="12" r="2.6"></circle></symbol>
+  <symbol id="ic-bank" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-5 9 5"></path><path d="M5 9v9M9.5 9v9M14.5 9v9M19 9v9M3 20.5h18"></path></symbol>
+  <symbol id="ic-mobile" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="10" height="18" rx="2.5"></rect><path d="M11 18h2"></path></symbol>
+  <symbol id="ic-cheque" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"></path><path d="M14 3v4h4M9 12h6M9 16h4"></path></symbol>
+  <symbol id="ic-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="6" height="6" rx="1.4"></rect><rect x="14" y="4" width="6" height="6" rx="1.4"></rect><rect x="4" y="14" width="6" height="6" rx="1.4"></rect><rect x="14" y="14" width="6" height="6" rx="1.4"></rect></symbol>
+  <symbol id="ic-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10.5" width="14" height="9.5" rx="2"></rect><path d="M8 10.5V8a4 4 0 018 0v2.5"></path></symbol>
+  <symbol id="ic-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5.5" width="18" height="13" rx="2.5"></rect><path d="M4 7l8 6 8-6"></path></symbol>
+  <symbol id="ic-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"></path><circle cx="12" cy="12" r="3"></circle></symbol>
+  <symbol id="ic-crown" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l4 3.5 5-6.5 5 6.5 4-3.5-1.8 11H4.8z"></path></symbol>
+  <symbol id="ic-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"></circle><path d="M12 7.5V12l3 2"></path></symbol>
+  <symbol id="ic-out" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"></path></symbol>
+  <symbol id="ic-in" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7L7 17M15 17H7V9"></path></symbol>
+  <symbol id="ic-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16l-6.5 7.5V19l-3 1.5v-8z"></path></symbol>
+  <symbol id="ic-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6z"></path></symbol>
+  <symbol id="ic-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 10-1.9 5.2M20 4.5V11h-6.5"></path></symbol>
+  <symbol id="ic-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"></circle><path d="M12 11v5M12 8h.01"></path></symbol>
+  <symbol id="ic-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5H6v14h9M10 12h10M17 9l3 3-3 3"></path></symbol>
+  <symbol id="ic-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2.5M12 19.5V22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2 12h2.5M19.5 12H22M4.2 19.8L6 18M18 6l1.8-1.8"></path></symbol>
+  <symbol id="ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 019.5 4 7 7 0 1020 14.5z"></path></symbol>
+  <symbol id="ic-tag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h7l9 9-7 7-9-9z"></path><circle cx="8.5" cy="8.5" r="1.3" fill="currentColor" stroke="none"></circle></symbol>
+  <symbol id="ic-wallet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h13a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2h10"></path><circle cx="16.5" cy="13" r="1.3" fill="currentColor" stroke="none"></circle></symbol>
+  <symbol id="ic-wa" viewBox="0 0 24 24"><path fill="#25D366" d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38c1.45.79 3.08 1.21 4.79 1.21h.01c5.46 0 9.9-4.45 9.9-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0012.04 2z"></path><path fill="#fff" d="M17.5 14.38c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.62-.92-2.22-.24-.57-.49-.5-.67-.5h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.49s1.07 2.89 1.22 3.09c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.22 1.36.19 1.87.12.57-.09 1.77-.72 2.02-1.42.25-.7.25-1.29.17-1.42-.07-.13-.27-.2-.57-.35z"></path></symbol>
+</defs></svg>
+
+<div style="min-height:100vh;background:#E7EAE8;background-image:radial-gradient(circle at 22% 0%, #EEF1EF, #E2E6E3);padding:52px 56px 80px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased;color:#16241C;">
+
+  <!-- ===== HEADER + THEME CONTROLS ===== -->
+  <div style="max-width:1860px;margin:0 auto 42px;display:flex;align-items:flex-end;justify-content:space-between;gap:32px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:18px;">
+      <div style="width:56px;height:56px;border-radius:17px;background:linear-gradient(135deg,#27A56B,#1A8153);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:30px;box-shadow:0 10px 22px -8px rgba(31,143,92,.6);">B</div>
+      <div>
+        <div style="font-size:30px;font-weight:800;letter-spacing:-.02em;">Bankee</div>
+        <div style="font-size:14px;font-weight:500;color:#5C6B62;margin-top:2px;">Design system &amp; écrans · carnet de dettes numérique</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:22px;flex-wrap:wrap;">
+      <div style="display:flex;flex-direction:column;gap:9px;">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#7C8A81;">Couleur</div>
+        <div style="display:flex;gap:9px;">
+          <sc-for list="{{ colorDots }}" as="c" hint-placeholder-count="5">
+            <div onClick="{{ c.select }}" title="{{ c.name }}" style="cursor:pointer;width:34px;height:34px;border-radius:11px;background:{{ c.color }};display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 {{ c.ringW }} {{ c.ring }};transition:box-shadow .12s;">
+              <sc-if value="{{ c.active }}" hint-placeholder-val="{{ false }}"><svg width="17" height="17" viewBox="0 0 24 24" style="color:{{ c.tick }}"><use href="#ic-check"></use></svg></sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:9px;">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#7C8A81;">Mode</div>
+        <div style="display:flex;gap:4px;background:#fff;border:1.5px solid #D9E0DB;border-radius:12px;padding:4px;">
+          <div onClick="{{ setLight }}" style="cursor:pointer;display:flex;align-items:center;gap:6px;padding:7px 13px;border-radius:9px;background:{{ lightBg }};color:{{ lightFg }};font-size:13px;font-weight:700;"><svg width="16" height="16" viewBox="0 0 24 24"><use href="#ic-sun"></use></svg>Light</div>
+          <div onClick="{{ setDark }}" style="cursor:pointer;display:flex;align-items:center;gap:6px;padding:7px 13px;border-radius:9px;background:{{ darkBg }};color:{{ darkFg }};font-size:13px;font-weight:700;"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#ic-moon"></use></svg>Dark</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PHONE BOARD ===== -->
+  <div style="{{ themeStyle }}">
+  <div style="max-width:1980px;margin:0 auto;display:flex;flex-wrap:wrap;gap:60px 40px;justify-content:center;align-items:flex-start;">
+
+    <!-- ==== O1 · ONBOARDING — PROFIL ==== -->
+    <div style="display:flex;flex-direction:column;align-items:center;gap:15px;">
+      <div style="width:340px;height:724px;border-radius:40px;overflow:hidden;background:var(--bnk-bg,#EDF2EE);box-shadow:0 30px 70px -26px rgba(20,36,28,.5),0 0 0 1px rgba(0,0,0,.05);display:flex;flex-direction:column;">
+        <div style="height:46px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:13px;font-weight:700;color:var(--bnk-text,#16241C);"><span>9:41</span><span style="opacity:.7;font-size:12px;">5G ▪ 100%</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:20px 22px 22px;">
+          <div style="width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,var(--bnk-grad1,#27A56B),var(--bnk-grad2,#1A8153));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:27px;">B</div>
+          <div style="font-size:25px;font-weight:800;letter-spacing:-.02em;color:var(--bnk-text,#16241C);margin-top:22px;line-height:1.15;">Comment utilisez-vous Bankee ? 👋</div>
+          <div style="font-size:14px;color:var(--bnk-muted,#68786E);font-weight:500;margin-top:8px;">Vous pourrez créer les deux plus tard.</div>
+          <div style="display:flex;flex-direction:column;gap:13px;margin-top:24px;">
+            <div style="border:2px solid var(--bnk-primary,#1F8F5C);background:var(--bnk-primarySoft,#E4F3EB);border-radius:18px;padding:17px;display:flex;gap:14px;align-items:flex-start;">
+              <div style="width:46px;height:46px;flex:none;border-radius:14px;background:var(--bnk-primary,#1F8F5C);color:var(--bnk-onPrimary,#fff);display:flex;align-items:center;justify-content:center;"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#ic-users"></use></svg></div>
+              <div style="flex:1;"><div style="font-size:16px;font-weight:800;color:var(--bnk-text,#16241C);">Professionnel</div><div style="font-size:12.5px;color:var(--bnk-muted,#68786E);font-weight:500;margin-top:2px;line-height:1.35;">Je fais crédit à mes clients et je suis les paiements.</div></div>
+              <div style="width:22px;height:22px;border-radius:50%;background:var(--bnk-primary,#1F8F5C);color:var(--bnk-onPrimary,#fff);display:flex;align-items:center;justify-content:center;"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#ic-check"></use></svg></div>
+            </div>
+            <div style="border:1.5px solid var(--bnk-border,#E4EAE5);background:var(--bnk-surface,#fff);border-radius:18px;padding:17px;display:flex;gap:14px;align-items:flex-start;">
+              <div style="width:46px;height:46px;flex:none;border-radius:14px;background:var(--bnk-surfaceAlt,#F5F8F6);color:var(--bnk-muted,#68786E);display:flex;align-items:center;justify-content:center;"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#ic-user"></use></svg></div>
+              <div style="flex:1;"><div style="font-size:16px;font-weight:800;color:var(--bnk-text,#16241C);">Particulier</div><div style="font-size:12.5px;color:var(--bnk-muted,#68786E);font-weight:500;margin-top:2px;line-height:1.35;">Je prête à mes proches et je garde le fil.</div></div>
+            </div>
+          </div>
+          <div style="flex:1;"></div>
+          <div style="display:flex;justify-content:center;gap:7px;margin-bottom:16px;"><span style="width:22px;height:7px;border-radius:4px;background:var(--bnk-primary,#1F8F5C);"></span><span style="width:7px;height:7px;border-radius:4px;background:var(--bnk-border,#E4EAE5);"></span><span style="width:7px;height:7px;border-radius:4px;background:var(--bnk-border,#E4EAE5);"></span></div>
+          <div style="background:var(--bnk-primary,#1F8F5C);color:var(--bnk-onPrimary,#fff);border-radius:16px;padding:15px;text-align:center;font-weight:800;font-size:15.5px;">Continuer</div>
+        </div>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:#5C6B62;">1 · Onboarding — profil</div>
+    </div>
+
+    <!-- ==== O2 · ONBOARDING — NOM ==== -->
+    <div style="display:flex;flex-direction:column;align-items:center;gap:15px;">
+      <div style="width:340px;height:724px;border-radius:40px;overflow:hidden;background:var(--bnk-bg,#EDF2EE);box-shadow:0 30px 70px -26px rgba(20,36,28,.5),0 0 0 1px rgba(0,0,0,.05);display:flex;flex-direction:column;">
+        <div style="height:46px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:13px;font-weight:700;color:var(--bnk-text,#16241C);"><span>9:41</span><span style="opacity:.7;font-size:12px;">5G ▪ 100%</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:12px 22px 22px;">
+          <div style="width:38px;height:38px;border-radius:12px;background:var(--bnk-surface,#fff);border:1.5px solid var(--bnk-border,#E4EAE5);display:flex;align-items:center;justify-content:center;color:var(--bnk-text,#16241C);"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#ic-back"></use></svg></div>
+          <div style="font-size:25px;font-weight:800;letter-spacing:-.02em;color:var(--bnk-text,#16241C);margin-top:26px;line-height:1.15;">Le nom de votre entreprise</div>
+          <div style="font-size:14px;color:var(--bnk-muted,#68786E);font-weight:500;margin-top:8px;">Il s'affichera en tête de votre carnet.</div>
+          <div style="font-size:12px;font-weight:700;color:var(--bnk-muted,#68786E);margin:26px 0 7px;">NOM DE L'ENTREPRISE</div>
+          <div style="display:flex;align-items:center;gap:11px;background:var(--bnk-surface,#fff);border:2px solid var(--bnk-primary,#1F8F5C);border-radius:15px;padding:14px 15px;"><svg width="20" height="20" viewBox="0 0 24 24" style="color:var(--bnk-primary,#1F8F5C)"><use href="#ic-book"></use></svg><span style="flex:1;font-size:15.5px;font-weight:700;color:var(--bnk-text,#16241C);">Épicerie Chez Ali</span><span style="width:2px;height:20px;background:var(--bnk-primary,#1F8F5C);border-radius:2px;"></span></div>
+          <div style="display:flex;align-items:center;gap:7px;margin-top:11px;font-size:12.5px;color:var(--bnk-muted,#68786E);font-weight:500;"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#ic-info"></use></svg>Votre compte est de type Professionnel.</div>
+          <div style="flex:1;"></div>
+          <div style="display:flex;justify-content:center;gap:7px;margin-bottom:16px;"><span style="width:7px;height:7px;border-radius:4px;background:var(--bnk-border,#E4EAE5);"></span><span style="width:22px;height:7px;border-radius:4px;background:var(--bnk-primary,#1F8F5C);"></span><span style="width:7px;height:7px;border-radius:4px;background:var(--bnk-border,#E4EAE5);"></span></div>
+          <div style="background:var(--bnk-primary,#1F8F5C);color:var(--bnk-onPrimary,#fff);border-radius:16px;padding:15px;text-align:center;font-weight:800;font-size:15.5px;">Continuer</div>
+        </div>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:#5C6B62;">2 · Onboarding — nom</div>
+    </div>
+
+    <!-- ==== O3 · ONBOARDING — PAYS ==== -->
+    <div style="display:flex;flex-direction:column;align-items:center;gap:15px;">
+      <div style="width:340px;height:724px;border-radius:40px;overflow:hidden;background:var(--bnk-bg,#EDF2EE);box-shadow:0 30px 70px -26px rgba(20,36,28,.5),0 0 0 1px rgba(0,0,0,.05);display:flex;flex-direction:column;">
+        <div style="height:46px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:13px;font-weight:700;color:var(--bnk-text,#16241C);"><span>9:41</span><span style="opacity:.7;font-size:12px;">5G ▪ 100%</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:12px 22px 22px;overflow:hidden;">
+          <div style="width:38px;height:38px;border-radius:12px;background:var(--bnk-surface,#fff);border:1.5px solid var(--bnk-border,#E4EAE5);display:flex;align-items:center;justify-content:center;color:var(--bnk-text,#16241C);"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#ic-back"></use></svg></div>
+          <div style="font-size:25px;font-weight:800;letter-spacing:-.02em;color:var(--bnk-text,#16241C);margin-top:20px;">Votre pays</div>
+          <div style="font-size:13.5px;color:var(--bnk-muted,#68786E);font-weight:500;margin-top:6px;">Fixe votre devise de base — modifiable plus tard.</div>
+          <div style="display:flex;align-items:center;gap:10px;background:var(--bnk-surface,#fff);border:1.5px solid var(--bnk-border,#E4EAE5);border-radius:14px;padding:12px 14px;margin-top:16px;"><svg width="18" height="18" viewBox="0 0 24 24" style="color:var(--bnk-muted,#68786E)"><use href="#ic-search"></use></svg><span style="font-size:14px;color:var(--bnk-muted,#68786E);font-weight:500;">Rechercher un pays…</span></div>
+          <div style="flex:1;overflow:hidden;margin-top:8px;">
+            <sc-for list="{{ countries }}" as="co" hint-placeholder-count="6">
+              <div style="display:flex;align-items:center;gap:13px;padding:12px 4px;border-bottom:1px solid var(--bnk-border,#E4EAE5);">
+                <span style="font-size:26px;line-height:1;">{{ co.flag }}</span>
+                <span style="flex:1;font-size:14.5px;font-weight:700;color:var(--bnk-text,#16241C);">{{ co.name }}</span>
+                <span style="font-size:12px;font-weight:800;color:var(--bnk-muted,#68786E);background:var(--bnk-surfaceAlt,#F5F8F6);padding:4px 9px;border-radius:8px;">{{ co.cur }}</span>
+                <sc-if value="{{ co.active }}" hint-placeholder-val="{{ false }}"><svg width="19" height="19" viewBox="0 0 24 24" style="color:var(--bnk-primary,#1F8F5C)"><use href="#ic-check"></use></svg></sc-if>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:flex;justify-content:center;gap:7px;margin:12px 0 16px;"><span style="width:7px;height:7px;border-radius:4px;background:var(--bnk-border,#E4EAE5);"></span><span style="width:7px;height:7px;border-radius:4px;background:var(--bnk-border,#E4EAE5);"></span><span style="width:22px;height:7px;border-radius:4px;background:var(--bnk-primary,#1F8F5C);"></span></div>
+          <div style="background:var(--bnk-primary,#1F8F5C);color:var(--bnk-onPrimary,#fff);border-radius:16px;padding:15px;text-align:center;font-weight:800;font-size:15.5px;">Terminer</div>
+        </div>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:#5C6B62;">3 · Onboarding — pays &amp; devise</div>
+    </div>
+
+    <!-- ==== S4 · ACCUEIL ==== -->
+    <div data-screen-label="Accueil" style="display:flex;flex-direction:column;align-items:center;gap:15px;">
+      <div style="width:340px;height:724px;border-radius:40px;overflow:hidden;background:var(--bnk-bg,#EDF2EE);box-shadow:0 30px 70px -26px rgba(20,36,28,.5),0 0 0 1px rgba(0,0,0,.05);display:flex;flex-direction:column;">
+        <div style="height:46px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:13px;font-weight:700;color:var(--bnk-text,#16241C);"><span>9:41</span><span style="opacity:.7;font-size:12px;">5G ▪ 100%</span></div>
+        <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+          <div style="padding:4px 20px 0;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+            <div style="display:flex;align-items:center;gap:9px;background:var(--bnk-surface,#fff);border:1.5px solid var(--bnk-border,#E4EAE5);border-radius:14px;padding:9px 12px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" style="color:var(--bnk-primary,#1F8F5C)"><use href="#ic-book"></use></svg>
+              <span style="font-size:14.5px;font-weight:800;color:var(--bnk-text,#16241C);">Mon épicerie</span>
+              <span style="font-size:10px;font-weight:800;color:var(--bnk-primary,#1F8F5C);background:var(--bnk-primarySoft,#E4F3EB);padding:2px 6px;border-radius:6px;">PRO</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" style="color:var(--bnk-muted,#68786E)"><use href="#ic-down"></use></svg>
+            </div>
+            <div style="width:42px;height:42px;border-radius:13px;background:var(--bnk-surface,#fff);border:1.5px solid var(--bnk-border,#E4EAE5);display:flex;align-items:center;justify-content:center;color:var(--bnk-text,#16241C);position:relative;"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#ic-bell"></use></svg><span style="position:absolute;top:8px;right:9px;width:8px;height:8px;border-radius:50%;background:#E5544F;border:2px solid var(--bnk-surface,#fff);"></span></div>
+          </div>
+          <div style="margin:14px 20px 0;border-radius:24px;padding:22px;background:linear-gradient(135deg,var(--bnk-grad1,#27A56B),var(--bnk-grad2,#1A8153));color:#fff;position:relative;overflow:hidden;box-shadow:0 16px 30px -14px var(--bnk-primary,#1F8F5C);">
+            <div style="position:absolute;top:-16px;right:-8px;opacity:.16;"><svg width="96" height="96" viewBox="0 0 24 24" style="color:#fff"><use href="#ic-wallet"></use></svg></div>
+            <div style="font-size:13px;font-weight:600;opacity:.9;">On vous doit au total</div>
+            <div style="font-size:34px;font-weight:800;letter-spacing:-.02em;margin-top:4px;">$1,245.00</div>
+            <div style="display:flex;gap:10px;margin-top:16px;">
+              <div style="flex:1;background:rgba(255,255,255,.16);border-radius:13px;padding:9px 12px;"><div style="font-size:11px;opacity:.85;font-weight:600;">On me doit</div><div style="font-size:15px;font-weight:800;">+$1,320.00</div></div>
+              <div style="flex:1;background:rgba(255,255,255,.16);border-radius:13px;padding:9px 12px;"><div style="font-size:11px;opacity:.85;font-weight:600;">Je dois</div><div style="font-size:15px;font-weight:800;">−$75.00</div></div>
+            </div>
+          </div>
+          <div style="margin:16px 20px 0;display:flex;align-items:center;gap:10px;background:var(--bnk-surface,#fff);border:1.5px solid var(--bnk-border,#E4EAE5);border-radius:15px;padding:12px 15px;"><svg width="18" height="18" viewBox="0 0 24 24" style="color:var(--bnk-muted,#68786E)"><use href="#ic-search"></use></svg><span style="font-size:14px;color:var(--bnk-muted,#68786E);font-weight:500;">Rechercher une personne…</span></div>
+          <div style="display:flex;gap:8px;padding:13px 20px 4px;">
+            <span style="padding:8px 15px;border-radius:11px;background:var(--bnk-primary,#1F8F5C);color:var(--bnk-onPrimary,#fff);font-size:13px;font-weight:700;">Tous</span>
+            <span style="display:flex;align-items:center;gap:6px;padding:8px 15px;border-radius:11px;background:var(--bnk-surface,#fff);border:1.5px solid var(--bnk-border,#E4EAE5);color:var(--bnk-muted,#68786E);font-size:13px;font-weight:700;"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#ic-filter"></use></svg>Doit de l'argent</span>
+          </div>
+          <div style="flex:1;overflow:hidden;padding:6px 20px 0;">
+            <sc-for list="{{ people }}" as="p" hint-placeholder-count="5">
+              <div style="display:flex;align-items:center;gap:13px;padding:12px 4px;border-bottom:1px solid var(--bnk-border,#E4EAE5);">
+                <div style="width:44px;height:44px;flex:none;border-radius:14px;background:{{ p.tint }};display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:{{ p.color }};">{{ p.i }}</div>
+                <div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:700;color:var(--bnk-text,#16241C);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ p.name }}</div><div style="font-size:12.5px;color:var(--bnk-muted,#68786E);font-weight:500;margin-top:1px;">{{ p.sub }}</div></div>
+                <div style="text-align:right;"><div style="font-size:15px;font-weight:800;color:{{ p.amtColor }};">{{ p.amt }}</div><div style="font-size:11px;color:var(--bnk-muted,#68786E);font-weight:600;">{{ p.status }}</div></div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="flex:none;height:66px;background:var(--bnk-surface,#fff);border-top:1px solid var(--bnk-border,#E4EAE5);display:flex;align-items:center;justify-content:space-around;padding:0 22px;">
+          <svg width="24" height="24" viewBox="0 0 24 24" style="color:var(--bnk-primary,#1F8F5C)"><use href="#ic-home"></use></svg>
+          <svg width="24" height="24" viewBox="0 0 24 24" style="color:var(--bnk-muted,#68786E);opacity:.6"><use href="#ic-book"></use></svg>
+          <div style="width:52px;height:52px;border-radius:18px;background:linear-gradient(135deg,var(--bnk-grad1,#27A56B),var(--bnk-grad2,#1A8153));display:flex;align-items:center;justify-content:center;color:#fff;margin-top:-24px;box-shadow:0 12px 22px -8px var(--bnk-primary,#1F8F5C);"><svg width="26" height="26" viewBox="0 0 24 24"><use href="#ic-plus"></use></svg></div>
+          <svg width="24" height="24" viewBox="0 0 24 24" style="color:var(--bnk-muted,#68786E);opacity:.6"><use href="#ic-bell"></use></svg>
+          <svg width="24" height="24" viewBox="0 0 24 24" style="color:var(--bnk-muted,#68786E);opacity:.6"><use href="#ic-settings"></use></svg>
+        </div>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:#5C6B62;">4 · Accueil — liste des personnes</div>
+    </div>
+
+    <!-- ==== S5 · SÉLECTEUR DE CARNETS (MODAL) ==== -->
+    <div data-screen-label="Carnets" style="display:flex;flex-direction:column;align-items:center;gap:15px;">
+      <div style="width:340px;height:724px;border-radius:40px;overflow:hidden;background:var(--bnk-bg,#EDF2EE);box-shadow:0 30px 70px -26px rgba(20,36,28,.5),0 0 0 1px rgba(0,0,0,.05);display:flex;flex-direction:column;position:relative;">
+        <div style="position:absolute;inset:0;background:rgba(8,16,12,.42);"></div>
+        <div style="height:46px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:13px;font-weight:700;color:#fff;position:relative;z-index:1;"><span>9:41</span><span style="opacity:.85;font-size:12px;">5G ▪ 100%</span></div>
+        <div style="flex:1;position:relative;z-index:1;"></div>
+        <div style="position:relative;z-index:1;background:var(--bnk-bg,#EDF2EE);border-radius:28px 28px 0 0;padding:10px 20px 24px;">
+          <div style="width:40px;height:5px;border-radius:3px;background:var(--bnk-border,#E4EAE5);margin:0 auto 16px;"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+            <div style="font-size:20px;font-weight:800;letter-spacing:-.02em;color:var(--bnk-text,#16241C);">Mes carnets</div>
+            <div style="font-size:12px;font-weight:700;color:var(--bnk-primary,#1F8F5C);background:var(--bnk-primarySoft,#E4F3EB);padding:5px 10px;border-radius:9px;">2 / 3 gratuits</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:11px;margin-top:14px;">
+            <sc-for list="{{ carnets }}" as="k" hint-placeholder-count="2">
+              <div style="display:flex;align-items:center;gap:13px;background:var(--bnk-surface,#fff);border:{{ k.active }};border-radius:17px;padding:14px;box-shadow:0 8px 18px -14px rgba(20,36,28,.4);">
+                <div style="width:46px;height:46px;flex:none;border-radius:14px;background:{{ k.iconTint }};color:{{ k.typeColor }};display:flex;align-items:center;justify-content:center;"><svg width="23" height="23" viewBox="0 0 24 24"><use href="#{{ k.icon }}"></use></svg></div>
+                <div style="flex:1;min-width:0;"><div style="font-size:15.5px;font-weight:800;color:var(--bnk-text,#16241C);">{{ k.name }}</div><div style="display:flex;align-items:center;gap:7px;margin-top:3px;"><span style="font-size:10.5px;font-weight:800;color:{{ k.typeColor }};background:{{ k.iconTint }};padding:2px 7px;border-radius:6px;">{{ k.type }}</span><span style="font-size:12px;color:var(--bnk-muted,#68786E);font-weight:500;">{{ k.count }}</span></div></div>
+                <svg width="20" height="20" viewBox="0 0 24 24" style="color:var(--bnk-muted,#68786E)"><use href="#ic-dots"></use></svg>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:14px;">
+            <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--bnk-primary,#1F8F5C);color:var(--bnk-onPrimary,#fff);border-radius:14px;padding:14px;font-weight:800;font-size:14px;"><svg width="18" height="18" viewBox="0 0 24 24"><use href="#ic-plus"></use></svg>Créer un carnet</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:12px;color:var(--bnk-muted,#68786E);font-weight:600;"><svg width="15" height="15" viewBox="0 0 24 24" style="color:var(--bnk-primary,#1F8F5C)"><use href="#ic-crown"></use></svg>Passez à Premium pour des carnets illimités</div>
+        </div>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:#5C6B62;">5 · Sélecteur de carnets (modal)</div>
+    </div>
+
+    <!-- ==== S6 · FICHE PERSONNE ==== -->
+    <div data-screen-label="Fiche personne" style="display:flex;flex-direction:column;align-items:center;gap:15px;">
+      <div style="width:340px;height:724px;border-radius:40px;overflow:hidden;background:var(--bnk-bg,#EDF2EE);box-shadow:0 30px 70px -26px rgba(20,36,28,.5),0 0 0 1px rgba(0,0,0,.05);display:flex;flex-direction:column;">
+        <div style="height:46px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:13px;font-weight:700;color:var(--bnk-text,#16241C);"><span>9:41</span><span style="opacity:.7;font-size:12px;">5G ▪ 100%</span></div>
+        <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+          <div style="padding:4px 20px 0;display:flex;align-items:center;gap:12px;">
+            <div style="width:38px;height:38px;border-radius:12px;background:var(--bnk-surface,#fff);border:1.5px solid var(--bnk-border,#E4EAE5);display:flex;align-items:center;justify-content:center;color:var(--bnk-text,#16241C);"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#ic-back"></use></svg></div>
+            <div style="flex:1;font-size:17px;font-weight:800;color:var(--bnk-text,#16241C);">Moussa Traoré</div>
+            <div style="width:38px;height:38px;border-radius:12px;background:var(--bnk-surface,#fff);border:1.5px solid var(--bnk-border,#E4EAE5);display:flex;align-items:center;justify-content:center;color:var(--bnk-text,#16241C);"><svg width="18" height="18" viewBox="0 0 24 24"><use href="#ic-edit"></use></svg></div>
+          </div>
+          <div style="margin:14px 20px 0;background:var(--bnk-surface,#fff);border:1.5px solid var(--bnk-border,#E4EAE5);border-radius:24px;padding:20px;text-align:center;box-shadow:0 12px 26px -18px rgba(20,36,28,.4);">
+            <div style="width:58px;height:58px;border-radius:18px;margin:0 auto;background:rgba(124,92,252,.16);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;color:#7C5CFC;">MT</div>
+            <div style="font-size:13px;font-weight:600;color:var(--bnk-muted,#68786E);margin-top:12px;">Moussa vous doit</div>
+            <div style="font-size:32px;font-weight:800;letter-spacing:-.02em;color:var(--bnk-primary,#1F8F5C);margin-top:2px;">$120.00</div>
+            <div style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;background:var(--bnk-surfaceAlt,#F5F8F6);color:var(--bnk-muted,#68786E);font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:9px;"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#ic-calendar"></use></svg>Échéance 30 juil.</div>
+          </div>
+          <div style="display:flex;gap:10px;padding:12px 20px 0;">
+            <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:var(--bnk-primary,#1F8F5C);color:var(--bnk-onPrimary,#fff);border-radius:14px;padding:13px;font-weight:800;font-size:13.5px;"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#ic-plus"></use></svg>Dette</div>
+            <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:var(--bnk-surface,#fff);border:1.5px solid var(--bnk-border,#E4EAE5);color:var(--bnk-text,#16241C);border-radius:14px;padding:13px;font-weight:800;font-size:13.5px;"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#ic-minus"></use></svg>Rembours.</div>
+          </div>
+          <div style="display:flex;gap:10px;padding:10px 20px 0;">
+            <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:#fff;border:1.5px solid var(--bnk-border,#E4EAE5);border-radius:14px;padding:12px;font-weight:800;font-size:13.5px;color:#128C4B;"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#ic-wa"></use></svg>Rappel WhatsApp</div>
+            <div style="display:flex;align-items:center;justify-content:center;gap:7px;background:var(--bnk-primarySoft,#E4F3EB);color:var(--bnk-primary,#1F8F5C);border-radius:14px;padding:12px 15px;font-weight:800;font-size:13.5px;"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#ic-check"></use></svg>Solder</div>
+          </div>
+          <div style="font-size:12px;font-weight:800;color:var(--bnk-muted,#68786E);letter-spacing:.04em;text-transform:uppercase;padding:18px 20px 2px;">Historique</div>
+          <div style="flex:1;overflow:hidden;padding:0 20px;">
+            <sc-for list="{{ history }}" as="h" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;gap:13px;padding:12px 4px;border-bottom:1px solid var(--bnk-border,#E4EAE5);">
+                <div style="width:40px;height:40px;flex:none;border-radius:13px;background:{{ h.tint }};color:{{ h.iconColor }};display:flex;align-items:center;justify-content:center;"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#{{ h.icon }}"></use></svg></div>
+                <div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:700;color:var(--bnk-text,#16241C);">{{ h.t }}</div><div style="font-size:12px;color:var(--bnk-muted,#68786E);font-weight:500;">{{ h.note }} · {{ h.date }}</div></div>
+                <div style="font-size:15px;font-weight:800;color:{{ h.amtColor }};">{{ h.amt }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:#5C6B62;">6 · Fiche personne — solde, WhatsApp, historique</div>
+    </div>
+
+    <!-- ==== S7 · FORMULAIRE PERSONNE ==== -->
+    <div data-screen-label="Nouvelle personne" style="display:flex;flex-direction:column;align-items:center;gap:15px;">
+      <div style="width:340px;height:724px;border-radius:40px;overflow:hidden;background:var(--bnk-bg,#EDF2EE);box-shadow:0 30px 70px -26px rgba(20,36,28,.5),0 0 0 1px rgba(0,0,0,.05);display:flex;flex-direction:column;">
+        <div style="height:46px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:13px;font-weight:700;color:var(--bnk-text,#16241C);"><span>9:41</span><span style="opacity:.7;font-size:12px;">5G ▪ 100%</span></div>
+        <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+          <div style="padding:4px 20px 0;display:flex;align-items:center;gap:12px;">
+            <div style="width:38px;height:38px;border-radius:12px;background:var(--bnk-surface,#fff);border:1.5px solid var(--bnk-border,#E4EAE5);display:flex;align-items:center;justify-content:center;color:var(--bnk-text,#16241C);"><svg width="18" height="18" viewBox="0 0 24 24"><use href="#ic-x"></use></svg></div>
+            <div style="flex:1;font-size:17px;font-weight:800;color:var(--bnk-text,#16241C);">Nouvelle personne</div>
+          </div>
+          <div style="flex:1;overflow:hidden;padding:16px 20px 0;display:flex;flex-direction:column;gap:14px;">
+            <div><div style="font-size:12px;font-weight:700;color:var(--bnk-muted,#68786E);margin-bottom:6px;">NOM</div><div style="display:flex;align-items:center;gap:11px;background:var(--bnk-surface,#fff);border:1.5px solid var(--bnk-border,#E4EAE5);border-radius:14px;padding:13px 14px;"><svg width="19" height="19" viewBox="0 0 24 24" style="color:var(--bnk-muted,#68786E)"><use href="#ic-user"></use></svg><span style="flex:1;font-size:14.5px;font-weight:700;color:var(--bnk-text,#16241C);">Aminata Bâ</span></div></div>
+            <div><div style="font-size:12px;font-weight:700;color:var(--bnk-muted,#68786E);margin-bottom:6px;">TÉLÉPHONE (POUR WHATSAPP)</div><div style="display:flex;align-items:center;gap:11px;background:var(--bnk-surface,#fff);border:1.5px solid var(--bnk-border,#E4EAE5);border-radius:14px;padding:13px 14px;"><svg width="19" height="19" viewBox="0 0 24 24" style="color:#128C4B"><use href="#ic-wa"></use></svg><span style="flex:1;font-size:14.5px;font-weight:700;color:var(--bnk-text,#16241C);">+221 77 555 12 34</span></div></div>
+            <div style="height:1px;background:var(--bnk-border,#E4EAE5);margin:2px 0;"></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;"><div style="font-size:13px;font-weight:800;color:var(--bnk-text,#16241C);">Dette initiale</div><span style="font-size:11px;font-weight:700;color:var(--bnk-muted,#68786E);">Facultatif</span></div>
+            <div style="display:flex;gap:12px;">
+              <div style="flex:1;"><div style="font-size:12px;font-weight:700;color:var(--bnk-muted,#68786E);margin-bottom:6px;">MONTANT</div><div style="background:var(--bnk-surface,#fff);border:1.5px solid var(--bnk-border,#E4EAE5);border-radius:14px;padding:13px 14px;font-size:15px;font-weight:800;color:var(--bnk-text,#16241C);">$45.00</div></div>
+              <div style="flex:1;"><div style="font-size:12px;font-weight:700;color:var(--bnk-muted,#68786E);margin-bottom:6px;">ÉCHÉANCE *</div><div style="display:flex;align-items:center;gap:7px;background:var(--bnk-surface,#fff);border:1.5px solid var(--bnk-border,#E4EAE5);border-radius:14px;padding:13px 14px;font-size:14px;font-weight:700;color:var(--bnk-text,#16241C);"><svg width="16" height="16" viewBox="0 0 24 24" style="color:var(--bnk-primary,#1F8F5C)"><use href="#ic-calendar"></use></svg>30 juil.</div></div>
+            </div>
+            <div><div style="font-size:12px;font-weight:700;color:var(--bnk-muted,#68786E);margin-bottom:7px;">CANAL DE PAIEMENT</div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                <sc-for list="{{ canaux }}" as="ch" hint-placeholder-count="5">
+                  <span style="display:flex;align-items:center;gap:6px;padding:9px 13px;border-radius:12px;background:{{ ch.bg }};border:{{ ch.border }};color:{{ ch.fg }};font-size:12.5px;font-weight:700;"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#{{ ch.icon }}"></use></svg>{{ ch.label }}</span>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="flex:none;padding:12px 20px 22px;"><div style="background:var(--bnk-primary,#1F8F5C);color:var(--bnk-onPrimary,#fff);border-radius:16px;padding:16px;text-align:center;font-weight:800;font-size:15.5px;">Enregistrer la personne</div></div>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:#5C6B62;">7 · Formulaire personne + dette initiale</div>
+    </div>
+
+    <!-- ==== S8 · FORMULAIRE TRANSACTION ==== -->
+    <div data-screen-label="Nouvelle transaction" style="display:flex;flex-direction:column;align-items:center;gap:15px;">
+      <div style="width:340px;height:724px;border-radius:40px;overflow:hidden;background:var(--bnk-bg,#EDF2EE);box-shadow:0 30px 70px -26px rgba(20,36,28,.5),0 0 0 1px rgba(0,0,0,.05);display:flex;flex-direction:column;">
+        <div style="height:46px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:13px;font-weight:700;color:var(--bnk-text,#16241C);"><span>9:41</span><span style="opacity:.7;font-size:12px;">5G ▪ 100%</span></div>
+        <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+          <div style="padding:4px 20px 0;display:flex;align-items:center;gap:12px;">
+            <div style="width:38px;height:38px;border-radius:12px;background:var(--bnk-surface,#fff);border:1.5px solid var(--bnk-border,#E4EAE5);display:flex;align-items:center;justify-content:center;color:var(--bnk-text,#16241C);"><svg width="18" height="18" viewBox="0 0 24 24"><use href="#ic-x"></use></svg></div>
+            <div style="flex:1;font-size:17px;font-weight:800;color:var(--bnk-text,#16241C);">Nouvelle transaction</div>
+          </div>
+          <div style="margin:14px 20px 0;background:var(--bnk-surfaceAlt,#F5F8F6);border:1.5px solid var(--bnk-border,#E4EAE5);border-radius:14px;padding:4px;display:flex;gap:4px;">
+            <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border-radius:11px;background:var(--bnk-primary,#1F8F5C);color:var(--bnk-onPrimary,#fff);font-weight:800;font-size:13px;"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#ic-out"></use></svg>Dette</div>
+            <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border-radius:11px;color:var(--bnk-muted,#68786E);font-weight:800;font-size:13px;"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#ic-in"></use></svg>Remboursement</div>
+          </div>
+          <div style="text-align:center;margin-top:16px;"><div style="font-size:11px;font-weight:800;color:var(--bnk-muted,#68786E);letter-spacing:.06em;">MONTANT</div><div style="font-size:44px;font-weight:800;letter-spacing:-.03em;color:var(--bnk-text,#16241C);margin-top:2px;">$25.00</div></div>
+          <div style="flex:1;overflow:hidden;padding:12px 20px 0;display:flex;flex-direction:column;gap:12px;">
+            <div style="display:flex;align-items:center;gap:11px;background:var(--bnk-surface,#fff);border:1.5px solid var(--bnk-border,#E4EAE5);border-radius:14px;padding:11px 13px;"><div style="width:32px;height:32px;border-radius:10px;background:rgba(124,92,252,.16);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#7C5CFC;">MT</div><span style="flex:1;font-size:14px;font-weight:700;color:var(--bnk-text,#16241C);">Moussa Traoré</span><svg width="18" height="18" viewBox="0 0 24 24" style="color:var(--bnk-muted,#68786E)"><use href="#ic-right"></use></svg></div>
+            <div style="display:flex;align-items:center;gap:11px;background:var(--bnk-surface,#fff);border:2px solid var(--bnk-primary,#1F8F5C);border-radius:14px;padding:11px 13px;"><svg width="19" height="19" viewBox="0 0 24 24" style="color:var(--bnk-primary,#1F8F5C)"><use href="#ic-calendar"></use></svg><span style="flex:1;font-size:14px;font-weight:700;color:var(--bnk-text,#16241C);">Échéance — 30 juil. 2026</span><span style="font-size:10px;font-weight:800;color:var(--bnk-primary,#1F8F5C);background:var(--bnk-primarySoft,#E4F3EB);padding:3px 7px;border-radius:6px;">REQUIS</span></div>
+            <div><div style="font-size:12px;font-weight:700;color:var(--bnk-muted,#68786E);margin-bottom:7px;">CANAL DE PAIEMENT</div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                <sc-for list="{{ canaux }}" as="ch" hint-placeholder-count="5">
+                  <span style="display:flex;align-items:center;gap:6px;padding:9px 13px;border-radius:12px;background:{{ ch.bg }};border:{{ ch.border }};color:{{ ch.fg }};font-size:12.5px;font-weight:700;"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#{{ ch.icon }}"></use></svg>{{ ch.label }}</span>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="flex:none;padding:12px 20px 22px;"><div style="background:var(--bnk-primary,#1F8F5C);color:var(--bnk-onPrimary,#fff);border-radius:16px;padding:16px;text-align:center;font-weight:800;font-size:15.5px;">Enregistrer</div></div>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:#5C6B62;">8 · Transaction — dette / remboursement, canaux</div>
+    </div>
+
+    <!-- ==== S9 · DÉTAIL / ÉDITION TRANSACTION ==== -->
+    <div data-screen-label="Détail transaction" style="display:flex;flex-direction:column;align-items:center;gap:15px;">
+      <div style="width:340px;height:724px;border-radius:40px;overflow:hidden;background:var(--bnk-bg,#EDF2EE);box-shadow:0 30px 70px -26px rgba(20,36,28,.5),0 0 0 1px rgba(0,0,0,.05);display:flex;flex-direction:column;">
+        <div style="height:46px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:13px;font-weight:700;color:var(--bnk-text,#16241C);"><span>9:41</span><span style="opacity:.7;font-size:12px;">5G ▪ 100%</span></div>
+        <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+          <div style="padding:4px 20px 0;display:flex;align-items:center;gap:12px;">
+            <div style="width:38px;height:38px;border-radius:12px;background:var(--bnk-surface,#fff);border:1.5px solid var(--bnk-border,#E4EAE5);display:flex;align-items:center;justify-content:center;color:var(--bnk-text,#16241C);"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#ic-back"></use></svg></div>
+            <div style="flex:1;font-size:17px;font-weight:800;color:var(--bnk-text,#16241C);">Détail de la dette</div>
+            <div style="width:38px;height:38px;border-radius:12px;background:rgba(229,84,79,.12);display:flex;align-items:center;justify-content:center;color:#E5544F;"><svg width="18" height="18" viewBox="0 0 24 24"><use href="#ic-trash"></use></svg></div>
+          </div>
+          <div style="flex:1;overflow:hidden;padding:14px 20px 0;display:flex;flex-direction:column;gap:11px;">
+            <div style="background:var(--bnk-surface,#fff);border:1.5px solid var(--bnk-border,#E4EAE5);border-radius:16px;overflow:hidden;">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 15px;border-bottom:1px solid var(--bnk-border,#E4EAE5);"><span style="font-size:13px;font-weight:600;color:var(--bnk-muted,#68786E);">Montant</span><span style="font-size:14.5px;font-weight:800;color:var(--bnk-text,#16241C);">$120.00</span></div>
+              <div style="display:flex;align-items:center;justify-content:between;padding:13px 15px;border-bottom:1px solid var(--bnk-border,#E4EAE5);gap:8px;"><span style="flex:1;font-size:13px;font-weight:600;color:var(--bnk-muted,#68786E);">Échéance</span><span style="font-size:14.5px;font-weight:800;color:var(--bnk-text,#16241C);">30 juil. 2026</span></div>
+              <div style="display:flex;align-items:center;gap:8px;padding:13px 15px;border-bottom:1px solid var(--bnk-border,#E4EAE5);"><span style="flex:1;font-size:13px;font-weight:600;color:var(--bnk-muted,#68786E);">Canal</span><svg width="15" height="15" viewBox="0 0 24 24" style="color:var(--bnk-primary,#1F8F5C)"><use href="#ic-cash"></use></svg><span style="font-size:14.5px;font-weight:800;color:var(--bnk-text,#16241C);">Espèces</span></div>
+              <div style="display:flex;align-items:center;gap:8px;padding:13px 15px;"><span style="flex:1;font-size:13px;font-weight:600;color:var(--bnk-muted,#68786E);">Note</span><span style="font-size:14px;font-weight:700;color:var(--bnk-text,#16241C);">Avance stock</span></div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:center;gap:8px;background:var(--bnk-primarySoft,#E4F3EB);color:var(--bnk-primary,#1F8F5C);border-radius:13px;padding:12px;font-weight:800;font-size:13.5px;"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#ic-edit"></use></svg>Modifier</div>
+            <div style="display:flex;align-items:center;gap:8px;padding:4px 2px;"><svg width="16" height="16" viewBox="0 0 24 24" style="color:var(--bnk-muted,#68786E)"><use href="#ic-clock"></use></svg><span style="font-size:12px;font-weight:800;color:var(--bnk-muted,#68786E);letter-spacing:.04em;text-transform:uppercase;">Historique des modifications</span></div>
+            <div style="flex:1;overflow:hidden;">
+              <sc-for list="{{ audit }}" as="a" hint-placeholder-count="2">
+                <div style="background:var(--bnk-surface,#fff);border:1.5px solid var(--bnk-border,#E4EAE5);border-radius:14px;padding:12px 14px;margin-bottom:9px;">
+                  <div style="display:flex;align-items:center;justify-content:space-between;"><span style="font-size:13.5px;font-weight:800;color:var(--bnk-text,#16241C);">{{ a.field }} modifié</span><span style="font-size:11px;font-weight:600;color:var(--bnk-muted,#68786E);">{{ a.when }}</span></div>
+                  <div style="display:flex;align-items:center;gap:9px;margin-top:8px;">
+                    <span style="font-size:12.5px;font-weight:700;color:var(--bnk-muted,#68786E);text-decoration:line-through;">{{ a.before }}</span>
+                    <svg width="15" height="15" viewBox="0 0 24 24" style="color:var(--bnk-muted,#68786E)"><use href="#ic-right"></use></svg>
+                    <span style="font-size:12.5px;font-weight:800;color:var(--bnk-primary,#1F8F5C);">{{ a.after }}</span>
+                  </div>
+                  <sc-if value="{{ a.reason }}" hint-placeholder-val=""><div style="font-size:12px;color:var(--bnk-muted,#68786E);font-weight:500;margin-top:6px;">Motif : {{ a.reason }}</div></sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:#5C6B62;">9 · Détail transaction + audit log</div>
+    </div>
+
+    <!-- ==== S10 · PARAMÈTRES ==== -->
+    <div data-screen-label="Paramètres" style="display:flex;flex-direction:column;align-items:center;gap:15px;">
+      <div style="width:340px;height:724px;border-radius:40px;overflow:hidden;background:var(--bnk-bg,#EDF2EE);box-shadow:0 30px 70px -26px rgba(20,36,28,.5),0 0 0 1px rgba(0,0,0,.05);display:flex;flex-direction:column;">
+        <div style="height:46px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:13px;font-weight:700;color:var(--bnk-text,#16241C);"><span>9:41</span><span style="opacity:.7;font-size:12px;">5G ▪ 100%</span></div>
+        <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;padding:0 20px;">
+          <div style="font-size:24px;font-weight:800;letter-spacing:-.02em;padding:4px 2px 0;color:var(--bnk-text,#16241C);">Paramètres</div>
+          <div style="margin-top:12px;background:var(--bnk-surface,#fff);border:1.5px solid var(--bnk-border,#E4EAE5);border-radius:18px;padding:15px;display:flex;align-items:center;gap:13px;">
+            <div style="width:50px;height:50px;border-radius:15px;background:var(--bnk-primarySoft,#E4F3EB);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;color:var(--bnk-primary,#1F8F5C);">AC</div>
+            <div style="flex:1;"><div style="font-size:15.5px;font-weight:800;color:var(--bnk-text,#16241C);">Épicerie Chez Ali</div><div style="display:flex;align-items:center;gap:6px;margin-top:2px;"><span style="font-size:10px;font-weight:800;color:#F5972B;background:rgba(245,151,43,.14);padding:2px 6px;border-radius:6px;">PRO</span><span style="font-size:12px;color:var(--bnk-muted,#68786E);font-weight:500;">Type non modifiable</span></div></div>
+            <svg width="18" height="18" viewBox="0 0 24 24" style="color:var(--bnk-primary,#1F8F5C)"><use href="#ic-edit"></use></svg>
+          </div>
+          <div style="margin-top:12px;background:var(--bnk-surface,#fff);border:1.5px solid var(--bnk-border,#E4EAE5);border-radius:18px;overflow:hidden;">
+            <div style="display:flex;align-items:center;gap:12px;padding:13px 15px;border-bottom:1px solid var(--bnk-border,#E4EAE5);"><svg width="19" height="19" viewBox="0 0 24 24" style="color:var(--bnk-muted,#68786E)"><use href="#ic-wallet"></use></svg><span style="flex:1;font-size:14px;font-weight:700;color:var(--bnk-text,#16241C);">Devise de base</span><span style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:800;color:var(--bnk-muted,#68786E);"><span style="font-size:16px;">🇺🇸</span>USD</span><svg width="16" height="16" viewBox="0 0 24 24" style="color:var(--bnk-muted,#68786E)"><use href="#ic-right"></use></svg></div>
+            <div style="display:flex;align-items:center;gap:12px;padding:13px 15px;border-bottom:1px solid var(--bnk-border,#E4EAE5);"><svg width="19" height="19" viewBox="0 0 24 24" style="color:var(--bnk-muted,#68786E)"><use href="#ic-bell"></use></svg><span style="flex:1;font-size:14px;font-weight:700;color:var(--bnk-text,#16241C);">Rappels · <span style="color:var(--bnk-muted,#68786E);font-weight:600;">la veille de l'échéance</span></span><svg width="16" height="16" viewBox="0 0 24 24" style="color:var(--bnk-muted,#68786E)"><use href="#ic-right"></use></svg></div>
+            <div style="display:flex;align-items:center;gap:12px;padding:13px 15px;"><svg width="19" height="19" viewBox="0 0 24 24" style="color:#128C4B"><use href="#ic-wa"></use></svg><span style="flex:1;font-size:14px;font-weight:700;color:var(--bnk-text,#16241C);">Rappels WhatsApp</span><div style="width:44px;height:26px;border-radius:20px;background:var(--bnk-primary,#1F8F5C);position:relative;"><div style="width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:3px;right:3px;"></div></div></div>
+          </div>
+          <div style="margin-top:12px;background:var(--bnk-surface,#fff);border:1.5px solid var(--bnk-border,#E4EAE5);border-radius:18px;padding:15px;">
+            <div style="display:flex;align-items:center;gap:8px;"><svg width="18" height="18" viewBox="0 0 24 24" style="color:var(--bnk-primary,#1F8F5C)"><use href="#ic-droplet"></use></svg><span style="font-size:14px;font-weight:800;color:var(--bnk-text,#16241C);">Thème</span></div>
+            <div style="display:flex;gap:8px;margin-top:12px;">
+              <sc-for list="{{ colorDots }}" as="c" hint-placeholder-count="5">
+                <div style="flex:1;height:38px;border-radius:12px;background:{{ c.color }};display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 {{ c.ringW }} var(--bnk-primary,#1F8F5C);"><sc-if value="{{ c.active }}" hint-placeholder-val="{{ false }}"><svg width="16" height="16" viewBox="0 0 24 24" style="color:{{ c.tick }}"><use href="#ic-check"></use></svg></sc-if></div>
+              </sc-for>
+            </div>
+            <div style="display:flex;gap:6px;margin-top:9px;"><div style="flex:1;text-align:center;padding:9px;border-radius:10px;background:var(--bnk-primarySoft,#E4F3EB);color:var(--bnk-primary,#1F8F5C);font-size:12.5px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#ic-sun"></use></svg>Clair</div><div style="flex:1;text-align:center;padding:9px;border-radius:10px;background:var(--bnk-surfaceAlt,#F5F8F6);color:var(--bnk-muted,#68786E);font-size:12.5px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#ic-moon"></use></svg>Sombre</div></div>
+          </div>
+          <div style="margin-top:12px;background:var(--bnk-surface,#fff);border:1.5px solid var(--bnk-border,#E4EAE5);border-radius:18px;overflow:hidden;">
+            <div style="display:flex;align-items:center;gap:12px;padding:13px 15px;"><svg width="19" height="19" viewBox="0 0 24 24" style="color:var(--bnk-muted,#68786E)"><use href="#ic-cloud"></use></svg><div style="flex:1;"><div style="font-size:14px;font-weight:700;color:var(--bnk-text,#16241C);">Sauvegarde en ligne</div><div style="font-size:11.5px;color:var(--bnk-muted,#68786E);font-weight:500;">Dernière : aujourd'hui 08:12</div></div><span style="font-size:11px;font-weight:800;color:var(--bnk-primary,#1F8F5C);background:var(--bnk-primarySoft,#E4F3EB);padding:5px 9px;border-radius:8px;">Connecté</span></div>
+          </div>
+          <div style="margin-top:12px;border-radius:18px;padding:15px;background:linear-gradient(135deg,var(--bnk-grad1,#27A56B),var(--bnk-grad2,#1A8153));color:#fff;display:flex;align-items:center;gap:12px;"><svg width="24" height="24" viewBox="0 0 24 24" style="color:#fff"><use href="#ic-crown"></use></svg><div style="flex:1;"><div style="font-size:14.5px;font-weight:800;">Débloquer Premium</div><div style="font-size:12px;opacity:.9;font-weight:500;">Paiement unique, à vie</div></div><svg width="18" height="18" viewBox="0 0 24 24" style="color:#fff"><use href="#ic-right"></use></svg></div>
+        </div>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:#5C6B62;">10 · Paramètres — profil, devise, thème, compte</div>
+    </div>
+
+    <!-- ==== S11 · CONNEXION / SAUVEGARDE ==== -->
+    <div data-screen-label="Connexion" style="display:flex;flex-direction:column;align-items:center;gap:15px;">
+      <div style="width:340px;height:724px;border-radius:40px;overflow:hidden;background:var(--bnk-bg,#EDF2EE);box-shadow:0 30px 70px -26px rgba(20,36,28,.5),0 0 0 1px rgba(0,0,0,.05);display:flex;flex-direction:column;">
+        <div style="height:46px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:13px;font-weight:700;color:var(--bnk-text,#16241C);"><span>9:41</span><span style="opacity:.7;font-size:12px;">5G ▪ 100%</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:12px 22px 22px;">
+          <div style="width:38px;height:38px;border-radius:12px;background:var(--bnk-surface,#fff);border:1.5px solid var(--bnk-border,#E4EAE5);display:flex;align-items:center;justify-content:center;color:var(--bnk-text,#16241C);"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#ic-back"></use></svg></div>
+          <div style="width:56px;height:56px;border-radius:17px;background:var(--bnk-primarySoft,#E4F3EB);display:flex;align-items:center;justify-content:center;color:var(--bnk-primary,#1F8F5C);margin-top:22px;"><svg width="28" height="28" viewBox="0 0 24 24"><use href="#ic-cloud"></use></svg></div>
+          <div style="font-size:24px;font-weight:800;letter-spacing:-.02em;color:var(--bnk-text,#16241C);margin-top:18px;">Sauvegarde en ligne</div>
+          <div style="font-size:13.5px;color:var(--bnk-muted,#68786E);font-weight:500;margin-top:7px;line-height:1.4;">Connectez-vous pour sauvegarder vos carnets et les restaurer sur un nouvel appareil.</div>
+          <div style="font-size:12px;font-weight:700;color:var(--bnk-muted,#68786E);margin:26px 0 7px;">EMAIL</div>
+          <div style="display:flex;align-items:center;gap:11px;background:var(--bnk-surface,#fff);border:1.5px solid var(--bnk-border,#E4EAE5);border-radius:14px;padding:14px 15px;"><svg width="19" height="19" viewBox="0 0 24 24" style="color:var(--bnk-muted,#68786E)"><use href="#ic-mail"></use></svg><span style="flex:1;font-size:14.5px;font-weight:700;color:var(--bnk-text,#16241C);">ali@chezali.sn</span></div>
+          <div style="font-size:12px;font-weight:700;color:var(--bnk-muted,#68786E);margin:14px 0 7px;">MOT DE PASSE</div>
+          <div style="display:flex;align-items:center;gap:11px;background:var(--bnk-surface,#fff);border:1.5px solid var(--bnk-border,#E4EAE5);border-radius:14px;padding:14px 15px;"><svg width="19" height="19" viewBox="0 0 24 24" style="color:var(--bnk-muted,#68786E)"><use href="#ic-lock"></use></svg><span style="flex:1;font-size:16px;letter-spacing:3px;font-weight:700;color:var(--bnk-text,#16241C);">••••••••</span><svg width="19" height="19" viewBox="0 0 24 24" style="color:var(--bnk-muted,#68786E)"><use href="#ic-eye"></use></svg></div>
+          <div style="align-self:flex-end;font-size:12.5px;font-weight:700;color:var(--bnk-primary,#1F8F5C);margin-top:12px;">Mot de passe oublié ?</div>
+          <div style="flex:1;"></div>
+          <div style="background:var(--bnk-primary,#1F8F5C);color:var(--bnk-onPrimary,#fff);border-radius:16px;padding:16px;text-align:center;font-weight:800;font-size:15.5px;">Se connecter</div>
+          <div style="text-align:center;font-size:13px;color:var(--bnk-muted,#68786E);font-weight:600;margin-top:14px;">Pas de compte ? <span style="color:var(--bnk-primary,#1F8F5C);font-weight:800;">Créer un compte</span></div>
+        </div>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:#5C6B62;">11 · Connexion / sauvegarde en ligne</div>
+    </div>
+
+    <!-- ==== S12 · PREMIUM (PAIEMENT UNIQUE) ==== -->
+    <div data-screen-label="Premium" style="display:flex;flex-direction:column;align-items:center;gap:15px;">
+      <div style="width:340px;height:724px;border-radius:40px;overflow:hidden;background:var(--bnk-bg,#EDF2EE);box-shadow:0 30px 70px -26px rgba(20,36,28,.5),0 0 0 1px rgba(0,0,0,.05);display:flex;flex-direction:column;position:relative;">
+        <div style="height:46px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:13px;font-weight:700;color:#fff;z-index:2;"><span>9:41</span><span style="opacity:.85;font-size:12px;">5G ▪ 100%</span></div>
+        <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;position:relative;">
+          <div style="position:absolute;top:-46px;left:0;right:0;height:236px;background:linear-gradient(150deg,var(--bnk-grad1,#27A56B),var(--bnk-grad2,#1A8153));border-radius:0 0 34px 34px;overflow:hidden;">
+            <div style="position:absolute;top:62px;left:26px;font-size:24px;opacity:.5;">✨</div>
+            <div style="position:absolute;top:118px;right:32px;font-size:28px;opacity:.45;">🎉</div>
+            <div style="position:absolute;bottom:36px;left:40px;font-size:22px;opacity:.4;">💸</div>
+          </div>
+          <div style="position:relative;z-index:1;padding:12px 24px 0;text-align:center;color:#fff;">
+            <div style="width:64px;height:64px;border-radius:20px;margin:4px auto 0;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:32px;">B</div>
+            <div style="font-size:24px;font-weight:800;letter-spacing:-.02em;margin-top:12px;">Bankee Premium</div>
+            <div style="font-size:13px;opacity:.92;font-weight:500;margin-top:3px;">Payez une fois. À vous pour toujours. ✨</div>
+          </div>
+          <div style="position:relative;z-index:1;flex:1;overflow:hidden;padding:20px 20px 0;display:flex;flex-direction:column;gap:10px;">
+            <sc-for list="{{ features }}" as="f" hint-placeholder-count="4">
+              <div style="display:flex;align-items:center;gap:13px;background:var(--bnk-surface,#fff);border:1.5px solid var(--bnk-border,#E4EAE5);border-radius:16px;padding:12px 14px;box-shadow:0 8px 18px -14px rgba(20,36,28,.4);">
+                <div style="width:44px;height:44px;flex:none;border-radius:13px;background:{{ f.tint }};color:{{ f.c }};display:flex;align-items:center;justify-content:center;"><svg width="23" height="23" viewBox="0 0 24 24"><use href="#{{ f.icon }}"></use></svg></div>
+                <div style="flex:1;"><div style="font-size:14.5px;font-weight:800;color:var(--bnk-text,#16241C);">{{ f.t }}</div><div style="font-size:12px;color:var(--bnk-muted,#68786E);font-weight:500;margin-top:1px;">{{ f.d }}</div></div>
+                <svg width="20" height="20" viewBox="0 0 24 24" style="color:var(--bnk-primary,#1F8F5C)"><use href="#ic-check"></use></svg>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="flex:none;padding:14px 20px 20px;">
+          <div style="display:flex;align-items:center;gap:12px;background:var(--bnk-surface,#fff);border:2px solid var(--bnk-primary,#1F8F5C);border-radius:16px;padding:14px 16px;margin-bottom:11px;">
+            <div style="flex:1;"><div style="font-size:11.5px;font-weight:800;color:var(--bnk-primary,#1F8F5C);letter-spacing:.03em;">PAIEMENT UNIQUE · À VIE</div><div style="font-size:24px;font-weight:800;color:var(--bnk-text,#16241C);letter-spacing:-.02em;">$19.99</div></div>
+            <div style="text-align:right;font-size:11.5px;color:var(--bnk-muted,#68786E);font-weight:700;line-height:1.4;">Aucun<br>abonnement</div>
+          </div>
+          <div style="background:var(--bnk-primary,#1F8F5C);color:var(--bnk-onPrimary,#fff);border-radius:16px;padding:16px;text-align:center;font-weight:800;font-size:15.5px;">Débloquer Premium</div>
+          <div style="text-align:center;font-size:13px;font-weight:800;color:var(--bnk-muted,#68786E);margin-top:12px;display:flex;align-items:center;justify-content:center;gap:7px;"><svg width="16" height="16" viewBox="0 0 24 24"><use href="#ic-refresh"></use></svg>Restaurer mes achats</div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-top:11px;"><span style="display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;color:var(--bnk-muted,#68786E);"><svg width="13" height="13" viewBox="0 0 24 24"><use href="#ic-cheque"></use></svg>Conditions</span><span style="display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;color:var(--bnk-muted,#68786E);"><svg width="13" height="13" viewBox="0 0 24 24"><use href="#ic-shield"></use></svg>Confidentialité</span></div>
+        </div>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:#5C6B62;">12 · Premium — paiement unique</div>
+    </div>
+
+    <!--SCREENS_END--></div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;100%&quot;,&quot;height&quot;:&quot;100%&quot;},&quot;color&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Vert&quot;,&quot;Blanc&quot;,&quot;Bleu&quot;,&quot;Violet&quot;,&quot;Rose&quot;],&quot;default&quot;:&quot;Vert&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Thème&quot;},&quot;mode&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Thème&quot;}}">
+class Component extends DCLogic {
+  state = { color: null, mode: null };
+
+  get colorName() { return this.state.color ?? this.props.color ?? 'Vert'; }
+  get modeName() { return this.state.mode ?? this.props.mode ?? 'light'; }
+
+  palettes() {
+    return {
+      Vert: {
+        light:{ bg:'#EDF2EE', surface:'#FFFFFF', surfaceAlt:'#F5F8F6', border:'#E4EAE5', text:'#16241C', muted:'#68786E', primary:'#1F8F5C', primarySoft:'#E4F3EB', onPrimary:'#FFFFFF', grad1:'#27A56B', grad2:'#1A8153' },
+        dark: { bg:'#0E1512', surface:'#18211C', surfaceAlt:'#1F2A24', border:'#2A362F', text:'#EAF2ED', muted:'#8DA096', primary:'#4FD1A5', primarySoft:'#12302A', onPrimary:'#06130D', grad1:'#4FD1A5', grad2:'#2A9D78' } },
+      Blanc: {
+        light:{ bg:'#F2F3F4', surface:'#FFFFFF', surfaceAlt:'#F7F8F9', border:'#E5E7EA', text:'#1A1D21', muted:'#6B7178', primary:'#2B3138', primarySoft:'#EBEDEF', onPrimary:'#FFFFFF', grad1:'#3A424B', grad2:'#20262C' },
+        dark: { bg:'#0F1113', surface:'#1A1D20', surfaceAlt:'#22262A', border:'#31363B', text:'#ECEEF0', muted:'#9299A0', primary:'#E7E9EC', primarySoft:'#262B30', onPrimary:'#15181B', grad1:'#4A5158', grad2:'#2A2F35' } },
+      Bleu: {
+        light:{ bg:'#EDF1FB', surface:'#FFFFFF', surfaceAlt:'#F4F7FE', border:'#E0E7F6', text:'#141B2A', muted:'#66728A', primary:'#2F6BF0', primarySoft:'#E3ECFD', onPrimary:'#FFFFFF', grad1:'#4A82FF', grad2:'#2758E0' },
+        dark: { bg:'#0C1119', surface:'#151C28', surfaceAlt:'#1C2534', border:'#293448', text:'#E9EEF7', muted:'#8794A8', primary:'#5B9BFF', primarySoft:'#14213A', onPrimary:'#05101F', grad1:'#5B9BFF', grad2:'#2F6BF0' } },
+      Violet: {
+        light:{ bg:'#F0EEFA', surface:'#FFFFFF', surfaceAlt:'#F6F4FD', border:'#E7E2F7', text:'#1E1A2E', muted:'#6E6886', primary:'#7C5CFC', primarySoft:'#ECE7FE', onPrimary:'#FFFFFF', grad1:'#8E6BFF', grad2:'#6B47F5' },
+        dark: { bg:'#110E1B', surface:'#1B1726', surfaceAlt:'#231E33', border:'#332B48', text:'#ECE8F7', muted:'#948CAB', primary:'#9B84FF', primarySoft:'#241C3B', onPrimary:'#0A0616', grad1:'#9B84FF', grad2:'#6B47F5' } },
+      Rose: {
+        light:{ bg:'#FBEFF3', surface:'#FFFFFF', surfaceAlt:'#FDF4F7', border:'#F6E0E9', text:'#2E1A22', muted:'#8A6775', primary:'#E85D8A', primarySoft:'#FCE7EE', onPrimary:'#FFFFFF', grad1:'#F26E9A', grad2:'#E14B7E' },
+        dark: { bg:'#180E13', surface:'#241820', surfaceAlt:'#2E1F28', border:'#412A36', text:'#F7E9EF', muted:'#B98EA0', primary:'#FF7CA6', primarySoft:'#3A2029', onPrimary:'#180007', grad1:'#FF7CA6', grad2:'#E14B7E' } },
+    };
+  }
+
+  swatchColor() { return { Vert:'#1F8F5C', Blanc:'#C9CDD2', Bleu:'#2F6BF0', Violet:'#7C5CFC', Rose:'#E85D8A' }; }
+
+  renderVals() {
+    const cname = this.colorName, mode = this.modeName;
+    const P = (this.palettes()[cname] || this.palettes().Vert)[mode] || this.palettes().Vert.light;
+    const sw = this.swatchColor();
+    const selCol = (n) => () => this.setState({ color: n });
+
+    const themeStyle = {
+      '--bnk-bg':P.bg, '--bnk-surface':P.surface, '--bnk-surfaceAlt':P.surfaceAlt, '--bnk-border':P.border,
+      '--bnk-text':P.text, '--bnk-muted':P.muted, '--bnk-primary':P.primary, '--bnk-primarySoft':P.primarySoft,
+      '--bnk-onPrimary':P.onPrimary, '--bnk-grad1':P.grad1, '--bnk-grad2':P.grad2,
+    };
+
+    const colorDots = Object.keys(sw).map(n => {
+      const active = n === cname;
+      return { name:n, select:selCol(n), color:sw[n], active,
+        ring: active ? '#16241C' : 'transparent', ringW: active ? '2.5px' : '0px',
+        tick: (n==='Blanc') ? '#1A1D21' : '#FFFFFF' };
+    });
+
+    const setLight = () => this.setState({ mode:'light' });
+    const setDark = () => this.setState({ mode:'dark' });
+    const isL = mode === 'light';
+
+    const RED = mode === 'dark' ? '#FF6B66' : '#E5544F';
+    const pos = P.primary;
+    const acc = { violet:'#7C5CFC', rose:'#E85D8A', orange:'#F5972B', menthe:'#2BC4A0', bleu:'#3B87F0' };
+    const tint = (c) => this.hexA(c, mode==='dark' ? .24 : .16);
+
+    const people = [
+      { i:'MT', name:'Moussa Traoré', sub:'Prêt · échéance 30 juil.', amt:'+$120.00', color:acc.violet, tint:tint(acc.violet), amtColor:pos, status:'vous doit' },
+      { i:'FD', name:'Fatou Diallo', sub:'Crédit client · hier', amt:'+$340.00', color:acc.rose, tint:tint(acc.rose), amtColor:pos, status:'vous doit' },
+      { i:'CA', name:'Chez Ali · client', sub:'Échéance dépassée', amt:'+$52.00', color:acc.orange, tint:tint(acc.orange), amtColor:RED, status:'en retard' },
+      { i:'IK', name:'Ibrahim Koné', sub:'Soldé le 2 juin', amt:'$0.00', color:acc.menthe, tint:tint(acc.menthe), amtColor:P.muted, status:'ne doit rien' },
+      { i:'AS', name:'Awa Sagna', sub:'Prêt · échéance 12 août', amt:'+$88.00', color:acc.bleu, tint:tint(acc.bleu), amtColor:pos, status:'vous doit' },
+    ];
+
+    const history = [
+      { icon:'ic-out', t:'Dette ajoutée', note:'Avance stock · Espèces', date:'15 juin', amt:'+$60.00', amtColor:pos, tint:tint(acc.violet), iconColor:acc.violet },
+      { icon:'ic-in', t:'Remboursement', note:'Mobile money', date:'10 juin', amt:'−$40.00', amtColor:RED, tint:this.hexA(RED,.16), iconColor:RED },
+      { icon:'ic-out', t:'Dette ajoutée', note:'Prêt · Virement', date:'2 juin', amt:'+$100.00', amtColor:pos, tint:tint(acc.violet), iconColor:acc.violet },
+    ];
+
+    const chip = (on) => on
+      ? { bg:P.primary, border:'1.5px solid '+P.primary, fg:P.onPrimary }
+      : { bg:P.surface, border:'1.5px solid '+P.border, fg:P.muted };
+    const canaux = [
+      { icon:'ic-cash', label:'Espèces', ...chip(true) },
+      { icon:'ic-bank', label:'Virement', ...chip(false) },
+      { icon:'ic-mobile', label:'Mobile money', ...chip(false) },
+      { icon:'ic-cheque', label:'Chèque', ...chip(false) },
+      { icon:'ic-grid', label:'Autre', ...chip(false) },
+    ];
+
+    const carnets = [
+      { name:'Mon épicerie', type:'Professionnel', typeColor:acc.orange, iconTint:tint(acc.orange), count:'24 personnes', icon:'ic-book', active:'2px solid '+P.primary },
+      { name:'Perso', type:'Particulier', typeColor:acc.bleu, iconTint:tint(acc.bleu), count:'6 personnes', icon:'ic-user', active:'1.5px solid '+P.border },
+    ];
+
+    const countries = [
+      { flag:'🇸🇳', name:'Sénégal', cur:'XOF', active:false },
+      { flag:'🇺🇸', name:'États-Unis', cur:'USD', active:true },
+      { flag:'🇨🇮', name:"Côte d'Ivoire", cur:'XOF', active:false },
+      { flag:'🇳🇬', name:'Nigeria', cur:'NGN', active:false },
+      { flag:'🇬🇭', name:'Ghana', cur:'GHS', active:false },
+      { flag:'🇫🇷', name:'France', cur:'EUR', active:false },
+    ];
+
+    const features = [
+      { icon:'ic-book', t:'Carnets illimités', d:'Au-delà de la limite gratuite', tint:tint(acc.violet), c:acc.violet },
+      { icon:'ic-cloud', t:'Sauvegarde en ligne', d:'Restaurez sur un nouvel appareil', tint:tint(acc.menthe), c:acc.menthe },
+      { icon:'ic-droplet', t:'Tous les thèmes', d:'5 couleurs × clair et sombre', tint:tint(acc.rose), c:acc.rose },
+      { icon:'ic-wa', t:'Rappels WhatsApp', d:'Relances programmées automatiques', tint:tint(acc.orange), c:acc.orange, brand:true },
+    ];
+
+    const audit = [
+      { field:'Montant', before:'$100.00', after:'$120.00', when:'il y a 3 jours', reason:'' },
+      { field:'Échéance', before:'15 juil.', after:'30 juil.', when:'il y a 1 semaine', reason:'Accord avec le client' },
+    ];
+
+    return { themeStyle, colorDots, setLight, setDark,
+      lightBg: isL ? '#16241C' : 'transparent', lightFg: isL ? '#FFFFFF' : '#5C6B62',
+      darkBg: !isL ? '#16241C' : 'transparent', darkFg: !isL ? '#FFFFFF' : '#5C6B62',
+      people, history, canaux, carnets, countries, features, audit };
+  }
+
+  hexA(hex, a) {
+    const h = hex.replace('#','');
+    const n = parseInt(h.length===3 ? h.split('').map(c=>c+c).join('') : h, 16);
+    return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')';
+  }
+}
+</script>
+</body>
+</html>
