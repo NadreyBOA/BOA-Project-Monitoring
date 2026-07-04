@@ -6,7 +6,7 @@ import { ShieldCheck, Cloud, Bell, Crown, Lock, Briefcase, User } from 'lucide-r
 import { getProfile, getSetting, setSetting, SETTINGS_KEYS, getReminderOffsetDays, setReminderOffsetDays, type Profile } from '../../src/db/settings';
 import { totalDue } from '../../src/db/customers';
 import { getCurrentSpace, renameSpace, type Space } from '../../src/db/spaces';
-import { isPremium, PREMIUM_PRICE_LABEL } from '../../src/premium';
+import { isPremium, syncPremiumStatus, PREMIUM_PRICE_LABEL } from '../../src/premium';
 import { getCloudUser, signOutCloud, type CloudUser } from '../../src/cloud/auth';
 import { pushAllToCloud } from '../../src/cloud/sync';
 import { CurrencyPicker } from '../../src/components/CurrencyPicker';
@@ -50,6 +50,7 @@ export default function SettingsScreen() {
   useFocusEffect(
     useCallback(() => {
       (async () => {
+        await syncPremiumStatus(db);
         const [profileRow, space, premiumFlag, notifGranted, offsetDays, user, backupAt] = await Promise.all([
           getProfile(db),
           getCurrentSpace(db),

@@ -1,19 +1,47 @@
-import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { Crown, Infinity as InfinityIcon, Cloud, Palette, X } from 'lucide-react-native';
 import { useTheme } from '../src/theme/ThemeContext';
-import { unlockPremium, FREE_CUSTOMER_LIMIT, PREMIUM_PRICE_LABEL } from '../src/premium';
+import { purchasePremium, restorePremium, isRevenueCatConfigured, FREE_CUSTOMER_LIMIT, PREMIUM_PRICE_LABEL } from '../src/premium';
 
 export default function PaywallScreen() {
   const { fromLimit } = useLocalSearchParams<{ fromLimit?: string }>();
   const { colors, spacing, radius, fontSize } = useTheme();
   const db = useSQLiteContext();
   const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleUnlock() {
-    await unlockPremium(db);
-    router.replace('/backup-auth?justUnlocked=1');
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await purchasePremium(db);
+      if (result.success) {
+        router.replace('/backup-auth?justUnlocked=1');
+      } else if (!result.cancelled) {
+        setError(result.error ?? "L'achat n'a pas pu être finalisé.");
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleRestore() {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await restorePremium(db);
+      if (result.success) {
+        router.back();
+      } else {
+        setError(result.error ?? 'Aucun achat à restaurer sur ce compte.');
+      }
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -69,14 +97,30 @@ export default function PaywallScreen() {
           fontSize={fontSize}
         />
 
-        <Pressable style={[styles.priceBtn, { backgroundColor: colors.primary, borderRadius: radius.md, marginTop: spacing.sm }]} onPress={handleUnlock}>
-          <Text style={styles.priceBtnText}>Débloquer — {PREMIUM_PRICE_LABEL}</Text>
+        {!isRevenueCatConfigured && (
+          <View style={[styles.warnBox, { backgroundColor: colors.dangerMuted, borderRadius: radius.md, marginBottom: spacing.sm }]}>
+            <Text style={{ color: colors.danger, fontSize: fontSize.xs }}>
+              Le paiement n'est pas encore configuré pour cette build (clé RevenueCat manquante).
+            </Text>
+          </View>
+        )}
+
+        {error && <Text style={[styles.note, { color: colors.danger, marginBottom: spacing.sm }]}>{error}</Text>}
+
+        <Pressable
+          style={[styles.priceBtn, { backgroundColor: colors.primary, borderRadius: radius.md, marginTop: spacing.sm, opacity: busy ? 0.6 : 1 }]}
+          onPress={handleUnlock}
+          disabled={busy}
+        >
+          {busy ? <ActivityIndicator color="#fff" /> : (
+            <Text style={styles.priceBtnText}>Débloquer — {PREMIUM_PRICE_LABEL}</Text>
+          )}
+        </Pressable>
+        <Pressable style={styles.restoreBtn} onPress={handleRestore} disabled={busy}>
+          <Text style={[styles.restoreBtnText, { color: colors.textMuted }]}>Restaurer mes achats</Text>
         </Pressable>
         <Text style={[styles.note, { color: colors.textMuted }]}>
           Paiement unique — les futures mises à jour de ces fonctionnalités sont incluses.
-        </Text>
-        <Text style={[styles.note, { color: colors.textMuted }]}>
-          Démo : le déblocage est simulé, aucun montant n'est prélevé.
         </Text>
       </ScrollView>
     </View>
@@ -108,4 +152,7 @@ const styles = StyleSheet.create({
   priceBtn: { paddingVertical: 14, alignItems: 'center' },
   priceBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
   note: { textAlign: 'center', fontSize: 11, marginTop: 10 },
+  warnBox: { padding: 12 },
+  restoreBtn: { paddingVertical: 12, alignItems: 'center' },
+  restoreBtnText: { fontWeight: '600', fontSize: 13 },
 });

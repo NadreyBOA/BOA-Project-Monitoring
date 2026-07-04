@@ -1,12 +1,13 @@
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
-import { SQLiteProvider } from 'expo-sqlite';
+import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
 import { DATABASE_NAME, migrateDbIfNeeded } from '../src/db/client';
 import { colors } from '../src/utils/theme';
 import { ThemeProvider, useTheme } from '../src/theme/ThemeContext';
+import { initPurchases, syncPremiumStatus } from '../src/premium';
 
 function LoadingScreen() {
   return (
@@ -18,6 +19,13 @@ function LoadingScreen() {
 
 function RootNavigator() {
   const { colors: themeColors, isDark } = useTheme();
+  const db = useSQLiteContext();
+
+  useEffect(() => {
+    initPurchases();
+    syncPremiumStatus(db);
+  }, [db]);
+
   return (
     <>
       <StatusBar style={isDark ? 'light' : 'dark'} />
