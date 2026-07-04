@@ -58,7 +58,7 @@ function RootNavigator() {
         />
         <Stack.Screen
           name="paywall"
-          options={{ headerShown: true, presentation: 'modal', title: 'Premium' }}
+          options={{ headerShown: false, presentation: 'modal', title: 'Premium' }}
         />
         <Stack.Screen
           name="backup-auth"
