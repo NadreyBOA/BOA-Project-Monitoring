@@ -13,7 +13,7 @@ export default function PaywallScreen() {
 
   async function handleUnlock() {
     await unlockPremium(db);
-    router.back();
+    router.replace('/backup-auth?justUnlocked=1');
   }
 
   return (

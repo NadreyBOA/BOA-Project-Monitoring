@@ -66,6 +66,11 @@ export async function renameSpace(db: SQLiteDatabase, id: string, name: string):
   await db.runAsync('UPDATE spaces SET name = ? WHERE id = ?', [name.trim(), id]);
 }
 
+export async function deleteSpace(db: SQLiteDatabase, id: string): Promise<void> {
+  await db.runAsync('DELETE FROM customers WHERE space_id = ?', [id]);
+  await db.runAsync('DELETE FROM spaces WHERE id = ?', [id]);
+}
+
 export const MAX_FREE_SPACES = 1;
 
 export async function completeOnboarding(

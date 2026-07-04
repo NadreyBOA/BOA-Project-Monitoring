@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, View, Pressable } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View, Pressable } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { X } from 'lucide-react-native';
@@ -15,6 +16,8 @@ import {
 import { getCustomerWithBalance } from '../../src/db/customers';
 import { getProfile } from '../../src/db/settings';
 import { PAYMENT_CHANNELS } from '../../src/data/paymentChannels';
+import { DateField } from '../../src/components/DateField';
+import { TimeField } from '../../src/components/TimeField';
 import type { Transaction, TransactionEdit } from '../../src/types';
 import { radius, spacing, fontSize, colors as ColorsType } from '../../src/utils/theme';
 import { useTheme } from '../../src/theme/ThemeContext';
@@ -47,6 +50,7 @@ function displayValue(field: string, value: string | null): string {
 export default function TransactionDetailScreen() {
   const { colors } = useTheme();
   const styles = createStyles(colors);
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const db = useSQLiteContext();
   const router = useRouter();
@@ -158,7 +162,11 @@ export default function TransactionDetailScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : insets.top}
+    >
       <Stack.Screen
         options={{
           title: isCredit ? 'Dette' : 'Remboursement',
@@ -186,13 +194,7 @@ export default function TransactionDetailScreen() {
         {isCredit && (
           <>
             <Text style={styles.label}>Échéance</Text>
-            <TextInput
-              value={dueDate}
-              onChangeText={setDueDate}
-              placeholder="AAAA-MM-JJ"
-              placeholderTextColor={colors.textMuted}
-              style={[styles.input, !dueDateValid && styles.inputError]}
-            />
+            <DateField value={dueDate} onChange={setDueDate} error={!dueDateValid} />
             {!dueDateValid && <Text style={styles.errorText}>Format attendu : AAAA-MM-JJ</Text>}
 
             {dueDateChanged && (
@@ -226,24 +228,12 @@ export default function TransactionDetailScreen() {
         <View style={styles.row}>
           <View style={styles.rowField}>
             <Text style={styles.label}>{isCredit ? 'Date de prise du crédit' : 'Date du remboursement'}</Text>
-            <TextInput
-              value={datePart}
-              onChangeText={setDatePart}
-              placeholder="AAAA-MM-JJ"
-              placeholderTextColor={colors.textMuted}
-              style={[styles.input, !datePartValid && styles.inputError]}
-            />
+            <DateField value={datePart} onChange={setDatePart} error={!datePartValid} />
           </View>
           {isCredit && (
             <View style={styles.rowField}>
               <Text style={styles.label}>Heure</Text>
-              <TextInput
-                value={timePart}
-                onChangeText={setTimePart}
-                placeholder="HH:MM"
-                placeholderTextColor={colors.textMuted}
-                style={[styles.input, !timePartValid && styles.inputError]}
-              />
+              <TimeField value={timePart} onChange={setTimePart} error={!timePartValid} />
             </View>
           )}
         </View>
@@ -293,7 +283,7 @@ export default function TransactionDetailScreen() {
         )}
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: spacing.md + insets.bottom }]}>
         <Pressable
           style={[styles.saveButton, !canSave && styles.saveButtonDisabled]}
           onPress={handleSave}
@@ -302,7 +292,7 @@ export default function TransactionDetailScreen() {
           <Text style={styles.saveButtonText}>{saving ? 'Enregistrement…' : 'Enregistrer les modifications'}</Text>
         </Pressable>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

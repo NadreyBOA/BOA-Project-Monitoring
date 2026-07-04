@@ -10,8 +10,10 @@ import { countCustomers, listCustomersWithBalance, totalDue } from '../../src/db
 import { getProfile, isOnboardingComplete } from '../../src/db/settings';
 import {
   createSpace,
+  deleteSpace,
   getCurrentSpace,
   listSpaces,
+  renameSpace,
   setCurrentSpaceId,
   MAX_FREE_SPACES,
   type Space,
@@ -123,6 +125,27 @@ export default function PeopleScreen() {
     router.push('/paywall');
   }
 
+  async function handleRenameSpace(id: string, name: string) {
+    await renameSpace(db, id, name);
+    if (currentSpace?.id === id) setCurrentSpaceState({ ...currentSpace, name });
+    setSpaces(await listSpaces(db));
+  }
+
+  async function handleDeleteSpace(id: string) {
+    await deleteSpace(db, id);
+    if (currentSpace?.id === id) {
+      const remaining = await listSpaces(db);
+      const next = remaining[0] ?? null;
+      if (next) {
+        await setCurrentSpaceId(db, next.id);
+        setCurrentSpaceState(next);
+        await loadSpaceData(next.id);
+      }
+    } else {
+      setSpaces(await listSpaces(db));
+    }
+  }
+
   const canCreateSpace = premium || spaces.length < MAX_FREE_SPACES;
 
   const dueCount = customers.filter((c) => c.balance > 0).length;
@@ -225,6 +248,8 @@ export default function PeopleScreen() {
         onSelect={handleSelectSpace}
         onCreate={handleCreateSpace}
         onLockedCreatePress={handleLockedCreatePress}
+        onRename={handleRenameSpace}
+        onDelete={handleDeleteSpace}
       />
     </View>
   );

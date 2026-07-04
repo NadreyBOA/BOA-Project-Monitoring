@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Modal, View, Text, TextInput, FlatList, Pressable, StyleSheet } from 'react-native';
-import { ChevronLeft, Check, Lock, Briefcase, User } from 'lucide-react-native';
+import { Alert, Modal, View, Text, TextInput, FlatList, Pressable, StyleSheet } from 'react-native';
+import { ChevronLeft, Check, Lock, Briefcase, User, Pencil, Trash2, X } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
 import type { Space } from '../db/spaces';
 import type { AccountType } from '../types';
@@ -14,6 +14,8 @@ interface Props {
   onSelect: (id: string) => void;
   onCreate: (name: string, accountType: AccountType) => void;
   onLockedCreatePress: () => void;
+  onRename: (id: string, name: string) => void;
+  onDelete: (id: string) => void;
 }
 
 export function SpacePicker({
@@ -25,16 +27,22 @@ export function SpacePicker({
   onSelect,
   onCreate,
   onLockedCreatePress,
+  onRename,
+  onDelete,
 }: Props) {
   const { colors, spacing, radius, fontSize } = useTheme();
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
   const [accountType, setAccountType] = useState<AccountType>('particulier');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
 
   function reset() {
     setCreating(false);
     setName('');
     setAccountType('particulier');
+    setEditingId(null);
+    setEditName('');
   }
 
   function handleClose() {
@@ -54,6 +62,29 @@ export function SpacePicker({
     if (!name.trim()) return;
     onCreate(name.trim(), accountType);
     reset();
+  }
+
+  function startRename(space: Space) {
+    setEditingId(space.id);
+    setEditName(space.name);
+  }
+
+  function submitRename() {
+    if (!editingId || !editName.trim()) return;
+    onRename(editingId, editName.trim());
+    setEditingId(null);
+    setEditName('');
+  }
+
+  function confirmDelete(space: Space) {
+    Alert.alert(
+      "Supprimer cet espace ?",
+      `${space.name} et toutes les personnes/dettes qu'il contient seront définitivement supprimées.`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        { text: 'Supprimer', style: 'destructive', onPress: () => onDelete(space.id) },
+      ]
+    );
   }
 
   return (
@@ -124,20 +155,45 @@ export function SpacePicker({
             data={spaces}
             keyExtractor={(s) => s.id}
             contentContainerStyle={{ paddingHorizontal: spacing.md, paddingBottom: spacing.xl, paddingTop: spacing.md }}
-            renderItem={({ item }) => (
-              <Pressable
-                style={[styles.row, { backgroundColor: colors.surface, borderRadius: radius.md }]}
-                onPress={() => onSelect(item.id)}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: colors.text, fontWeight: '700', fontSize: fontSize.sm }}>{item.name}</Text>
-                  <Text style={{ color: colors.textMuted, fontSize: fontSize.xs }}>
-                    {item.accountType === 'pro' ? 'Professionnel' : 'Particulier'}
-                  </Text>
+            renderItem={({ item }) =>
+              editingId === item.id ? (
+                <View style={[styles.row, { backgroundColor: colors.surface, borderRadius: radius.md }]}>
+                  <TextInput
+                    value={editName}
+                    onChangeText={setEditName}
+                    style={[styles.editInput, { color: colors.text, borderColor: colors.border, borderRadius: radius.sm }]}
+                    autoFocus
+                  />
+                  <Pressable onPress={submitRename} hitSlop={8}>
+                    <Check color={colors.primary} size={20} />
+                  </Pressable>
+                  <Pressable onPress={() => setEditingId(null)} hitSlop={8}>
+                    <X color={colors.textMuted} size={20} />
+                  </Pressable>
                 </View>
-                {item.id === currentSpaceId && <Check color={colors.primary} size={18} />}
-              </Pressable>
-            )}
+              ) : (
+                <Pressable
+                  style={[styles.row, { backgroundColor: colors.surface, borderRadius: radius.md }]}
+                  onPress={() => onSelect(item.id)}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: colors.text, fontWeight: '700', fontSize: fontSize.sm }}>{item.name}</Text>
+                    <Text style={{ color: colors.textMuted, fontSize: fontSize.xs }}>
+                      {item.accountType === 'pro' ? 'Professionnel' : 'Particulier'}
+                    </Text>
+                  </View>
+                  {item.id === currentSpaceId && <Check color={colors.primary} size={18} />}
+                  <Pressable onPress={() => startRename(item)} hitSlop={8} style={styles.rowAction}>
+                    <Pencil color={colors.textMuted} size={16} />
+                  </Pressable>
+                  {spaces.length > 1 && (
+                    <Pressable onPress={() => confirmDelete(item)} hitSlop={8} style={styles.rowAction}>
+                      <Trash2 color={colors.danger} size={16} />
+                    </Pressable>
+                  )}
+                </Pressable>
+              )
+            }
             ListFooterComponent={
               <Pressable
                 onPress={handleCreatePress}
@@ -175,4 +231,6 @@ const styles = StyleSheet.create({
   createBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, marginBottom: 6 },
   newRow: { borderWidth: 1, borderStyle: 'dashed', justifyContent: 'center' },
+  rowAction: { padding: 4 },
+  editInput: { flex: 1, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 8, fontSize: 15 },
 });

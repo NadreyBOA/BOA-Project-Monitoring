@@ -4,6 +4,7 @@ import { ChevronLeft } from 'lucide-react-native';
 import { CURRENCIES } from '../data/currencies';
 import { COUNTRIES } from '../data/countries';
 import { CodeBadge } from './CodeBadge';
+import { CountryFlag } from './CountryFlag';
 import { useTheme } from '../theme/ThemeContext';
 
 interface Props {
@@ -79,7 +80,7 @@ export function CurrencyPicker({ visible, title = 'Choisir une devise', onClose,
             contentContainerStyle={{ paddingHorizontal: spacing.md, paddingBottom: spacing.xl }}
             renderItem={({ item }) => (
               <Pressable style={[styles.row, { backgroundColor: colors.surface, borderRadius: radius.md }]} onPress={() => handleSelect(item.currency)}>
-                <CodeBadge code={item.cc} />
+                <CountryFlag code={item.cc} />
                 <Text style={[styles.rowText, { color: colors.text, fontSize: fontSize.sm }]}>{item.name}</Text>
                 <Text style={{ color: colors.textMuted, fontSize: fontSize.xs }}>{item.currency}</Text>
               </Pressable>

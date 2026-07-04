@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { X } from 'lucide-react-native';
@@ -8,6 +9,8 @@ import { getProfile, getReminderOffsetDays } from '../../src/db/settings';
 import { getCustomer, getCustomerWithBalance } from '../../src/db/customers';
 import { scheduleDebtReminder } from '../../src/notifications';
 import { PAYMENT_CHANNELS } from '../../src/data/paymentChannels';
+import { DateField } from '../../src/components/DateField';
+import { TimeField } from '../../src/components/TimeField';
 import type { TransactionType } from '../../src/types';
 import { radius, spacing, fontSize, colors as ColorsType } from '../../src/utils/theme';
 import { useTheme } from '../../src/theme/ThemeContext';
@@ -32,6 +35,7 @@ function nowTimeInput(): string {
 export default function TransactionFormScreen() {
   const { colors } = useTheme();
   const styles = createStyles(colors);
+  const insets = useSafeAreaInsets();
   const { customerId, type: initialType } = useLocalSearchParams<{ customerId: string; type?: string }>();
   const db = useSQLiteContext();
   const router = useRouter();
@@ -117,7 +121,11 @@ export default function TransactionFormScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : insets.top}
+    >
       <Stack.Screen
         options={{
           title: currency ? `Nouvelle transaction (${currency})` : 'Nouvelle transaction',
@@ -165,33 +173,16 @@ export default function TransactionFormScreen() {
           <>
             <Text style={styles.label}>Date de prise du crédit</Text>
             <View style={styles.row}>
-              <TextInput
-                value={creditDate}
-                onChangeText={setCreditDate}
-                placeholder="AAAA-MM-JJ"
-                placeholderTextColor={colors.textMuted}
-                style={[styles.input, styles.rowInput, !creditDateValid && styles.inputError]}
-              />
-              <TextInput
-                value={creditTime}
-                onChangeText={setCreditTime}
-                placeholder="HH:MM"
-                placeholderTextColor={colors.textMuted}
-                style={[styles.input, styles.rowInput, !creditTimeValid && styles.inputError]}
-              />
+              <View style={styles.rowInput}>
+                <DateField value={creditDate} onChange={setCreditDate} error={!creditDateValid} />
+              </View>
+              <View style={styles.rowInput}>
+                <TimeField value={creditTime} onChange={setCreditTime} error={!creditTimeValid} />
+              </View>
             </View>
-            {(!creditDateValid || !creditTimeValid) && (
-              <Text style={styles.errorText}>Format attendu : AAAA-MM-JJ et HH:MM</Text>
-            )}
 
             <Text style={styles.label}>Échéance prévue *</Text>
-            <TextInput
-              value={dueDate}
-              onChangeText={setDueDate}
-              placeholder="AAAA-MM-JJ"
-              placeholderTextColor={colors.textMuted}
-              style={[styles.input, !dueDateValid && styles.inputError]}
-            />
+            <DateField value={dueDate} onChange={setDueDate} error={!dueDateValid} />
             {!dueDateValid && (
               <Text style={styles.errorText}>
                 {trimmedDueDate ? 'Format attendu : AAAA-MM-JJ' : "L'échéance est obligatoire pour une dette."}
@@ -201,14 +192,7 @@ export default function TransactionFormScreen() {
         ) : (
           <>
             <Text style={styles.label}>Date du remboursement</Text>
-            <TextInput
-              value={paymentDate}
-              onChangeText={setPaymentDate}
-              placeholder="AAAA-MM-JJ"
-              placeholderTextColor={colors.textMuted}
-              style={[styles.input, !paymentDateValid && styles.inputError]}
-            />
-            {!paymentDateValid && <Text style={styles.errorText}>Format attendu : AAAA-MM-JJ</Text>}
+            <DateField value={paymentDate} onChange={setPaymentDate} error={!paymentDateValid} />
           </>
         )}
 
@@ -236,7 +220,7 @@ export default function TransactionFormScreen() {
         />
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: spacing.md + insets.bottom }]}>
         <Pressable
           style={[styles.saveButton, !canSave && styles.saveButtonDisabled]}
           onPress={handleSave}

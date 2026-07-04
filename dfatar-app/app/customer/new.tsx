@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { X } from 'lucide-react-native';
@@ -9,6 +10,8 @@ import { getReminderOffsetDays } from '../../src/db/settings';
 import { getCurrentSpaceId } from '../../src/db/spaces';
 import { scheduleDebtReminder } from '../../src/notifications';
 import { PAYMENT_CHANNELS } from '../../src/data/paymentChannels';
+import { DateField } from '../../src/components/DateField';
+import { TimeField } from '../../src/components/TimeField';
 import { radius, spacing, fontSize, colors as ColorsType } from '../../src/utils/theme';
 import { useTheme } from '../../src/theme/ThemeContext';
 
@@ -31,6 +34,7 @@ function nowTimeInput(): string {
 export default function CustomerFormScreen() {
   const { colors } = useTheme();
   const styles = createStyles(colors);
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const isEdit = !!id;
   const db = useSQLiteContext();
@@ -105,7 +109,11 @@ export default function CustomerFormScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : insets.top}
+    >
       <Stack.Screen
         options={{
           title: isEdit ? 'Modifier la personne' : 'Nouvelle personne',
@@ -180,13 +188,7 @@ export default function CustomerFormScreen() {
               style={styles.input}
             />
             <Text style={styles.label}>Échéance prévue {hasInitialDebt ? '*' : '(facultatif)'}</Text>
-            <TextInput
-              value={debtDueDate}
-              onChangeText={setDebtDueDate}
-              placeholder="AAAA-MM-JJ"
-              placeholderTextColor={colors.textMuted}
-              style={[styles.input, !debtDueDateValid && styles.inputError]}
-            />
+            <DateField value={debtDueDate} onChange={setDebtDueDate} error={!debtDueDateValid} />
             {!debtDueDateValid && (
               <Text style={styles.errorText}>
                 {hasInitialDebt && !trimmedDebtDueDate ? "L'échéance est obligatoire pour une dette." : 'Format attendu : AAAA-MM-JJ'}
@@ -197,24 +199,13 @@ export default function CustomerFormScreen() {
               <>
                 <Text style={styles.label}>Date de prise du crédit</Text>
                 <View style={styles.row}>
-                  <TextInput
-                    value={creditDate}
-                    onChangeText={setCreditDate}
-                    placeholder="AAAA-MM-JJ"
-                    placeholderTextColor={colors.textMuted}
-                    style={[styles.input, styles.rowInput, !creditDateValid && styles.inputError]}
-                  />
-                  <TextInput
-                    value={creditTime}
-                    onChangeText={setCreditTime}
-                    placeholder="HH:MM"
-                    placeholderTextColor={colors.textMuted}
-                    style={[styles.input, styles.rowInput, !creditTimeValid && styles.inputError]}
-                  />
+                  <View style={styles.rowInput}>
+                    <DateField value={creditDate} onChange={setCreditDate} error={!creditDateValid} />
+                  </View>
+                  <View style={styles.rowInput}>
+                    <TimeField value={creditTime} onChange={setCreditTime} error={!creditTimeValid} />
+                  </View>
                 </View>
-                {(!creditDateValid || !creditTimeValid) && (
-                  <Text style={styles.errorText}>Format attendu : AAAA-MM-JJ et HH:MM</Text>
-                )}
 
                 <Text style={styles.label}>Canal (facultatif)</Text>
                 <View style={styles.chipsRow}>
@@ -234,7 +225,7 @@ export default function CustomerFormScreen() {
         )}
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: spacing.md + insets.bottom }]}>
         <Pressable
           style={[styles.saveButton, (!name.trim() || !formValid || saving) && styles.saveButtonDisabled]}
           onPress={handleSave}

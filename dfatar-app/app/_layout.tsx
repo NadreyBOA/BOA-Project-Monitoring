@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
 import { SQLiteProvider } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
@@ -62,13 +63,15 @@ function RootNavigator() {
 
 export default function RootLayout() {
   return (
-    <Suspense fallback={<LoadingScreen />}>
-      <SQLiteProvider databaseName={DATABASE_NAME} onInit={migrateDbIfNeeded} useSuspense>
-        <ThemeProvider>
-          <RootNavigator />
-        </ThemeProvider>
-      </SQLiteProvider>
-    </Suspense>
+    <SafeAreaProvider>
+      <Suspense fallback={<LoadingScreen />}>
+        <SQLiteProvider databaseName={DATABASE_NAME} onInit={migrateDbIfNeeded} useSuspense>
+          <ThemeProvider>
+            <RootNavigator />
+          </ThemeProvider>
+        </SQLiteProvider>
+      </Suspense>
+    </SafeAreaProvider>
   );
 }
 

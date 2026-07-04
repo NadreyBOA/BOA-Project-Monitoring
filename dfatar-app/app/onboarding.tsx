@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { Briefcase, User, Search, ChevronLeft } from 'lucide-react-native';
 import { useTheme } from '../src/theme/ThemeContext';
 import { COUNTRIES } from '../src/data/countries';
-import { CodeBadge } from '../src/components/CodeBadge';
+import { CountryFlag } from '../src/components/CountryFlag';
 import { setSetting, SETTINGS_KEYS } from '../src/db/settings';
 import { completeOnboarding, getCurrentSpace, renameSpace } from '../src/db/spaces';
 import type { AccountType } from '../src/types';
 
 export default function OnboardingScreen() {
   const { colors, spacing, radius, fontSize } = useTheme();
+  const insets = useSafeAreaInsets();
   const db = useSQLiteContext();
   const router = useRouter();
   const { review } = useLocalSearchParams<{ review?: string }>();
@@ -108,7 +110,7 @@ export default function OnboardingScreen() {
             autoFocus
           />
         </View>
-        <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.surface }]}>
+        <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.surface, paddingBottom: 16 + insets.bottom }]}>
           <Pressable
             disabled={!displayName.trim()}
             style={[styles.primaryBtn, { backgroundColor: colors.primary, borderRadius: radius.md, opacity: displayName.trim() ? 1 : 0.5 }]}
@@ -155,7 +157,7 @@ export default function OnboardingScreen() {
             style={[styles.countryRow, { backgroundColor: colors.surface, borderRadius: radius.md }]}
             onPress={() => finish(item.cc, item.currency)}
           >
-            <CodeBadge code={item.cc} />
+            <CountryFlag code={item.cc} />
             <Text style={[styles.countryName, { color: colors.text, fontSize: fontSize.sm }]}>{item.name}</Text>
             <Text style={{ color: colors.textMuted, fontSize: fontSize.xs }}>{item.currency}</Text>
           </Pressable>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { Cloud, X } from 'lucide-react-native';
 import { useTheme } from '../src/theme/ThemeContext';
@@ -12,10 +13,12 @@ type Mode = 'signIn' | 'signUp';
 
 export default function BackupAuthScreen() {
   const { colors, spacing, radius, fontSize } = useTheme();
+  const insets = useSafeAreaInsets();
   const db = useSQLiteContext();
   const router = useRouter();
+  const { justUnlocked } = useLocalSearchParams<{ justUnlocked?: string }>();
 
-  const [mode, setMode] = useState<Mode>('signIn');
+  const [mode, setMode] = useState<Mode>(justUnlocked === '1' ? 'signUp' : 'signIn');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -82,7 +85,7 @@ export default function BackupAuthScreen() {
           ),
         }}
       />
-      <ScrollView contentContainerStyle={{ padding: spacing.md }}>
+      <ScrollView contentContainerStyle={{ padding: spacing.md, paddingBottom: spacing.md + insets.bottom }}>
         {!isCloudBackupConfigured && (
           <View style={[styles.warnBox, { backgroundColor: colors.dangerMuted, borderRadius: radius.md, marginBottom: spacing.md }]}>
             <Text style={{ color: colors.danger, fontSize: fontSize.xs }}>
@@ -96,10 +99,12 @@ export default function BackupAuthScreen() {
             <Cloud color={colors.primary} size={26} />
           </View>
           <Text style={[styles.heroTitle, { color: colors.text }]}>
-            {mode === 'signIn' ? 'Connexion' : 'Créer un compte'}
+            {justUnlocked === '1' ? 'Bravo, vous êtes premium !' : mode === 'signIn' ? 'Connexion' : 'Créer un compte'}
           </Text>
           <Text style={[styles.heroSubtitle, { color: colors.textMuted }]}>
-            Vos données seront sauvegardées et disponibles sur n'importe quel appareil.
+            {justUnlocked === '1'
+              ? 'Dernière étape : créez votre compte pour activer la sauvegarde en ligne.'
+              : 'Vos données seront sauvegardées et disponibles sur n\'importe quel appareil.'}
           </Text>
         </View>
 
@@ -152,6 +157,12 @@ export default function BackupAuthScreen() {
             <Text style={styles.submitBtnText}>{mode === 'signIn' ? 'Se connecter' : 'Créer le compte'}</Text>
           )}
         </Pressable>
+
+        {justUnlocked === '1' && (
+          <Pressable style={styles.skipBtn} onPress={() => router.back()}>
+            <Text style={[styles.skipBtnText, { color: colors.textMuted }]}>Passer pour le moment</Text>
+          </Pressable>
+        )}
       </ScrollView>
     </View>
   );
@@ -172,4 +183,6 @@ const styles = StyleSheet.create({
   warnBox: { padding: 12 },
   submitBtn: { paddingVertical: 14, alignItems: 'center', marginTop: 20 },
   submitBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  skipBtn: { paddingVertical: 14, alignItems: 'center' },
+  skipBtnText: { fontWeight: '600', fontSize: 14 },
 });
