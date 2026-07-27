@@ -125,6 +125,9 @@ svg{display:block}
 .tag{font-size:7.5px;padding:4px 7px;border-radius:20px;background:#edf7f2;color:var(--boa);font-weight:750;white-space:nowrap}
 .tag.purple{background:var(--purple-soft);color:var(--purple)}
 .tag.gray{background:#f0f2f4;color:#667180}
+.module-subnav{display:flex;gap:4px;margin-bottom:14px;background:#eef1f3;border-radius:9px;padding:3px;width:fit-content}
+.module-subnav-btn{border:none;background:transparent;color:#5b6674;font-size:10.5px;font-weight:750;padding:7px 14px;border-radius:7px;cursor:pointer}
+.module-subnav-btn.active{background:#fff;color:#0f1725;box-shadow:0 1px 3px rgba(16,24,40,.12)}
 .projects-page-header{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:12px}
 .page-eyebrow{font-size:8px;letter-spacing:.13em;color:var(--boa);font-weight:800;margin-bottom:6px}
 .projects-page-header h1{margin:0;font-size:25px;color:#0f1725;line-height:1}
@@ -607,23 +610,17 @@ svg{display:block}
       <button class="nav-btn" data-view="projects">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7h18v13H3z"/><path d="M8 7V4h8v3"/></svg><span>Projets</span>
       </button>
-      <button class="nav-btn" data-view="actions">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l2 2 4-5"/><path d="M5 4h14v16H5z"/></svg><span>Actions</span>
-      </button>
-      <button class="nav-btn" data-view="meetings">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/></svg><span>Réunions</span>
-      </button>
       <button class="nav-btn" data-view="validation">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 5h16v14H4z"/><path d="m8 12 2 2 5-5"/></svg><span>Validation</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 5h16v14H4z"/><path d="m8 12 2 2 5-5"/></svg><span>Test</span>
       </button>
-      <button class="nav-btn" data-view="exploitation">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 7h16l-1 13H5z"/><path d="M8 7V4h8v3M9 12h6"/></svg><span>Exploitation</span>
+      <button class="nav-btn" data-view="patch">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 7h16l-1 13H5z"/><path d="M8 7V4h8v3M9 12h6"/></svg><span>Patch</span>
       </button>
-      <button class="nav-btn" data-view="subsidiaries">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M7 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM17 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M2 20v-2a5 5 0 0 1 10 0v2M12 20v-2a5 5 0 0 1 10 0v2"/></svg><span>Filiales</span>
+      <button class="nav-btn" data-view="preprod">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v6M12 21v-6M4.9 4.9l4.2 4.2M14.9 14.9l4.2 4.2M4.9 19.1l4.2-4.2M14.9 9.1l4.2-4.2"/></svg><span>Préprod</span>
       </button>
-      <button class="nav-btn" data-view="reports">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span>Rapports</span>
+      <button class="nav-btn" data-view="actions">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l2 2 4-5"/><path d="M5 4h14v16H5z"/></svg><span>Opérationnel</span>
       </button>
       <button class="nav-btn" data-view="settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21h-4v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1A1.7 1.7 0 0 0 4.6 15 1.7 1.7 0 0 0 3 14H3v-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1L7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.6V3h4v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.1v4H21a1.7 1.7 0 0 0-1.6 1Z"/></svg><span>Paramètres</span>
@@ -635,7 +632,7 @@ svg{display:block}
       <div class="goal-value"><div class="goal-icon">🏆</div><strong id="goalPercent">0%</strong></div>
       <div class="goal-bar"><span id="goalBar"></span></div>
       <div class="goal-meta" id="goalMeta"></div>
-      <div class="goal-link"><span>Voir le rapport</span><span>→</span></div>
+      <div class="goal-link" data-view="reports" style="cursor:pointer"><span>Voir le rapport</span><span>→</span></div>
     </div>
     <div class="user">
       <div class="user-avatar" id="sidebarUserAvatar">SZ</div>
@@ -681,6 +678,10 @@ svg{display:block}
     </section>
 
     <section id="projectsView" class="view">
+      <div class="module-subnav">
+        <button class="module-subnav-btn active" data-view="projects">Portefeuille</button>
+        <button class="module-subnav-btn" data-view="meetings">Réunions</button>
+      </div>
       <header class="projects-page-header">
         <div><div class="page-eyebrow">PORTEFEUILLE</div><h1>Projets</h1><p>Les données du tableau, des accordéons, du dashboard et des fiches complètes proviennent de la même source.</p></div>
         <div class="projects-header-actions">
@@ -786,6 +787,10 @@ svg{display:block}
     </section>
 
     <section id="meetingsView" class="view">
+      <div class="module-subnav">
+        <button class="module-subnav-btn" data-view="projects">Portefeuille</button>
+        <button class="module-subnav-btn active" data-view="meetings">Réunions</button>
+      </div>
       <header class="meetings-page-header">
         <div><div class="page-eyebrow">PILOTAGE ET DÉCISION</div><h1>Réunions</h1><p>Préparez vos points, suivez les décisions et générez le compte rendu depuis les mêmes données projets.</p></div>
         <div class="meetings-header-actions">
@@ -877,9 +882,9 @@ svg{display:block}
     <section id="exploitationView" class="view">
       <header class="exploitation-page-header">
         <div>
-          <div class="page-eyebrow">EXPLOITATION TECHNIQUE</div>
-          <h1>Exploitation</h1>
-          <p>Paramétrages, patchs, interventions, changements et environnements sont suivis dans un registre unique.</p>
+          <div class="page-eyebrow" id="exploitationEyebrow">EXPLOITATION TECHNIQUE</div>
+          <h1 id="exploitationTitle">Exploitation</h1>
+          <p id="exploitationSubtitle">Paramétrages, patchs, interventions, changements et environnements sont suivis dans un registre unique.</p>
         </div>
         <div class="exploitation-header-actions">
           <div class="search">
@@ -1183,7 +1188,7 @@ svg{display:block}
           </section>
 
           <section class="settings-panel" data-settings-panel="zones">
-            <div class="settings-panel-head"><div><h2>Zones et filiales</h2><p>Ajoutez de nouvelles implantations sans modifier le code de l’application.</p></div></div>
+            <div class="settings-panel-head"><div><h2>Zones et filiales</h2><p>Ajoutez de nouvelles implantations sans modifier le code de l’application.</p></div><a href="#" class="secondary-button" data-view="subsidiaries">Vue consolidée des filiales →</a></div>
             <div class="zone-add-bar">
               <div class="field"><label>Nouvelle zone</label><input id="newZoneName" placeholder="Ex. Afrique australe"></div>
               <button class="secondary-button" id="addZoneBtn">Ajouter la zone</button>
@@ -1720,6 +1725,7 @@ let expandedActionId=null;
 let expandedMeetingId=null;
 let expandedCampaignId=null;
 let expandedOperationId=null;
+let exploitationMode="patch"; // "patch" ou "preprod" : filtre d'entrée du registre Exploitation, réorganisé en modules Patch et Préprod
 let activeOperationId=null;
 let activeOperationTab="overview";
 let expandedSubsidiaryId=null;
@@ -2261,8 +2267,16 @@ function operationById(id){return state.exploitationRecords.find(r=>r.id===id)}
 function operationTypeClass(type){return type==="Patch"?"patch":type==="Change"||type==="Maintenance"?"change":""}
 function operationStatusClass(status){return status==="Terminée"?"completed":status==="En cours"?"progress":status==="À valider"?"approval":status==="Échec"?"failed":status==="Annulée"?"cancelled":"planned"}
 function operationRiskClass(risk){return risk==="Critique"?"critical":risk==="Élevé"?"high":risk==="Moyen"?"medium":"low"}
+/* Le registre Exploitation est unique en mémoire ; Patch et Préprod en sont deux vues filtrées
+   (§14 du cahier réorganisé en modules distincts). exploitationMode ne change jamais les données,
+   seulement ce qui est affiché. */
+function exploitationModeRecords(){
+  if(exploitationMode==="patch")return state.exploitationRecords.filter(r=>r.type==="Patch");
+  if(exploitationMode==="preprod")return state.exploitationRecords.filter(r=>/pr[ée]prod/i.test(r.environment||""));
+  return state.exploitationRecords;
+}
 function renderExploitationSummary(){
-  const records=state.exploitationRecords;
+  const records=exploitationModeRecords();
   const planned=records.filter(r=>["Planifiée","À valider"].includes(r.status)).length;
   const running=records.filter(r=>r.status==="En cours").length;
   const completed=records.filter(r=>r.status==="Terminée").length;
@@ -2276,14 +2290,14 @@ function renderExploitationFilters(){
   const pCurrent=pSel.value,eCurrent=eSel.value;
   pSel.innerHTML='<option value="">Tous les projets</option>'+state.projects.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");
   pSel.value=state.projects.some(p=>p.id===pCurrent)?pCurrent:"";
-  const envs=[...new Set(state.exploitationRecords.map(r=>r.environment).filter(Boolean))].sort();
+  const envs=[...new Set(exploitationModeRecords().map(r=>r.environment).filter(Boolean))].sort();
   eSel.innerHTML='<option value="">Tous les environnements</option>'+envs.map(e=>`<option>${esc(e)}</option>`).join("");
   eSel.value=envs.includes(eCurrent)?eCurrent:"";
 }
 function renderExploitationTable(){
   const q=document.getElementById("exploitationSearch").value.toLowerCase().trim();
   const type=document.getElementById("operationTypeFilter").value,status=document.getElementById("operationStatusFilter").value,project=document.getElementById("operationProjectFilter").value,env=document.getElementById("operationEnvironmentFilter").value,risk=document.getElementById("operationRiskFilter").value;
-  const filtered=state.exploitationRecords.filter(r=>{
+  const filtered=exploitationModeRecords().filter(r=>{
     const p=projectById(r.projectId),hay=`${r.id} ${r.title} ${r.type} ${r.category} ${r.environment} ${r.application} ${r.owner} ${p?p.name:""}`.toLowerCase();
     return (!q||hay.includes(q))&&(!type||r.type===type)&&(!status||r.status===status)&&(!project||r.projectId===project)&&(!env||r.environment===env)&&(!risk||r.risk===risk);
   }).sort((a,b)=>(b.date+b.startTime).localeCompare(a.date+a.startTime));
@@ -2314,7 +2328,17 @@ function renderExploitationTable(){
     </tr>`;
   }).join("");
 }
-function renderExploitation(){renderExploitationSummary();renderExploitationFilters();renderExploitationTable()}
+function renderExploitationHeader(){
+  const copy={
+    patch:{eyebrow:"GESTION DES PATCHS",title:"Patch",subtitle:"Réception des correctifs et évolutions de l’éditeur, et suivi de leur installation par environnement."},
+    preprod:{eyebrow:"GESTION PRÉPROD",title:"Préprod",subtitle:"Suivi des opérations et de l’état des environnements de préproduction."},
+  }[exploitationMode]||{eyebrow:"EXPLOITATION TECHNIQUE",title:"Exploitation",subtitle:"Paramétrages, patchs, interventions, changements et environnements sont suivis dans un registre unique."};
+  document.getElementById("exploitationEyebrow").textContent=copy.eyebrow;
+  document.getElementById("exploitationTitle").textContent=copy.title;
+  document.getElementById("exploitationSubtitle").textContent=copy.subtitle;
+  document.getElementById("operationTypeFilter").style.display=exploitationMode==="patch"?"none":"";
+}
+function renderExploitation(){renderExploitationHeader();renderExploitationSummary();renderExploitationFilters();renderExploitationTable()}
 
 
 function subsidiaryById(id){return state.subsidiaryProfiles.find(s=>s.id===id)}
@@ -2882,10 +2906,15 @@ function clearBusinessData(){
 
 function renderAll(){renderDashboard();renderProjects();renderActions();renderMeetings();renderValidation();renderExploitation();renderSubsidiaries();renderReports();renderSettings()}
 function showView(view){
-  const views={dashboard:"dashboardView",projects:"projectsView",actions:"actionsView",meetings:"meetingsView",validation:"validationView",exploitation:"exploitationView",subsidiaries:"subsidiariesView",reports:"reportsView",settings:"settingsView"};
+  const views={dashboard:"dashboardView",projects:"projectsView",actions:"actionsView",meetings:"meetingsView",validation:"validationView",exploitation:"exploitationView",patch:"exploitationView",preprod:"exploitationView",subsidiaries:"subsidiariesView",reports:"reportsView",settings:"settingsView"};
+  if(view==="patch"||view==="preprod")exploitationMode=view;
   document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
   document.getElementById(views[view]||"dashboardView").classList.add("active");
-  document.querySelectorAll(".nav-btn[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===view));
+  // Réunions, Filiales et Rapports sont accessibles depuis Projet, Paramètres et Accueil : regroupement pour la mise en évidence du menu.
+  const navGroup={meetings:"projects",subsidiaries:"settings",reports:"dashboard",exploitation:exploitationMode}[view]||view;
+  document.querySelectorAll(".nav-btn[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===navGroup));
+  document.querySelectorAll(".module-subnav-btn[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===view));
+  if(view==="patch"||view==="preprod"||view==="exploitation")renderExploitation();
 }
 function completeAction(id){
   const a=state.actions.find(x=>x.id===id);if(!a||a.status==="Terminée")return;
@@ -3000,7 +3029,7 @@ function renderOperationProjectOptions(){
   sel.innerHTML='<option value="">Sans projet</option>'+state.projects.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");
   sel.value=state.projects.some(p=>p.id===current)?current:"";
 }
-function openOperationCreate(projectId=""){editingOperationId=null;resetOperationForm();renderOperationProjectOptions();document.getElementById("operationProject").value=projectId&&projectById(projectId)?projectId:"";document.getElementById("operationDate").value=state.today;document.getElementById("operationStartTime").value="20:00";configureEditor("operationCreateBackdrop","NOUVELLE OPÉRATION TECHNIQUE","Enregistrer une opération","La fiche conserve le contexte, les valeurs avant/après, la fenêtre, les validations et le plan de retour arrière.","saveOperation","Enregistrer l’opération");document.getElementById("operationCreateBackdrop").classList.add("show");setTimeout(()=>document.getElementById("operationTitle").focus(),180)}
+function openOperationCreate(projectId=""){editingOperationId=null;resetOperationForm();renderOperationProjectOptions();document.getElementById("operationProject").value=projectId&&projectById(projectId)?projectId:"";document.getElementById("operationDate").value=state.today;document.getElementById("operationStartTime").value="20:00";if(exploitationMode==="patch")document.getElementById("operationType").value="Patch";configureEditor("operationCreateBackdrop","NOUVELLE OPÉRATION TECHNIQUE","Enregistrer une opération","La fiche conserve le contexte, les valeurs avant/après, la fenêtre, les validations et le plan de retour arrière.","saveOperation","Enregistrer l’opération");document.getElementById("operationCreateBackdrop").classList.add("show");setTimeout(()=>document.getElementById("operationTitle").focus(),180)}
 function closeOperationCreate(){document.getElementById("operationCreateBackdrop").classList.remove("show");editingOperationId=null}
 function resetOperationForm(){
   ["operationTitle","operationEnvironment","operationApplication","operationOwner","operationDescription","operationBefore","operationAfter","operationRollback","operationApprover"].forEach(id=>document.getElementById(id).value=id==="operationOwner"?"Samuel":"");
