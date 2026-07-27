@@ -249,6 +249,11 @@ function badgeClass(v){
 ============================================================ */
 const F = (key,label,type,opts={}) => ({key,label,type,...opts});
 const st = (o)=>({type:"select",options:o,status:true});
+/* Champ dont les options viennent d'un référentiel modifiable (parametres.referentiels.<key>),
+   au lieu d'une liste statique : la liste se met à jour partout dès qu'on l'édite dans Paramètres. */
+const rf = (key,label,refKey,extra={}) => ({key,label,type:"select",optionsRef:refKey,status:true,...extra});
+/* Champ "responsable"/"testeur" : alimenté par les utilisateurs actifs de la Cellule. */
+const usr = (key,label) => ({key,label,type:"select",optionsRef:"utilisateurs_actifs"});
 
 const VIEWS = {
   accueil:{module:"Accueil",label:"Tableau de bord",type:"dashboard",dash:"accueil"},
@@ -257,8 +262,8 @@ const VIEWS = {
     F("ref","Réf.","text"),
     F("projet","Projet","text"),
     F("type","Type",...[st(["Réglementaire","Évolution","Migration","Interne"])]),
-    F("filiales","Filiales","multiselect",{options:FILIALES}),
-    F("responsable","Responsable","text"),
+    F("filiales","Filiales","multiselect",{optionsRef:"filiales"}),
+    usr("responsable","Responsable"),
     F("echeance","Échéance","date"),
     F("avancement","Avanc.","percent"),
     {key:"statut",label:"Statut",...st(["À démarrer","En cours","En attente","Terminé","Bloqué"])},
@@ -269,7 +274,7 @@ const VIEWS = {
     F("projet","Projet","text"),
     F("jalon","Jalon","text"),
     F("echeance","Échéance","date"),
-    F("responsable","Responsable","text"),
+    usr("responsable","Responsable"),
     {key:"statut",label:"Statut",...st(["À venir","En cours","Atteint","En retard"])},
   ]},
   contacts:{module:"Projet",label:"Acteurs et contacts",path:"contacts",fields:[
@@ -293,10 +298,10 @@ const VIEWS = {
   test_campagnes:{module:"Test",label:"Campagnes de test",path:"test_campagnes",fields:[
     F("ref","Réf.","text"),
     F("cahier","Cahier lié","text"),
-    F("environnement","Environnement",...[st(ENVS)]),
+    rf("environnement","Environnement","environnements"),
     F("date_debut","Début","date"),
     F("date_fin","Fin","date"),
-    F("testeur","Testeur","text"),
+    usr("testeur","Testeur"),
     {key:"statut",label:"Statut",...st(["Planifiée","En cours","Terminée","Bloquée"])},
   ]},
   test_resultats:{module:"Test",label:"Résultats détaillés",path:"test_resultats",fields:[
@@ -313,12 +318,12 @@ const VIEWS = {
     F("description","Description","textarea",{hideCol:true}),
     F("severite","Sévérité",...[st(["Bloquante","Majeure","Mineure"])]),
     F("campagne","Campagne","text"),
-    F("responsable","Responsable","text"),
+    usr("responsable","Responsable"),
     {key:"statut",label:"Statut",...st(["Ouverte","En cours","Corrigée","Rejetée"])},
   ]},
   test_cartes:{module:"Test",label:"Matrice de cartes de test",path:"test_cartes",fields:[
     F("ref","Réf. carte","text"),
-    F("reseau","Réseau",...[st(RESEAUX)]),
+    rf("reseau","Réseau","reseaux"),
     F("type","Type",...[st(["Débit","Prépayé","Crédit"])]),
     F("profil","Profil","text"),
     F("pan_masque","PAN (masqué)","text"),
@@ -330,7 +335,7 @@ const VIEWS = {
   patch_reception:{module:"Patch",label:"Réception des patchs",path:"patch_reception",fields:[
     F("ref","Réf. patch","text"),
     F("type","Type",...[st(["Correctif","Évolutif","Réglementaire","Sécurité","Hotfix"])]),
-    F("module","Module",...[st(MODULES_SV)]),
+    rf("module","Module","modules_sv"),
     F("criticite","Criticité",...[st(["Critique","Majeure","Mineure"])]),
     F("origine","Origine","select",{options:["Incident","Mandat réseau","Demande filiale","Évolution BPC"]}),
     F("date_reception","Reçu le","date"),
@@ -338,14 +343,14 @@ const VIEWS = {
   ]},
   patch_install:{module:"Patch",label:"Installation par environnement",path:"patch_install",fields:[
     F("ref_patch","Réf. patch","text"),
-    F("environnement","Environnement",...[st(ENVS)]),
+    rf("environnement","Environnement","environnements"),
     F("date_installation","Installé le","date"),
     F("remarque","Remarque","text",{hideCol:true}),
     {key:"statut",label:"Statut",...st(["À installer","Installé","Échec"])},
   ]},
   patch_deploiement:{module:"Patch",label:"Déploiement par filiale",path:"patch_deploiement",fields:[
     F("ref_patch","Réf. patch","text"),
-    F("filiale","Filiale",...[st(FILIALES)]),
+    rf("filiale","Filiale","filiales"),
     F("date_prevue","Prévu le","date"),
     F("date_reelle","Déployé le","date"),
     {key:"statut",label:"Statut",...st(["À déployer","Déployé","Bloqué"])},
@@ -355,10 +360,10 @@ const VIEWS = {
   preprod_restaurations:{module:"Préprod",label:"Suivi des restaurations",path:"preprod_restaurations",fields:[
     F("ref","Réf.","text"),
     F("instance","Instance / environnement","text"),
-    F("filiale","Filiale",...[st(FILIALES)]),
+    rf("filiale","Filiale","filiales"),
     F("date_planifiee","Planifiée le","date"),
     F("date_realisee","Réalisée le","date"),
-    F("responsable","Responsable","text"),
+    usr("responsable","Responsable"),
     F("remarque","Remarque","text",{hideCol:true}),
     {key:"statut",label:"Statut",...st(["Planifiée","En cours","Réalisée","Échec"])},
   ]},
@@ -373,7 +378,7 @@ const VIEWS = {
   ]},
   preprod_etats:{module:"Préprod",label:"État des environnements",path:"preprod_etats",fields:[
     F("instance","Instance","text"),
-    F("filiale","Filiale",...[st(FILIALES)]),
+    rf("filiale","Filiale","filiales"),
     F("derniere_restauration","Dernière restauration","date"),
     F("remarque","Remarque","text",{hideCol:true}),
     {key:"etat",label:"État",...st(["Disponible","Indisponible","En restauration"])},
@@ -386,13 +391,22 @@ const VIEWS = {
     F("date_reception","Reçu le","date"),
     F("priorite","Priorité",...[st(["Haute","Moyenne","Basse"])]),
     F("echeance","Échéance","date"),
-    F("responsable","Responsable","text"),
+    usr("responsable","Responsable"),
     F("remarque","Remarque","text",{hideCol:true}),
     {key:"statut",label:"Statut",...st(["À traiter","En cours","Traité","Bloqué"])},
   ]},
+
+  /* Module Paramètres : vues dédiées (pas de tableau générique, cf. §5.4 du cahier) */
+  parametres_profil:      {module:"Paramètres",label:"Profil utilisateur",type:"settings",settingsKey:"profil"},
+  parametres_utilisateurs:{module:"Paramètres",label:"Utilisateurs de la cellule",type:"settings",settingsKey:"utilisateurs"},
+  parametres_referentiels:{module:"Paramètres",label:"Référentiels",type:"settings",settingsKey:"referentiels"},
+  parametres_statuts:     {module:"Paramètres",label:"Statuts et couleurs",type:"settings",settingsKey:"statuts"},
+  parametres_memoire:     {module:"Paramètres",label:"Mémoire",type:"settings",settingsKey:"memoire"},
+  parametres_donnees:     {module:"Paramètres",label:"Données d'exemple",type:"settings",settingsKey:"donnees"},
+  parametres_apropos:     {module:"Paramètres",label:"À propos",type:"settings",settingsKey:"apropos"},
 };
 
-/* Ordre des modules dans la sidebar */
+/* Ordre des modules dans la sidebar. Paramètres reste en dernier (icône engrenage). */
 const MENU = [
   {module:"Accueil", icon:"⌂", views:["accueil"]},
   {module:"Projet", icon:"▦", views:["projets","jalons","contacts"]},
@@ -400,7 +414,84 @@ const MENU = [
   {module:"Patch", icon:"⬢", views:["patch_reception","patch_install","patch_deploiement","patch_indic"]},
   {module:"Préprod", icon:"⟳", views:["preprod_restaurations","preprod_calendrier","preprod_fiches","preprod_etats"]},
   {module:"Opérationnel", icon:"◷", views:["operationnel"]},
+  {module:"Paramètres", icon:"⚙", views:["parametres_profil","parametres_utilisateurs","parametres_referentiels","parametres_statuts","parametres_memoire","parametres_donnees","parametres_apropos"]},
 ];
+
+/* ============================================================
+   RÉSOLUTION DES OPTIONS (référentiels, utilisateurs actifs, statuts)
+   Un champ ne stocke jamais sa propre liste : elle est relue depuis
+   parametres à chaque rendu, pour que toute édition dans le module
+   Paramètres se répercute immédiatement partout (§2.1, §8.3, §10.6).
+============================================================ */
+function activeUserNames(){
+  return (db.parametres.referentiels.utilisateurs||[])
+    .filter(u=>u.actif)
+    .map(u=>u.nom)
+    .sort((a,b)=>a.localeCompare(b,"fr"));
+}
+function fieldOptions(f){
+  if(f.optionsRef==="utilisateurs_actifs") return activeUserNames();
+  if(f.optionsRef) return db.parametres.referentiels[f.optionsRef] || [];
+  return f.options || [];
+}
+/* Le champ "statut"/"état" d'une vue est celui dont les valeurs et couleurs
+   peuvent être personnalisées depuis Paramètres > Statuts et couleurs. */
+function primaryStatusField(v){
+  return (v.fields||[]).find(f=>f.status && (f.key==="statut"||f.key==="etat")) || (v.fields||[]).find(f=>f.status);
+}
+const COLOR_KEY_TO_CLASS = {vert:"b-ok", orange:"b-warn", rouge:"b-dang", neutre:"b-neut", bleu:"b-info"};
+const CLASS_TO_COLOR_KEY = {"b-ok":"vert","b-warn":"orange","b-dang":"rouge","b-neut":"neutre","b-info":"bleu"};
+const COLOR_LABELS = {vert:"Vert",orange:"Orange",rouge:"Rouge",neutre:"Neutre",bleu:"Bleu"};
+function statusValuesFor(viewId){
+  const f=primaryStatusField(VIEWS[viewId]); if(!f) return [];
+  const override=db.parametres.statuts[viewId];
+  return (override && override.length) ? override.map(o=>o.valeur) : fieldOptions(f);
+}
+function statusColorClassFor(viewId, val){
+  const override=db.parametres.statuts[viewId];
+  if(override){ const found=override.find(o=>o.valeur===val); if(found) return COLOR_KEY_TO_CLASS[found.couleur]||"b-neut"; }
+  return badgeClass(val);
+}
+function ensureStatusOverride(viewId){
+  if(!db.parametres.statuts[viewId]){
+    const f=primaryStatusField(VIEWS[viewId]);
+    db.parametres.statuts[viewId] = fieldOptions(f).map(v=>({valeur:v, couleur:CLASS_TO_COLOR_KEY[badgeClass(v)]||"neutre"}));
+  }
+  return db.parametres.statuts[viewId];
+}
+
+/* Compte les enregistrements qui utilisent encore une valeur de référentiel
+   (ou un utilisateur) donnée, pour avertir avant suppression (§8.3). */
+function usageCount(refKey, value){
+  let n=0;
+  Object.keys(VIEWS).forEach(vid=>{
+    const v=VIEWS[vid]; if(!v.fields || !v.path) return;
+    v.fields.forEach(f=>{
+      if(f.optionsRef!==refKey) return;
+      (db[v.path]||[]).forEach(r=>{
+        const rv=r[f.key];
+        if(f.type==="multiselect"){ if(Array.isArray(rv) && rv.includes(value)) n++; }
+        else if(rv===value) n++;
+      });
+    });
+  });
+  return n;
+}
+/* Propage un renommage de valeur de référentiel dans tous les enregistrements
+   qui l'utilisent, pour éviter des valeurs orphelines invisibles dans les listes. */
+function renameUsagesEverywhere(refKey, oldVal, newVal){
+  Object.keys(VIEWS).forEach(vid=>{
+    const v=VIEWS[vid]; if(!v.fields || !v.path) return;
+    v.fields.forEach(f=>{
+      if(f.optionsRef!==refKey) return;
+      (db[v.path]||[]).forEach(r=>{
+        const rv=r[f.key];
+        if(f.type==="multiselect"){ if(Array.isArray(rv)){ const i=rv.indexOf(oldVal); if(i>=0) rv[i]=newVal; } }
+        else if(rv===oldVal){ r[f.key]=newVal; }
+      });
+    });
+  });
+}
 
 /* ============================================================
    ÉTAT & MÉMOIRE
@@ -465,6 +556,14 @@ function migrateSchema(o){
 }
 
 function seed(){
+  if(!db.parametres.referentiels.utilisateurs.length){
+    db.parametres.referentiels.utilisateurs = [
+      {nom:"Nadrey", role:"Coordination", actif:true},
+      {nom:"Saran", role:"Cellule Déploiement", actif:true},
+      {nom:"BPC", role:"Éditeur SmartVista", actif:true},
+      {nom:"IT filiale", role:"Support filiale", actif:true},
+    ];
+  }
   db.projets = [
     {_id:uid(),ref:"PRJ-01",projet:"Migration Visa SMC (SR2004022260)",type:"Réglementaire",filiales:["BOA Bénin","BOA Sénégal"],responsable:"Nadrey",echeance:"2026-09-30",avancement:45,statut:"En cours",commentaire:"Revue de connectivité CTMI / GIM-UEMOA. Endpoint couvrant les filiales SmartVista à confirmer."},
     {_id:uid(),ref:"PRJ-02",projet:"Visa Enhancement Octobre 2026",type:"Réglementaire",filiales:[],responsable:"Nadrey",echeance:"2026-10-15",avancement:30,statut:"En cours",commentaire:"Revue articles obligatoires vs non obligatoires. Processeur : BPC."},
@@ -564,7 +663,7 @@ async function manualSave(){
 let saveTimer=null;
 async function persist(){
   db.meta.lastUpdated = nowIso();
-  if(fileHandle){
+  if(fileHandle && db.parametres.sauvegardeAuto){
     clearTimeout(saveTimer);
     saveTimer = setTimeout(async()=>{
       try{ const ok = await writeHandle(); if(ok!==false) markSaved(); }
@@ -740,6 +839,7 @@ function renderMain(){
   document.getElementById("crumb").innerHTML = `<span>${v.module}</span> &nbsp;/&nbsp; ${v.label}`;
   if(v.type==="dashboard"){ main.innerHTML = v.dash==="accueil"? dashAccueil() : v.dash==="patch"? dashPatch() : dashTest(); return; }
   if(v.type==="calendar"){ main.innerHTML = renderCalendar(v); return; }
+  if(v.type==="settings"){ main.innerHTML = renderSettings(v); wireSettings(v); return; }
   main.innerHTML = renderTableView(v);
   wireToolbar(v);
 }
@@ -758,7 +858,7 @@ function renderTableView(v){
   if(s.search){ const q=s.search.toLowerCase(); rows=rows.filter(r=> v.fields.some(f=> String(cellOut(r[f.key],f)).toLowerCase().includes(q))); }
   if(s.sortKey){ rows.sort((a,b)=>{ let x=a[s.sortKey]||"",y=b[s.sortKey]||""; return (x>y?1:x<y?-1:0)*s.sortDir; }); }
 
-  const filterOpts = statusField ? `<select class="filter" id="fltStatut"><option value="">Tous statuts</option>${statusField.options.map(o=>`<option ${s.filter===o?"selected":""}>${o}</option>`).join("")}</select>` : "";
+  const filterOpts = statusField ? `<select class="filter" id="fltStatut"><option value="">Tous statuts</option>${statusValuesFor(current).map(o=>`<option ${s.filter===o?"selected":""}>${o}</option>`).join("")}</select>` : "";
 
   const head = `<div class="viewhead">
       <div><h1>${v.label}</h1><p>${caption(v)}</p></div>
@@ -815,7 +915,11 @@ function caption(v){
 }
 function renderCell(r,c){
   let val=r[c.key];
-  if(c.status){ if(!val) return ""; return `<span class="badge ${badgeClass(val)}">${esc(val)}</span>`; }
+  if(c.status){
+    if(!val) return "";
+    const cls = (c.key==="statut"||c.key==="etat") ? statusColorClassFor(current,val) : badgeClass(val);
+    return `<span class="badge ${cls}">${esc(val)}</span>`;
+  }
   if(c.type==="percent"){ const n=Number(val)||0; return `<div class="prog"><div class="bar"><i style="width:${Math.min(100,n)}%"></i></div><span>${n}%</span></div>`; }
   if(c.type==="multiselect"){ const a=Array.isArray(val)?val:[]; if(!a.length) return `<span style="color:var(--ink-3)">—</span>`; if(a.length>2) return `<span class="chip">${esc(a[0])}</span><span class="chip">+${a.length-1}</span>`; return a.map(x=>`<span class="chip">${esc(x)}</span>`).join(""); }
   if(c.type==="date"){ return val? `<span>${fmtDate(val)}</span>`:`<span style="color:var(--ink-3)">—</span>`; }
@@ -842,9 +946,18 @@ function openModal(id){
     const wrap=document.createElement("div"); wrap.className="fld"+((f.type==="textarea"||f.type==="multiselect")?" full":"");
     const val=rec[f.key];
     let input="";
-    if(f.type==="select"){ input=`<select data-k="${f.key}"><option value="">—</option>${f.options.map(o=>`<option ${val===o?"selected":""}>${o}</option>`).join("")}</select>`; }
+    if(f.type==="select"){
+      const isPrimaryStatus = f.status && (f.key==="statut"||f.key==="etat");
+      let opts = isPrimaryStatus ? statusValuesFor(current) : fieldOptions(f);
+      if(val && !opts.includes(val)) opts = opts.concat([val]); // préserve une valeur devenue orpheline (utilisateur désactivé, réf. renommée/supprimée)
+      input=`<select data-k="${f.key}"><option value="">—</option>${opts.map(o=>`<option ${val===o?"selected":""}>${esc(o)}</option>`).join("")}</select>`;
+    }
     else if(f.type==="textarea"){ input=`<textarea data-k="${f.key}">${esc(val||"")}</textarea>`; }
-    else if(f.type==="multiselect"){ input=`<div class="checks">${f.options.map(o=>`<label><input type="checkbox" data-k="${f.key}" value="${esc(o)}" ${Array.isArray(val)&&val.includes(o)?"checked":""}>${o}</label>`).join("")}</div>`; }
+    else if(f.type==="multiselect"){
+      let opts = fieldOptions(f);
+      if(Array.isArray(val)) val.forEach(v=>{ if(!opts.includes(v)) opts=opts.concat([v]); });
+      input=`<div class="checks">${opts.map(o=>`<label><input type="checkbox" data-k="${f.key}" value="${esc(o)}" ${Array.isArray(val)&&val.includes(o)?"checked":""}>${esc(o)}</label>`).join("")}</div>`;
+    }
     else if(f.type==="number"||f.type==="percent"){ input=`<input type="number" data-k="${f.key}" value="${val==null?"":val}" ${f.type==="percent"?'min="0" max="100"':""}>`; }
     else if(f.type==="date"){ input=`<input type="date" data-k="${f.key}" value="${val||""}">`; }
     else { input=`<input type="text" data-k="${f.key}" value="${esc(val||"")}">`; }
@@ -879,6 +992,285 @@ function saveModal(){
 }
 function closeModal(){ document.getElementById("overlay").classList.remove("show"); editingId=null; }
 function delRow(id){ const v=VIEWS[current]; if(!confirm("Supprimer cette ligne ?")) return; db[v.path]=db[v.path].filter(r=>r._id!==id); persist(); renderAll(); toast("Ligne supprimée"); }
+
+/* ============================================================
+   MODULE PARAMÈTRES (vues dédiées, cf. §8 du cahier)
+============================================================ */
+const APP_VERSION = "1.1.0";
+
+function renderSettings(v){
+  const fn = {
+    profil: settingsProfil, utilisateurs: settingsUtilisateurs, referentiels: settingsReferentiels,
+    statuts: settingsStatuts, memoire: settingsMemoire, donnees: settingsDonnees, apropos: settingsApropos,
+  }[v.settingsKey];
+  return fn ? fn() : "";
+}
+function wireSettings(v){ /* les vues Paramètres utilisent des gestionnaires inline (onchange/onclick) */ }
+
+/* ---------- 8.1 Profil utilisateur ---------- */
+function settingsProfil(){
+  const nom = db.parametres.utilisateurCourant||"";
+  return `<div class="viewhead"><div><h1>Profil utilisateur</h1><p>Ce nom identifie vos actions dans la traçabilité (création, modification, import).</p></div></div>
+    <div class="panel"><div style="padding:16px;max-width:420px">
+      <div class="fld"><label>Votre nom</label><input id="profilNom" type="text" value="${esc(nom)}" placeholder="Ex : Nadrey"></div>
+      <div style="margin-top:12px"><button class="btn primary" onclick="saveProfil()">Enregistrer</button></div>
+    </div></div>`;
+}
+function saveProfil(){
+  const val=(document.getElementById("profilNom").value||"").trim();
+  if(!val){ toast("Le nom ne peut pas être vide"); return; }
+  db.parametres.utilisateurCourant=val;
+  persist(); renderAll(); toast("Profil mis à jour");
+}
+
+/* ---------- 8.2 Utilisateurs de la cellule ---------- */
+function settingsUtilisateurs(){
+  const users = db.parametres.referentiels.utilisateurs||[];
+  const head = `<div class="viewhead"><div><h1>Utilisateurs de la cellule</h1><p>Les utilisateurs actifs alimentent les listes de responsables et testeurs dans tous les modules.</p></div>
+    <div class="acts"><button class="btn primary" onclick="openUserModal()">+ Ajouter</button></div></div>`;
+  let body;
+  if(!users.length){
+    body=`<div class="card"><div class="empty"><div class="big">Aucun utilisateur enregistré</div>Cliquez sur « Ajouter » pour créer le premier utilisateur de la cellule.</div></div>`;
+  } else {
+    const rows = users.map((u,i)=>`<tr>
+        <td>${esc(u.nom)}</td>
+        <td>${esc(u.role||"—")}</td>
+        <td>${u.actif? `<span class="badge b-ok">Actif</span>` : `<span class="badge b-neut">Inactif</span>`}</td>
+        <td><div class="rowacts">
+          <button class="icobtn" title="Modifier" onclick="openUserModal(${i})">✎</button>
+          <button class="icobtn del" title="Supprimer" onclick="deleteUser(${i})">🗑</button>
+        </div></td>
+      </tr>`).join("");
+    body=`<div class="card"><div class="tablewrap"><table>
+      <thead><tr><th>Nom</th><th>Rôle</th><th>Statut</th><th style="text-align:right">Actions</th></tr></thead>
+      <tbody>${rows}</tbody></table></div></div>`;
+  }
+  return head+body;
+}
+let editingUserIdx=null;
+function openUserModal(idx){
+  editingUserIdx = (idx==null)? null : idx;
+  const u = (idx!=null) ? db.parametres.referentiels.utilisateurs[idx] : {nom:"",role:"",actif:true};
+  document.getElementById("modalTitle").textContent = (idx!=null?"Modifier — ":"Nouvel utilisateur — ")+"Utilisateurs de la cellule";
+  const body=document.getElementById("modalBody");
+  body.innerHTML = `
+    <div class="fld"><label>Nom</label><input data-k="nom" type="text" value="${esc(u.nom)}"></div>
+    <div class="fld"><label>Rôle</label><input data-k="role" type="text" value="${esc(u.role||"")}"></div>
+    <div class="fld full"><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" data-k="actif" ${u.actif?"checked":""} style="width:auto">Actif</label></div>
+  `;
+  document.getElementById("modalSave").onclick=saveUserModal;
+  document.getElementById("overlay").classList.add("show");
+}
+function saveUserModal(){
+  const body=document.getElementById("modalBody");
+  const nom=(body.querySelector('[data-k="nom"]').value||"").trim();
+  const role=(body.querySelector('[data-k="role"]').value||"").trim();
+  const actif=body.querySelector('[data-k="actif"]').checked;
+  if(!nom){ toast("Le nom est obligatoire"); return; }
+  const arr=db.parametres.referentiels.utilisateurs;
+  if(editingUserIdx==null){
+    if(arr.some(u=>u.nom===nom)){ toast("Un utilisateur porte déjà ce nom"); return; }
+    arr.push({nom,role,actif});
+  } else {
+    const old=arr[editingUserIdx].nom;
+    if(old!==nom) renameUsagesEverywhere("utilisateurs_actifs", old, nom);
+    arr[editingUserIdx]={nom,role,actif};
+  }
+  closeModal(); persist(); renderAll(); toast(editingUserIdx==null?"Utilisateur ajouté":"Utilisateur mis à jour");
+}
+function deleteUser(idx){
+  const u=db.parametres.referentiels.utilisateurs[idx];
+  const n=usageCount("utilisateurs_actifs", u.nom);
+  const msg = n>0
+    ? `« ${u.nom} » est référencé comme responsable/testeur dans ${n} enregistrement(s). Ces enregistrements conserveront ce nom en texte mais il ne sera plus proposé dans les listes déroulantes. Supprimer quand même ?`
+    : `Supprimer l'utilisateur « ${u.nom} » ?`;
+  if(!confirm(msg)) return;
+  db.parametres.referentiels.utilisateurs.splice(idx,1);
+  persist(); renderAll(); toast("Utilisateur supprimé");
+}
+
+/* ---------- 8.3 Référentiels ---------- */
+function settingsReferentiels(){
+  const cats=[["filiales","Filiales"],["modules_sv","Modules SmartVista"],["environnements","Environnements"],["reseaux","Réseaux"]];
+  const head=`<div class="viewhead"><div><h1>Référentiels</h1><p>Ces listes alimentent les champs correspondants dans tous les modules. Toute modification est immédiate.</p></div></div>`;
+  const cards = cats.map(([key,label])=>{
+    const arr=db.parametres.referentiels[key]||[];
+    const rows = arr.map((val,i)=>`<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid #EEF1F4">
+        <input value="${esc(val)}" onchange="renameRefValue('${key}',${i},this.value)" style="flex:1;border:1px solid var(--line);border-radius:6px;padding:5px 8px;font-size:12.5px">
+        <button class="icobtn" title="Monter" ${i===0?"disabled":""} onclick="moveRefValue('${key}',${i},-1)">▲</button>
+        <button class="icobtn" title="Descendre" ${i===arr.length-1?"disabled":""} onclick="moveRefValue('${key}',${i},1)">▼</button>
+        <button class="icobtn del" title="Supprimer" onclick="deleteRefValue('${key}',${i})">🗑</button>
+      </div>`).join("") || `<div style="color:var(--ink-3);font-size:12.5px;padding:8px 0">Aucune valeur.</div>`;
+    return `<div class="panel"><h3>${label}<span class="pill">${arr.length}</span></h3>
+      <div style="padding:6px 16px 14px">
+        ${rows}
+        <div style="display:flex;gap:6px;margin-top:10px">
+          <input id="newval_${key}" placeholder="Nouvelle valeur…" style="flex:1;border:1px solid var(--line);border-radius:6px;padding:6px 9px;font-size:12.5px" onkeydown="if(event.key==='Enter') addRefValue('${key}')">
+          <button class="btn sm primary" onclick="addRefValue('${key}')">Ajouter</button>
+        </div>
+      </div></div>`;
+  }).join("");
+  return head+`<div class="two">${cards}</div>`;
+}
+function addRefValue(cat){
+  const inp=document.getElementById("newval_"+cat);
+  const val=(inp.value||"").trim();
+  if(!val) return;
+  const arr=db.parametres.referentiels[cat];
+  if(arr.includes(val)){ toast("Cette valeur existe déjà"); return; }
+  arr.push(val); persist(); renderAll();
+}
+function renameRefValue(cat, idx, newVal){
+  newVal=(newVal||"").trim();
+  const arr=db.parametres.referentiels[cat];
+  if(!newVal){ renderAll(); return; }
+  const old=arr[idx];
+  if(newVal===old) return;
+  renameUsagesEverywhere(cat, old, newVal);
+  arr[idx]=newVal;
+  persist(); renderAll(); toast("Valeur renommée");
+}
+function moveRefValue(cat, idx, dir){
+  const arr=db.parametres.referentiels[cat];
+  const j=idx+dir; if(j<0||j>=arr.length) return;
+  [arr[idx],arr[j]]=[arr[j],arr[idx]];
+  persist(); renderAll();
+}
+function deleteRefValue(cat, idx){
+  const arr=db.parametres.referentiels[cat];
+  const val=arr[idx];
+  const n=usageCount(cat, val);
+  const msg = n>0
+    ? `Cette valeur est utilisée dans ${n} enregistrement(s). Ils la conserveront en texte mais elle ne sera plus proposée dans les listes. Supprimer quand même ?`
+    : `Supprimer la valeur « ${val} » ?`;
+  if(!confirm(msg)) return;
+  arr.splice(idx,1);
+  persist(); renderAll(); toast("Valeur supprimée");
+}
+
+/* ---------- 8.4 Statuts et couleurs [Confort] ---------- */
+function settingsStatuts(){
+  const head=`<div class="viewhead"><div><h1>Statuts et couleurs</h1><p>Réordonnez les valeurs et choisissez leur couleur d'affichage, tableau par tableau.</p></div></div>`;
+  const panels = Object.keys(VIEWS).filter(vid=>{
+    const v=VIEWS[vid]; return v.fields && v.module!=="Paramètres" && primaryStatusField(v);
+  }).map(vid=>{
+    const v=VIEWS[vid];
+    const list = ensureStatusOverride(vid);
+    const rows = list.map((o,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #EEF1F4">
+        <span class="badge ${COLOR_KEY_TO_CLASS[o.couleur]||'b-neut'}" style="min-width:130px">${esc(o.valeur)}</span>
+        <select onchange="changeStatusColor('${vid}',${i},this.value)" style="border:1px solid var(--line);border-radius:6px;padding:4px 6px;font-size:12px">
+          ${Object.keys(COLOR_LABELS).map(ck=>`<option value="${ck}" ${o.couleur===ck?"selected":""}>${COLOR_LABELS[ck]}</option>`).join("")}
+        </select>
+        <button class="icobtn" title="Monter" ${i===0?"disabled":""} onclick="moveStatusValue('${vid}',${i},-1)">▲</button>
+        <button class="icobtn" title="Descendre" ${i===list.length-1?"disabled":""} onclick="moveStatusValue('${vid}',${i},1)">▼</button>
+      </div>`).join("");
+    return `<div class="panel"><h3>${v.module} — ${v.label}<span class="pill"><a href="javascript:void(0)" onclick="resetStatusOverride('${vid}')" style="color:var(--ink-3)">Réinitialiser</a></span></h3>
+      <div style="padding:6px 16px 14px">${rows}</div></div>`;
+  }).join("");
+  return head+panels;
+}
+function changeStatusColor(viewId, idx, colorKey){
+  const list=ensureStatusOverride(viewId);
+  list[idx].couleur=colorKey;
+  persist(); renderAll(); toast("Couleur mise à jour");
+}
+function moveStatusValue(viewId, idx, dir){
+  const list=ensureStatusOverride(viewId);
+  const j=idx+dir; if(j<0||j>=list.length) return;
+  [list[idx],list[j]]=[list[j],list[idx]];
+  persist(); renderAll();
+}
+function resetStatusOverride(viewId){
+  if(!confirm("Réinitialiser l'ordre et les couleurs par défaut de cette liste ?")) return;
+  delete db.parametres.statuts[viewId];
+  persist(); renderAll(); toast("Réinitialisé");
+}
+
+/* ---------- 8.5 Paramètres de la mémoire ---------- */
+function settingsMemoire(){
+  const auto = db.parametres.sauvegardeAuto;
+  const fname = fileHandle? fileHandle.name : "Aucun fichier connecté";
+  const maj = db.meta.lastUpdated? fmtDateTime(db.meta.lastUpdated) : "—";
+  const par = db.meta.updatedBy || "—";
+  return `<div class="viewhead"><div><h1>Mémoire</h1><p>Paramètres de sauvegarde et sauvegarde globale de toutes les données.</p></div></div>
+    <div class="panel"><div style="padding:16px">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600">
+        <input type="checkbox" ${auto?"checked":""} onchange="toggleSauvegardeAuto(this.checked)" style="width:auto">
+        Sauvegarde automatique du fichier connecté
+      </label>
+      <div style="color:var(--ink-2);font-size:12.5px;margin-top:10px">
+        Fichier connecté : <b>${esc(fname)}</b><br>
+        Dernière mise à jour : ${maj} par ${esc(par)}
+      </div>
+    </div></div>
+    <div class="panel"><h3>Sauvegarde globale</h3>
+      <div style="padding:16px;display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn navy" onclick="exportBackup()">⭳ Exporter une sauvegarde</button>
+        <button class="btn" onclick="importBackup()">⭱ Importer une sauvegarde</button>
+      </div>
+    </div>`;
+}
+function toggleSauvegardeAuto(val){
+  db.parametres.sauvegardeAuto=val;
+  persist();
+  toast(val?"Sauvegarde automatique activée":"Sauvegarde automatique désactivée");
+}
+function exportBackup(){
+  const stamp=nowIso().replace(/[:.]/g,"-");
+  const blob=new Blob([JSON.stringify(db,null,2)],{type:"application/json"});
+  download(blob, "sauvegarde_cellule_"+stamp+".json");
+  toast("Sauvegarde exportée");
+}
+function importBackup(){
+  const i=document.createElement("input"); i.type="file"; i.accept=".json,application/json";
+  i.onchange=()=>{
+    const f=i.files[0]; if(!f) return;
+    if(!confirm("Restaurer cette sauvegarde va remplacer toutes les données actuellement affichées. Continuer ?")) return;
+    const r=new FileReader();
+    r.onload=()=>{ loadFromText(r.result, f.name); toast("Sauvegarde restaurée"); };
+    r.readAsText(f);
+  };
+  i.click();
+}
+
+/* ---------- 8.6 Données d'exemple ---------- */
+function settingsDonnees(){
+  return `<div class="viewhead"><div><h1>Données d'exemple</h1><p>Réinitialiser ou vider les données de démonstration.</p></div></div>
+    <div class="panel"><div style="padding:16px;display:flex;flex-direction:column;gap:14px;max-width:520px">
+      <div>
+        <button class="btn" onclick="resetToSampleData()">Réinitialiser les données d'exemple</button>
+        <div style="color:var(--ink-3);font-size:11.5px;margin-top:4px">Remplace toutes les données actuelles par le jeu de données de démonstration. Référentiels et profil sont conservés.</div>
+      </div>
+      <div>
+        <button class="btn" style="border-color:var(--dang-tx);color:var(--dang-tx)" onclick="wipeAllData()">Vider toutes les données</button>
+        <div style="color:var(--ink-3);font-size:11.5px;margin-top:4px">Supprime tous les enregistrements de tous les modules pour repartir d'une base vierge.</div>
+      </div>
+    </div></div>`;
+}
+function resetToSampleData(){
+  if(!confirm("Ceci va REMPLACER toutes les données actuelles par les données de démonstration. Cette action est irréversible. Continuer ?")) return;
+  if(!confirm("Confirmez-vous définitivement la réinitialisation aux données d'exemple ?")) return;
+  DATA_PATHS.forEach(p=>db[p]=[]);
+  seed();
+  persist(); renderAll(); toast("Données d'exemple réinitialisées");
+}
+function wipeAllData(){
+  if(!confirm("Ceci va SUPPRIMER tous les enregistrements de tous les modules. Cette action est irréversible. Continuer ?")) return;
+  if(!confirm("Confirmez-vous définitivement le vidage complet des données ?")) return;
+  DATA_PATHS.forEach(p=>db[p]=[]);
+  persist(); renderAll(); toast("Toutes les données ont été vidées");
+}
+
+/* ---------- 8.7 À propos ---------- */
+function settingsApropos(){
+  return `<div class="viewhead"><div><h1>À propos</h1></div></div>
+    <div class="panel"><div style="padding:16px;font-size:13px;line-height:1.7">
+      <p><b>${esc(db.meta.app)}</b> — version applicative ${APP_VERSION}, schéma de données v${db.meta.schemaVersion}.</p>
+      <p>Navigateurs pris en charge : dernières versions de Chrome et Edge (utilisation de la File System Access API).</p>
+      <p>Collaboration asynchrone : il n'y a pas de temps réel. Le dernier enregistrement l'emporte ; une détection de conflit avertit si le fichier a été modifié par une autre personne depuis votre dernier chargement.</p>
+      <p>Confidentialité : aucune donnée n'est envoyée sur Internet. Tout reste dans le fichier mémoire local et votre navigateur. Placez le fichier de mémoire sur un partage à accès restreint à la Cellule, et ne saisissez que des numéros de carte masqués.</p>
+    </div></div>`;
+}
 
 /* ============================================================
    TABLEAUX DE BORD
