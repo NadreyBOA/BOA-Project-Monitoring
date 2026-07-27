@@ -61,6 +61,19 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   .top .crumb{font-weight:600;color:var(--ink);font-size:14px}
   .top .crumb span{color:var(--ink-3);font-weight:500}
   .top .spacer{flex:1}
+  .gsearch{position:relative;width:280px;margin-left:14px}
+  .gsearch input{width:100%;padding:7px 10px;border:1px solid var(--line);border-radius:7px;font-size:12.5px;background:#F7F9FB}
+  .gsearch input:focus{background:#fff}
+  .gsearch-results{position:absolute;top:calc(100% + 6px);left:0;width:340px;max-height:420px;overflow-y:auto;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 28px rgba(15,42,67,.16);z-index:60;display:none}
+  .gsearch-results.show{display:block}
+  .gsearch-group{padding:8px 0 4px}
+  .gsearch-group-label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--ink-3);padding:4px 14px}
+  .gsearch-item{padding:7px 14px;font-size:12.5px;cursor:pointer;display:flex;flex-direction:column;gap:1px}
+  .gsearch-item:hover{background:#F4F6F8}
+  .gsearch-item .sub{font-size:11px;color:var(--ink-3)}
+  .gsearch-empty{padding:16px;text-align:center;color:var(--ink-3);font-size:12.5px}
+  tr.row-highlight{animation:rowflash 1.6s ease-out}
+  @keyframes rowflash{0%{background:#FCF3E2}100%{background:transparent}}
   .mem{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-2);padding:5px 10px;border:1px solid var(--line);border-radius:20px;background:#fff}
   .mem .dot{width:8px;height:8px;border-radius:50%;background:var(--ink-3)}
   .mem.on .dot{background:var(--green)}
@@ -189,6 +202,10 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   <div class="top">
     <button class="btn ghost sm" id="burger" style="display:none">☰</button>
     <div class="crumb" id="crumb">Accueil</div>
+    <div class="gsearch" id="gsearchWrap">
+      <input id="gsearchInput" type="text" placeholder="Recherche globale…" autocomplete="off">
+      <div class="gsearch-results" id="gsearchResults"></div>
+    </div>
     <div class="spacer"></div>
     <div class="mem" id="memState"><span class="dot"></span><span id="memLabel">Mémoire non connectée</span></div>
     <div id="memBtns" style="display:flex;gap:7px"></div>
@@ -254,31 +271,35 @@ const st = (o)=>({type:"select",options:o,status:true});
 const rf = (key,label,refKey,extra={}) => ({key,label,type:"select",optionsRef:refKey,status:true,...extra});
 /* Champ "responsable"/"testeur" : alimenté par les utilisateurs actifs de la Cellule. */
 const usr = (key,label) => ({key,label,type:"select",optionsRef:"utilisateurs_actifs"});
+/* Champ relationnel (§5.3, §10.6) : la liste déroulante propose les valeurs d'un autre
+   tableau (labelField), ex. le patch lié à une installation. Stockage par valeur (comme le
+   reste du fichier), pas par identifiant : cohérent avec les données de démonstration fournies. */
+const lk = (key,label,path,labelField,extra={}) => ({key,label,type:"lookup",source:{path,labelField},...extra});
 
 const VIEWS = {
   accueil:{module:"Accueil",label:"Tableau de bord",type:"dashboard",dash:"accueil"},
 
   projets:{module:"Projet",label:"Portefeuille de projets",path:"projets",fields:[
-    F("ref","Réf.","text"),
-    F("projet","Projet","text"),
+    F("ref","Réf.","text",{unique:true}),
+    F("projet","Projet","text",{required:true}),
     F("type","Type",...[st(["Réglementaire","Évolution","Migration","Interne"])]),
     F("filiales","Filiales","multiselect",{optionsRef:"filiales"}),
     usr("responsable","Responsable"),
     F("echeance","Échéance","date"),
     F("avancement","Avanc.","percent"),
-    {key:"statut",label:"Statut",...st(["À démarrer","En cours","En attente","Terminé","Bloqué"])},
+    {key:"statut",label:"Statut",required:true,...st(["À démarrer","En cours","En attente","Terminé","Bloqué"])},
     F("commentaire","Commentaire","textarea",{hideCol:true}),
   ]},
   jalons:{module:"Projet",label:"Jalons et échéances",path:"jalons",fields:[
-    F("ref","Réf.","text"),
-    F("projet","Projet","text"),
-    F("jalon","Jalon","text"),
-    F("echeance","Échéance","date"),
+    F("ref","Réf.","text",{unique:true}),
+    lk("projet","Projet","projets","projet"),
+    F("jalon","Jalon","text",{required:true}),
+    F("echeance","Échéance","date",{required:true}),
     usr("responsable","Responsable"),
     {key:"statut",label:"Statut",...st(["À venir","En cours","Atteint","En retard"])},
   ]},
   contacts:{module:"Projet",label:"Acteurs et contacts",path:"contacts",fields:[
-    F("nom","Nom","text"),
+    F("nom","Nom","text",{required:true}),
     F("organisation","Organisation","text"),
     {key:"type",label:"Type",...st(["Interne","Externe"])},
     F("role","Rôle","text"),
@@ -288,16 +309,16 @@ const VIEWS = {
   ]},
 
   test_cahiers:{module:"Test",label:"Cahiers de test",path:"test_cahiers",fields:[
-    F("ref","Réf.","text"),
-    F("intitule","Intitulé","text"),
-    F("lien","Patch / évolution liée","text"),
+    F("ref","Réf.","text",{required:true,unique:true}),
+    F("intitule","Intitulé","text",{required:true}),
+    lk("lien","Patch / évolution liée","patch_reception","ref"),
     F("nb_scenarios","Nb scénarios","number"),
     F("perimetre","Périmètre","textarea",{hideCol:true}),
     {key:"statut",label:"Statut",...st(["Brouillon","Validé","Obsolète"])},
   ]},
   test_campagnes:{module:"Test",label:"Campagnes de test",path:"test_campagnes",fields:[
-    F("ref","Réf.","text"),
-    F("cahier","Cahier lié","text"),
+    F("ref","Réf.","text",{required:true,unique:true}),
+    lk("cahier","Cahier lié","test_cahiers","ref"),
     rf("environnement","Environnement","environnements"),
     F("date_debut","Début","date"),
     F("date_fin","Fin","date"),
@@ -305,24 +326,24 @@ const VIEWS = {
     {key:"statut",label:"Statut",...st(["Planifiée","En cours","Terminée","Bloquée"])},
   ]},
   test_resultats:{module:"Test",label:"Résultats détaillés",path:"test_resultats",fields:[
-    F("ref_campagne","Campagne","text"),
-    F("scenario","Scénario","text"),
-    F("carte","Carte utilisée","text"),
+    lk("ref_campagne","Campagne","test_campagnes","ref",{required:true}),
+    F("scenario","Scénario","text",{required:true}),
+    lk("carte","Carte utilisée","test_cartes","ref"),
     F("attendu","Résultat attendu","textarea",{hideCol:true}),
     F("obtenu","Résultat obtenu","textarea",{hideCol:true}),
     F("date","Date","date"),
-    {key:"statut",label:"Verdict",...st(["Conforme","Réserve","Anomalie"])},
+    {key:"statut",label:"Verdict",required:true,...st(["Conforme","Réserve","Anomalie"])},
   ]},
   test_anomalies:{module:"Test",label:"Registre des anomalies",path:"test_anomalies",fields:[
-    F("ref","Réf.","text"),
-    F("description","Description","textarea",{hideCol:true}),
+    F("ref","Réf.","text",{required:true,unique:true}),
+    F("description","Description","textarea",{hideCol:true,required:true}),
     F("severite","Sévérité",...[st(["Bloquante","Majeure","Mineure"])]),
-    F("campagne","Campagne","text"),
+    lk("campagne","Campagne","test_campagnes","ref"),
     usr("responsable","Responsable"),
     {key:"statut",label:"Statut",...st(["Ouverte","En cours","Corrigée","Rejetée"])},
   ]},
   test_cartes:{module:"Test",label:"Matrice de cartes de test",path:"test_cartes",fields:[
-    F("ref","Réf. carte","text"),
+    F("ref","Réf. carte","text",{required:true,unique:true}),
     rf("reseau","Réseau","reseaux"),
     F("type","Type",...[st(["Débit","Prépayé","Crédit"])]),
     F("profil","Profil","text"),
@@ -333,7 +354,7 @@ const VIEWS = {
   test_indic:{module:"Test",label:"Indicateurs d'efficacité",type:"dashboard",dash:"test"},
 
   patch_reception:{module:"Patch",label:"Réception des patchs",path:"patch_reception",fields:[
-    F("ref","Réf. patch","text"),
+    F("ref","Réf. patch","text",{required:true,unique:true}),
     F("type","Type",...[st(["Correctif","Évolutif","Réglementaire","Sécurité","Hotfix"])]),
     rf("module","Module","modules_sv"),
     F("criticite","Criticité",...[st(["Critique","Majeure","Mineure"])]),
@@ -342,14 +363,14 @@ const VIEWS = {
     {key:"statut",label:"Statut",...st(["Reçu","En test","Validé","Rejeté","Déployé"])},
   ]},
   patch_install:{module:"Patch",label:"Installation par environnement",path:"patch_install",fields:[
-    F("ref_patch","Réf. patch","text"),
+    lk("ref_patch","Réf. patch","patch_reception","ref",{required:true}),
     rf("environnement","Environnement","environnements"),
     F("date_installation","Installé le","date"),
     F("remarque","Remarque","text",{hideCol:true}),
     {key:"statut",label:"Statut",...st(["À installer","Installé","Échec"])},
   ]},
   patch_deploiement:{module:"Patch",label:"Déploiement par filiale",path:"patch_deploiement",fields:[
-    F("ref_patch","Réf. patch","text"),
+    lk("ref_patch","Réf. patch","patch_reception","ref",{required:true}),
     rf("filiale","Filiale","filiales"),
     F("date_prevue","Prévu le","date"),
     F("date_reelle","Déployé le","date"),
@@ -358,8 +379,8 @@ const VIEWS = {
   patch_indic:{module:"Patch",label:"Indicateurs",type:"dashboard",dash:"patch"},
 
   preprod_restaurations:{module:"Préprod",label:"Suivi des restaurations",path:"preprod_restaurations",fields:[
-    F("ref","Réf.","text"),
-    F("instance","Instance / environnement","text"),
+    F("ref","Réf.","text",{unique:true}),
+    F("instance","Instance / environnement","text",{required:true}),
     rf("filiale","Filiale","filiales"),
     F("date_planifiee","Planifiée le","date"),
     F("date_realisee","Réalisée le","date"),
@@ -369,15 +390,15 @@ const VIEWS = {
   ]},
   preprod_calendrier:{module:"Préprod",label:"Calendrier des restaurations",type:"calendar",path:"preprod_restaurations",dateField:"date_planifiee"},
   preprod_fiches:{module:"Préprod",label:"Fiches de restauration",path:"preprod_fiches",fields:[
-    F("ref","Réf.","text"),
-    F("environnement","Environnement","text"),
+    F("ref","Réf.","text",{unique:true}),
+    F("environnement","Environnement","text",{required:true}),
     F("acteurs","Acteurs","text"),
     F("checklist","Checklist","textarea",{hideCol:true}),
     F("mode_operatoire","Mode opératoire","textarea",{hideCol:true}),
     {key:"statut",label:"Statut",...st(["Brouillon","Validée"])},
   ]},
   preprod_etats:{module:"Préprod",label:"État des environnements",path:"preprod_etats",fields:[
-    F("instance","Instance","text"),
+    F("instance","Instance","text",{required:true}),
     rf("filiale","Filiale","filiales"),
     F("derniere_restauration","Dernière restauration","date"),
     F("remarque","Remarque","text",{hideCol:true}),
@@ -385,8 +406,8 @@ const VIEWS = {
   ]},
 
   operationnel:{module:"Opérationnel",label:"Points en attente",path:"operationnel",fields:[
-    F("ref","Réf.","text"),
-    F("demande","Demande","textarea",{hideCol:true}),
+    F("ref","Réf.","text",{unique:true}),
+    F("demande","Demande","textarea",{hideCol:true,required:true}),
     F("demandeur","Demandeur","text"),
     F("date_reception","Reçu le","date"),
     F("priorite","Priorité",...[st(["Haute","Moyenne","Basse"])]),
@@ -432,8 +453,14 @@ function activeUserNames(){
 function fieldOptions(f){
   if(f.optionsRef==="utilisateurs_actifs") return activeUserNames();
   if(f.optionsRef) return db.parametres.referentiels[f.optionsRef] || [];
+  if(f.type==="lookup" && f.source){
+    const vals=(db[f.source.path]||[]).map(r=>r[f.source.labelField]).filter(v=>v!=null && v!=="");
+    return Array.from(new Set(vals));
+  }
   return f.options || [];
 }
+/* Normalisation pour une recherche insensible à la casse et aux accents (cf. §7.4, réutilisée en §10.1/10.2). */
+function norm(s){ return String(s==null?"":s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,""); }
 /* Le champ "statut"/"état" d'une vue est celui dont les valeurs et couleurs
    peuvent être personnalisées depuis Paramètres > Statuts et couleurs. */
 function primaryStatusField(v){
@@ -502,7 +529,8 @@ let fileHandle = null;
 let dirty = false;
 let loadedRevision = 0; // dernière révision du fichier connue en mémoire (détection de conflit)
 let current = "accueil";
-let uiState = {}; // par vue: {search, filter, sortKey, sortDir}
+let uiState = {}; // par vue: {search, filter, filiale, sortKey, sortDir, page, pageSize}
+let pendingHighlightId = null; // _id à surligner après navigation depuis la recherche globale
 
 function emptyDb(){
   const o = {
@@ -733,6 +761,30 @@ function exportExcel(){
   }
   toast("Export généré");
 }
+/* Modèle d'import (§7.3) : en-têtes de la vue + une ligne d'exemple à remplacer. */
+function downloadTemplate(){
+  const v=VIEWS[current]; if(!v.path) return;
+  const cols=v.fields;
+  const aoa=[cols.map(c=>c.label), cols.map(c=>exampleValueFor(c))];
+  if(excelReady()){
+    const ws=XLSX.utils.aoa_to_sheet(aoa);
+    ws["!cols"]=cols.map(()=>({wch:22}));
+    const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,v.label.slice(0,28));
+    XLSX.writeFile(wb, "modele_"+slug(v.label)+".xlsx");
+  }else{
+    const csv=aoa.map(r=>r.map(csvCell).join(";")).join("\n");
+    download(new Blob(["﻿"+csv],{type:"text/csv"}), "modele_"+slug(v.label)+".csv");
+  }
+  toast("Modèle téléchargé");
+}
+function exampleValueFor(c){
+  if(c.type==="percent") return "50";
+  if(c.type==="number") return "1";
+  if(c.type==="date") return "2026-01-31";
+  if(c.type==="multiselect") return "(Exemple, à remplacer)";
+  if(c.type==="select"||c.type==="lookup"){ const o=fieldOptions(c)[0]; return o?"(Exemple : "+o+")":"(Exemple à remplacer)"; }
+  return "(Exemple à remplacer)";
+}
 function cellOut(val,c){
   if(c.type==="multiselect" && Array.isArray(val)) return val.join(", ");
   return val==null?"":val;
@@ -766,32 +818,48 @@ function parseCsv(txt){
 }
 function applyImport(v,aoa){
   if(!aoa || aoa.length<2){ toast("Aucune ligne à importer"); return; }
-  const headers=aoa[0].map(h=>String(h).trim().toLowerCase());
+  const headers=aoa[0].map(h=>norm(String(h)).trim());
   const map={}; // fieldKey -> colIndex
   v.fields.forEach(fld=>{
-    let idx=headers.indexOf(fld.label.toLowerCase());
-    if(idx<0) idx=headers.indexOf(fld.key.toLowerCase());
+    let idx=headers.indexOf(norm(fld.label));
+    if(idx<0) idx=headers.indexOf(norm(fld.key));
     if(idx>=0) map[fld.key]=idx;
   });
-  if(Object.keys(map).length===0){ toast("En-têtes non reconnues. Utilisez un export comme modèle."); return; }
-  const rows=[];
+  if(Object.keys(map).length===0){ toast("En-têtes non reconnues. Utilisez un export ou le modèle comme base."); return; }
+  const rows=[]; let ignored=0, flagged=0;
   const importUser=currentUser(), importTs=nowIso();
   for(let i=1;i<aoa.length;i++){
-    const line=aoa[i]; if(!line || line.every(c=>String(c).trim()==="")) continue;
+    const line=aoa[i];
+    if(!line || line.every(c=>String(c).trim()==="")){ ignored++; continue; }
     const rec={_id:uid(), _creePar:importUser, _creeLe:importTs, _modifiePar:importUser, _modifieLe:importTs};
+    let rowFlagged=false;
     v.fields.forEach(fld=>{
       if(map[fld.key]==null){ rec[fld.key]= fld.type==="multiselect"?[]:""; return; }
       let val=line[map[fld.key]]; val = val==null?"":String(val).trim();
-      if(fld.type==="multiselect") rec[fld.key]= val? val.split(/[,;]/).map(s=>s.trim()).filter(Boolean):[];
-      else if(fld.type==="number"||fld.type==="percent") rec[fld.key]= val===""?"":Number(val)||0;
-      else rec[fld.key]=val;
+      if(fld.type==="multiselect"){
+        const parts = val? val.split(/[,;]/).map(s=>s.trim()).filter(Boolean) : [];
+        const known = fieldOptions(fld);
+        if(known.length && parts.some(p=>!known.includes(p))) rowFlagged=true;
+        rec[fld.key]=parts;
+      } else if(fld.type==="number"||fld.type==="percent"){
+        const n=Number(val); rec[fld.key]= (val===""||isNaN(n)) ? 0 : n;
+      } else if(fld.type==="select"||fld.type==="lookup"){
+        const known=fieldOptions(fld);
+        if(val && known.length && !known.includes(val)) rowFlagged=true;
+        rec[fld.key]=val;
+      } else { rec[fld.key]=val; }
     });
+    if(rowFlagged) flagged++;
     rows.push(rec);
   }
+  if(!rows.length){ toast("Aucune ligne exploitable dans ce fichier."); return; }
   const replace = confirm(rows.length+" ligne(s) détectée(s).\n\nOK = remplacer le contenu actuel du tableau\nAnnuler = ajouter à la suite");
   if(replace) db[v.path]=rows; else db[v.path]=db[v.path].concat(rows);
   persist(); renderAll();
-  toast(rows.length+" ligne(s) importée(s)");
+  showImportReport(rows.length, ignored, flagged);
+}
+function showImportReport(imported, ignored, flagged){
+  alert("Import terminé :\n\n- Lignes importées : "+imported+"\n- Lignes ignorées (vides) : "+ignored+"\n- Valeurs signalées (non reconnues dans les listes) : "+flagged);
 }
 function slug(s){ return s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-zA-Z0-9]+/g,"_").replace(/^_|_$/g,""); }
 
@@ -832,6 +900,61 @@ function go(id){ current=id; document.getElementById("side").classList.remove("o
 function renderAll(){ renderSidebar(); renderMem(); renderMain(); }
 
 /* ============================================================
+   RECHERCHE GLOBALE (§10.1)
+============================================================ */
+function rowLabel(v, r){
+  const parts=[];
+  if(r.ref) parts.push(r.ref);
+  const titleField = v.fields.find(f=>f.key!=="ref" && (f.type==="text"||f.type==="textarea"));
+  if(titleField && r[titleField.key]) parts.push(String(r[titleField.key]).slice(0,60));
+  if(!parts.length){
+    const first=v.fields.find(f=> r[f.key]!=null && r[f.key]!=="");
+    if(first) parts.push(String(r[first.key]).slice(0,60));
+  }
+  return parts.join(" — ") || "(sans titre)";
+}
+function computeGlobalMatches(query){
+  const q=norm(query);
+  if(!q.trim()) return [];
+  const groups=[];
+  Object.keys(VIEWS).forEach(vid=>{
+    const v=VIEWS[vid];
+    if(!v.fields || !v.path) return; // uniquement les vues tableau : pas dashboard/calendrier/paramètres
+    const matches=(db[v.path]||[]).filter(r=> v.fields.some(f=> norm(cellOut(r[f.key], f)).includes(q)));
+    if(matches.length) groups.push({vid, v, rows:matches.slice(0,5), total:matches.length});
+  });
+  return groups;
+}
+function renderGlobalResults(){
+  const box=document.getElementById("gsearchResults");
+  const q=document.getElementById("gsearchInput").value;
+  if(!q.trim()){ box.classList.remove("show"); box.innerHTML=""; return; }
+  const groups=computeGlobalMatches(q);
+  if(!groups.length){
+    box.innerHTML=`<div class="gsearch-empty">Aucun résultat pour « ${esc(q)} »</div>`;
+  } else {
+    box.innerHTML = groups.map(g=>`
+      <div class="gsearch-group">
+        <div class="gsearch-group-label">${esc(g.v.module)} — ${esc(g.v.label)}${g.total>g.rows.length?` (${g.total})`:""}</div>
+        ${g.rows.map(r=>`<div class="gsearch-item" onclick="goToRecord('${g.vid}','${r._id}')">${esc(rowLabel(g.v,r))}</div>`).join("")}
+      </div>`).join("");
+  }
+  box.classList.add("show");
+}
+function goToRecord(viewId, rowId){
+  document.getElementById("gsearchInput").value="";
+  document.getElementById("gsearchResults").classList.remove("show");
+  const v=VIEWS[viewId], s=stateFor(viewId);
+  s.search=""; s.filter=""; s.filiale="";
+  const rows=computeViewRows(v, s);
+  const idx=rows.findIndex(r=>r._id===rowId);
+  const pageSize = (s.pageSize && s.pageSize!=="all") ? s.pageSize : (rows.length || 50);
+  s.page = idx>=0 ? Math.floor(idx/pageSize)+1 : 1;
+  pendingHighlightId = rowId;
+  go(viewId);
+}
+
+/* ============================================================
    RENDU DES VUES
 ============================================================ */
 function renderMain(){
@@ -842,27 +965,51 @@ function renderMain(){
   if(v.type==="settings"){ main.innerHTML = renderSettings(v); wireSettings(v); return; }
   main.innerHTML = renderTableView(v);
   wireToolbar(v);
+  if(pendingHighlightId){
+    const id=pendingHighlightId; pendingHighlightId=null;
+    const tr=Array.from(main.querySelectorAll("tr[data-id]")).find(el=>el.getAttribute("data-id")===id);
+    if(tr){ if(typeof tr.scrollIntoView==="function") tr.scrollIntoView({block:"center"}); tr.classList.add("row-highlight"); }
+  }
 }
 
 /* ---------- Vue tableau ---------- */
-function stateFor(id){ if(!uiState[id]) uiState[id]={search:"",filter:"",sortKey:null,sortDir:1}; return uiState[id]; }
+function stateFor(id){ if(!uiState[id]) uiState[id]={search:"",filter:"",filiale:"",sortKey:null,sortDir:1,page:1,pageSize:50}; return uiState[id]; }
+function filialeFieldFor(v){ return (v.fields||[]).find(f=>f.optionsRef==="filiales"); }
+
+/* Filtre + recherche + tri, sans pagination : réutilisé par le rendu du tableau
+   et par la recherche globale pour localiser la page exacte d'un résultat. */
+function computeViewRows(v, s){
+  const statusField = primaryStatusField(v);
+  const filialeField = filialeFieldFor(v);
+  let rows=(db[v.path]||[]).slice();
+  if(s.filter && statusField) rows=rows.filter(r=> (r[statusField.key]||"")===s.filter);
+  if(s.filiale && filialeField){
+    rows=rows.filter(r=>{
+      const val=r[filialeField.key];
+      return filialeField.type==="multiselect" ? (Array.isArray(val)&&val.includes(s.filiale)) : val===s.filiale;
+    });
+  }
+  if(s.search){ const q=norm(s.search); rows=rows.filter(r=> v.fields.some(f=> norm(cellOut(r[f.key],f)).includes(q))); }
+  if(s.sortKey){ rows.sort((a,b)=>{ let x=a[s.sortKey]||"",y=b[s.sortKey]||""; return (x>y?1:x<y?-1:0)*s.sortDir; }); }
+  return rows;
+}
 
 function renderTableView(v){
   const s=stateFor(current);
-  const statusField = v.fields.find(f=>f.status && (f.key==="statut"||f.key==="etat")) || v.fields.find(f=>f.status);
+  const statusField = primaryStatusField(v);
+  const filialeField = filialeFieldFor(v);
   const cols=v.fields.filter(f=>!f.hideCol);
-  let rows=(db[v.path]||[]).slice();
+  const rows=computeViewRows(v, s);
 
-  // filtre + recherche
-  if(s.filter && statusField) rows=rows.filter(r=> (r[statusField.key]||"")===s.filter);
-  if(s.search){ const q=s.search.toLowerCase(); rows=rows.filter(r=> v.fields.some(f=> String(cellOut(r[f.key],f)).toLowerCase().includes(q))); }
-  if(s.sortKey){ rows.sort((a,b)=>{ let x=a[s.sortKey]||"",y=b[s.sortKey]||""; return (x>y?1:x<y?-1:0)*s.sortDir; }); }
-
-  const filterOpts = statusField ? `<select class="filter" id="fltStatut"><option value="">Tous statuts</option>${statusValuesFor(current).map(o=>`<option ${s.filter===o?"selected":""}>${o}</option>`).join("")}</select>` : "";
+  const filterOpts = statusField ? `<select class="filter" id="fltStatut"><option value="">Tous statuts</option>${statusValuesFor(current).map(o=>`<option ${s.filter===o?"selected":""}>${esc(o)}</option>`).join("")}</select>` : "";
+  const filialeOpts = filialeField ? `<select class="filter" id="fltFiliale"><option value="">Toutes filiales</option>${(db.parametres.referentiels.filiales||[]).map(o=>`<option ${s.filiale===o?"selected":""}>${esc(o)}</option>`).join("")}</select>` : "";
+  const hasActiveFilters = !!(s.search || s.filter || s.filiale);
+  const resetBtn = hasActiveFilters ? `<button class="btn ghost sm" onclick="clearViewFilters()">Réinitialiser les filtres</button>` : "";
 
   const head = `<div class="viewhead">
       <div><h1>${v.label}</h1><p>${caption(v)}</p></div>
       <div class="acts">
+        <button class="btn" onclick="downloadTemplate()">⭳ Télécharger le modèle</button>
         <button class="btn" onclick="importExcel()">⭱ Importer Excel</button>
         <button class="btn" onclick="exportExcel()">⭳ Exporter Excel</button>
         <button class="btn primary" onclick="openModal()">+ Ajouter</button>
@@ -872,26 +1019,56 @@ function renderTableView(v){
       <div class="search"><svg viewBox="0 0 20 20"><path d="M8 3a5 5 0 013.9 8.1l4 4-1.4 1.4-4-4A5 5 0 118 3zm0 2a3 3 0 100 6 3 3 0 000-6z"/></svg>
         <input id="srch" placeholder="Rechercher…" value="${esc(s.search)}"></div>
       ${filterOpts}
+      ${filialeOpts}
+      ${resetBtn}
       <div style="margin-left:auto;color:var(--ink-3);font-size:12px">${rows.length} ligne(s)</div>
     </div>`;
 
   let body;
   if(rows.length===0){
-    body=`<div class="card"><div class="empty"><div class="big">Aucune donnée pour le moment</div>Cliquez sur « Ajouter » ou importez un fichier Excel pour alimenter ce tableau.</div></div>`;
+    const msg = hasActiveFilters ? `<div class="empty"><div class="big">Aucun résultat pour ces filtres</div>Essayez de réinitialiser la recherche ou les filtres actifs.</div>` : `<div class="empty"><div class="big">Aucune donnée pour le moment</div>Cliquez sur « Ajouter » ou importez un fichier Excel pour alimenter ce tableau.</div>`;
+    body=`<div class="card">${msg}</div>`;
   }else{
+    const paginate = rows.length > 50;
+    const pageSize = paginate ? (s.pageSize==="all" ? rows.length : (s.pageSize||50)) : rows.length;
+    const totalPages = Math.max(1, Math.ceil(rows.length/pageSize));
+    if(s.page>totalPages) s.page=totalPages;
+    if(s.page<1) s.page=1;
+    const startIdx = (s.page-1)*pageSize;
+    const pageRows = paginate ? rows.slice(startIdx, startIdx+pageSize) : rows;
+
     const th = cols.map(c=>{ const ar= s.sortKey===c.key?(s.sortDir>0?"▲":"▼"):"↕"; return `<th onclick="sortBy('${c.key}')">${c.label}<span class="sortic">${ar}</span></th>`; }).join("");
-    const trsReal = rows.map(r=>{
+    const trsReal = pageRows.map(r=>{
       const tds=cols.map(c=>`<td>${renderCell(r,c)}</td>`).join("");
       const acts=`<td><div class="rowacts">
         <button class="icobtn" title="Modifier" onclick="openModal('${r._id}')">✎</button>
+        <button class="icobtn" title="Dupliquer" onclick="duplicateRow('${r._id}')">⧉</button>
         <button class="icobtn del" title="Supprimer" onclick="delRow('${r._id}')">🗑</button></div></td>`;
-      return `<tr>${tds}${acts}</tr>`;
+      return `<tr data-id="${r._id}">${tds}${acts}</tr>`;
     }).join("");
+    const paginationBar = paginate ? `<div style="display:flex;align-items:center;gap:14px;padding:10px 14px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-2)">
+        <span>${rows.length? (startIdx+1) : 0}–${Math.min(startIdx+pageRows.length, rows.length)} sur ${rows.length} ligne(s)</span>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+          <label style="display:flex;align-items:center;gap:5px">Par page
+            <select id="pageSizeSel">
+              ${[25,50,100].map(n=>`<option value="${n}" ${String(s.pageSize)===String(n)?"selected":""}>${n}</option>`).join("")}
+              <option value="all" ${s.pageSize==="all"?"selected":""}>Tout</option>
+            </select>
+          </label>
+          <button class="btn sm" id="pagePrev" ${s.page<=1?"disabled":""}>◂ Précédent</button>
+          <button class="btn sm" id="pageNext" ${(s.pageSize==="all"||s.page>=totalPages)?"disabled":""}>Suivant ▸</button>
+        </div>
+      </div>` : "";
     body=`<div class="card"><div class="tablewrap"><table>
         <thead><tr>${th}<th style="text-align:right">Actions</th></tr></thead>
-        <tbody>${trsReal}</tbody></table></div></div>`;
+        <tbody>${trsReal}</tbody></table></div>${paginationBar}</div>`;
   }
   return head+body;
+}
+function clearViewFilters(){
+  const s=stateFor(current);
+  s.search=""; s.filter=""; s.filiale=""; s.page=1;
+  renderAll();
 }
 function caption(v){
   const c={
@@ -929,24 +1106,32 @@ function renderCell(r,c){
 }
 function wireToolbar(v){
   const srch=document.getElementById("srch");
-  if(srch){ srch.oninput=()=>{ stateFor(current).search=srch.value; const pos=srch.selectionStart; renderMain(); const n=document.getElementById("srch"); if(n){n.focus();n.setSelectionRange(pos,pos);} }; }
+  if(srch){ srch.oninput=()=>{ const s=stateFor(current); s.search=srch.value; s.page=1; const pos=srch.selectionStart; renderMain(); const n=document.getElementById("srch"); if(n){n.focus();n.setSelectionRange(pos,pos);} }; }
   const flt=document.getElementById("fltStatut");
-  if(flt){ flt.onchange=()=>{ stateFor(current).filter=flt.value; renderMain(); }; }
+  if(flt){ flt.onchange=()=>{ const s=stateFor(current); s.filter=flt.value; s.page=1; renderMain(); }; }
+  const fltF=document.getElementById("fltFiliale");
+  if(fltF){ fltF.onchange=()=>{ const s=stateFor(current); s.filiale=fltF.value; s.page=1; renderMain(); }; }
+  const pageSizeSel=document.getElementById("pageSizeSel");
+  if(pageSizeSel){ pageSizeSel.onchange=()=>{ const s=stateFor(current); s.pageSize = pageSizeSel.value==="all"?"all":Number(pageSizeSel.value); s.page=1; renderMain(); }; }
+  const pagePrev=document.getElementById("pagePrev");
+  if(pagePrev){ pagePrev.onclick=()=>{ const s=stateFor(current); if(s.page>1){ s.page--; renderMain(); } }; }
+  const pageNext=document.getElementById("pageNext");
+  if(pageNext){ pageNext.onclick=()=>{ const s=stateFor(current); s.page++; renderMain(); }; }
 }
-function sortBy(k){ const s=stateFor(current); if(s.sortKey===k) s.sortDir*=-1; else {s.sortKey=k;s.sortDir=1;} renderMain(); }
+function sortBy(k){ const s=stateFor(current); if(s.sortKey===k) s.sortDir*=-1; else {s.sortKey=k;s.sortDir=1;} s.page=1; renderMain(); }
 
 /* ---------- Modal ajout / édition ---------- */
 let editingId=null;
-function openModal(id){
+function openModal(id, prefill){
   const v=VIEWS[current]; editingId=id||null;
-  const rec = id? (db[v.path].find(r=>r._id===id)||{}) : {};
+  const rec = id? (db[v.path].find(r=>r._id===id)||{}) : (prefill||{});
   document.getElementById("modalTitle").textContent = (id?"Modifier — ":"Nouvel élément — ")+v.label;
   const body=document.getElementById("modalBody"); body.innerHTML="";
   v.fields.forEach(f=>{
     const wrap=document.createElement("div"); wrap.className="fld"+((f.type==="textarea"||f.type==="multiselect")?" full":"");
     const val=rec[f.key];
     let input="";
-    if(f.type==="select"){
+    if(f.type==="select" || f.type==="lookup"){
       const isPrimaryStatus = f.status && (f.key==="statut"||f.key==="etat");
       let opts = isPrimaryStatus ? statusValuesFor(current) : fieldOptions(f);
       if(val && !opts.includes(val)) opts = opts.concat([val]); // préserve une valeur devenue orpheline (utilisateur désactivé, réf. renommée/supprimée)
@@ -961,7 +1146,8 @@ function openModal(id){
     else if(f.type==="number"||f.type==="percent"){ input=`<input type="number" data-k="${f.key}" value="${val==null?"":val}" ${f.type==="percent"?'min="0" max="100"':""}>`; }
     else if(f.type==="date"){ input=`<input type="date" data-k="${f.key}" value="${val||""}">`; }
     else { input=`<input type="text" data-k="${f.key}" value="${esc(val||"")}">`; }
-    wrap.innerHTML=`<label>${f.label}</label>${input}`;
+    const star = f.required ? ' <span style="color:var(--dang-tx)">*</span>' : '';
+    wrap.innerHTML=`<label>${f.label}${star}</label>${input}`;
     body.appendChild(wrap);
   });
   if(id && (rec._creePar||rec._modifiePar)){
@@ -977,20 +1163,70 @@ function openModal(id){
   document.getElementById("modalSave").onclick=saveModal;
   document.getElementById("overlay").classList.add("show");
 }
+/* Contrôle les champs obligatoires et l'unicité (§10.7) avant tout enregistrement. */
+function validateRecord(v, draft, excludeId){
+  const errors={};
+  v.fields.forEach(f=>{
+    if(f.required){
+      const val=draft[f.key];
+      const empty = (f.type==="multiselect") ? !(Array.isArray(val)&&val.length) : (val==null || String(val).trim()==="");
+      if(empty) errors[f.key]="Ce champ est obligatoire.";
+    }
+    if(f.unique && draft[f.key]!=null && String(draft[f.key]).trim()!==""){
+      const dup=(db[v.path]||[]).some(r=> r._id!==excludeId && String(r[f.key]).trim()===String(draft[f.key]).trim());
+      if(dup) errors[f.key]=(errors[f.key]?errors[f.key]+" ":"")+"Cette référence existe déjà.";
+    }
+  });
+  return errors;
+}
+function clearFieldErrors(body){
+  body.querySelectorAll(".fld-err").forEach(e=>e.remove());
+  body.querySelectorAll("[data-k]").forEach(el=>{ el.style.borderColor=""; });
+}
+function showFieldErrors(body, errors){
+  Object.keys(errors).forEach(key=>{
+    const el=body.querySelector(`[data-k="${key}"]`);
+    if(!el) return;
+    el.style.borderColor="var(--dang-tx)";
+    const msg=document.createElement("div");
+    msg.className="fld-err";
+    msg.style.cssText="color:var(--dang-tx);font-size:11px;margin-top:-2px";
+    msg.textContent=errors[key];
+    el.insertAdjacentElement("afterend", msg);
+  });
+}
 function saveModal(){
   const v=VIEWS[current]; const body=document.getElementById("modalBody");
   const isNew = !editingId;
-  const rec = editingId? db[v.path].find(r=>r._id===editingId) : {_id:uid()};
+  const draft={};
   v.fields.forEach(f=>{
-    if(f.type==="multiselect"){ rec[f.key]=[...body.querySelectorAll(`input[data-k="${f.key}"]:checked`)].map(c=>c.value); }
-    else { const el=body.querySelector(`[data-k="${f.key}"]`); let val=el?el.value:""; if(f.type==="number"||f.type==="percent") val= val===""?"":Number(val); rec[f.key]=val; }
+    if(f.type==="multiselect"){ draft[f.key]=[...body.querySelectorAll(`input[data-k="${f.key}"]:checked`)].map(c=>c.value); }
+    else { const el=body.querySelector(`[data-k="${f.key}"]`); let val=el?el.value:""; if(f.type==="number"||f.type==="percent") val= val===""?"":Number(val); draft[f.key]=val; }
   });
+  clearFieldErrors(body);
+  const errors=validateRecord(v, draft, editingId);
+  if(Object.keys(errors).length){
+    showFieldErrors(body, errors);
+    toast("Corrigez les champs signalés avant d'enregistrer");
+    return;
+  }
+  const rec = editingId? db[v.path].find(r=>r._id===editingId) : {_id:uid()};
+  Object.assign(rec, draft);
   const user=currentUser(), ts=nowIso();
   if(isNew){ rec._creePar=user; rec._creeLe=ts; db[v.path].push(rec); }
   rec._modifiePar=user; rec._modifieLe=ts;
   closeModal(); persist(); renderAll(); toast(isNew?"Élément ajouté":"Élément mis à jour");
 }
 function closeModal(){ document.getElementById("overlay").classList.remove("show"); editingId=null; }
+/* Duplique une ligne : pré-remplit une nouvelle fiche (sans _id ni traçabilité), à valider par l'utilisateur (§10.5). */
+function duplicateRow(id){
+  const v=VIEWS[current];
+  const src=db[v.path].find(r=>r._id===id);
+  if(!src) return;
+  const copy=JSON.parse(JSON.stringify(src));
+  delete copy._id; delete copy._creePar; delete copy._creeLe; delete copy._modifiePar; delete copy._modifieLe;
+  openModal(null, copy);
+}
 function delRow(id){ const v=VIEWS[current]; if(!confirm("Supprimer cette ligne ?")) return; db[v.path]=db[v.path].filter(r=>r._id!==id); persist(); renderAll(); toast("Ligne supprimée"); }
 
 /* ============================================================
@@ -1379,7 +1615,14 @@ document.getElementById("burger").onclick=()=>document.getElementById("side").cl
 function checkMobile(){ document.getElementById("burger").style.display = window.innerWidth<=760?"inline-flex":"none"; }
 window.addEventListener("resize",checkMobile);
 document.getElementById("overlay").addEventListener("click",e=>{ if(e.target.id==="overlay") closeModal(); });
-document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeModal(); });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ closeModal(); document.getElementById("gsearchResults").classList.remove("show"); } });
+
+/* Recherche globale : ouverture/fermeture du panneau de résultats */
+document.getElementById("gsearchInput").addEventListener("input", renderGlobalResults);
+document.getElementById("gsearchInput").addEventListener("focus", renderGlobalResults);
+document.addEventListener("click", e=>{
+  if(!document.getElementById("gsearchWrap").contains(e.target)) document.getElementById("gsearchResults").classList.remove("show");
+});
 
 /* Profil utilisateur au premier lancement (modale bloquante, non contournable) */
 function maybeOnboard(){
