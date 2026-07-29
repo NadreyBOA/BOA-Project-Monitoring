@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-surface-app text-ink-primary font-sans antialiased;
+    font-size: 14px;
+  }
+  #root {
+    min-height: 100vh;
+  }
+}
