@@ -47,12 +47,12 @@ export interface Personne {
 
 export interface Reseau {
   id: string;
-  nom: NomReseau;
+  nom: string;
 }
 
 export interface Module {
   id: string;
-  nom: NomModule | string;
+  nom: string;
 }
 
 export interface Editeur {
