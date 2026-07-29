@@ -8,6 +8,7 @@ import { Badge, type BadgeTone } from '../components/ui/Badge';
 import { Avatar } from '../components/ui/Avatar';
 import { EmptyState } from '../components/ui/EmptyState';
 import { formatDate } from '../lib/format';
+import { toneStatutJalon } from '../lib/jalonTone';
 import {
   cahiersDeTestRepo,
   environnementsRepo,
@@ -33,12 +34,6 @@ interface DonneesDashboard {
 
 const statutsPatchEnAttente: Patch['statut'][] = ['Reçu', 'En analyse', 'En recette', 'En attente'];
 const statutsRunOuverts: PointRun['statut'][] = ['Ouvert', 'En cours', 'En attente'];
-
-const toneStatutJalon: Record<Jalon['statut'], 'success' | 'warning' | 'critical' | 'info'> = {
-  Atteint: 'success',
-  'À venir': 'info',
-  'En retard': 'critical',
-};
 
 const rangPriorite: Record<PointRun['priorite'], number> = { Critique: 3, Haute: 2, Moyenne: 1, Basse: 0 };
 
