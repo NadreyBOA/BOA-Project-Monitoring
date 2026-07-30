@@ -8,6 +8,7 @@ import { CahierDetail } from './pages/CahierDetail';
 import { Environnements } from './pages/Environnements';
 import { EnvironnementDetail } from './pages/EnvironnementDetail';
 import { Patchs } from './pages/Patchs';
+import { PatchDetail } from './pages/PatchDetail';
 import { Run } from './pages/Run';
 import { Parametres } from './pages/Parametres';
 
@@ -23,6 +24,7 @@ export default function App() {
         <Route path="/environnements" element={<Environnements />} />
         <Route path="/environnements/:id" element={<EnvironnementDetail />} />
         <Route path="/patchs" element={<Patchs />} />
+        <Route path="/patchs/:id" element={<PatchDetail />} />
         <Route path="/run" element={<Run />} />
         <Route path="/parametres" element={<Parametres />} />
       </Routes>

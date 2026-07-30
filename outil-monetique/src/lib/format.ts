@@ -12,3 +12,10 @@ export function formatMontant(montant: number): string {
   const avecEspaces = entier.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   return `${avecEspaces} FCFA`;
 }
+
+/** Nombre de jours écoulés depuis une date ISO (YYYY-MM-DD) jusqu'à aujourd'hui. */
+export function joursDepuis(dateISO: string): number {
+  const debut = new Date(dateISO).getTime();
+  const maintenant = Date.now();
+  return Math.max(0, Math.floor((maintenant - debut) / (1000 * 60 * 60 * 24)));
+}
