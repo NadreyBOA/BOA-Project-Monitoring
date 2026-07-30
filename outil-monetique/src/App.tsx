@@ -4,6 +4,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Projets } from './pages/Projets';
 import { ProjetDetail } from './pages/ProjetDetail';
 import { Tests } from './pages/Tests';
+import { CahierDetail } from './pages/CahierDetail';
 import { Environnements } from './pages/Environnements';
 import { Patchs } from './pages/Patchs';
 import { Run } from './pages/Run';
@@ -17,6 +18,7 @@ export default function App() {
         <Route path="/projets" element={<Projets />} />
         <Route path="/projets/:id" element={<ProjetDetail />} />
         <Route path="/tests" element={<Tests />} />
+        <Route path="/tests/:id" element={<CahierDetail />} />
         <Route path="/environnements" element={<Environnements />} />
         <Route path="/patchs" element={<Patchs />} />
         <Route path="/run" element={<Run />} />
